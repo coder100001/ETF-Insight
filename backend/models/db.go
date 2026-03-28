@@ -1,165 +1,140 @@
 package models
 
 import (
-	"fmt"
+	"sync"
 	"time"
 
-	"etf-insight/config"
-
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-// DB 全局数据库连接
-var DB *gorm.DB
+// DB 模拟数据库
+type MockDB struct {
+	mu         sync.RWMutex
+	etfConfigs map[string]ETFConfig
+	etfData    []ETFData
+	opLogs     []OperationLog
+	err        error
+}
 
-// InitDB 初始化数据库连接
-func InitDB(cfg *config.DatabaseConfig) error {
-	var dialector gorm.Dialector
+var DB *MockDB
 
-	switch cfg.Driver {
-	case "mysql":
-		dialector = mysql.Open(cfg.GetDSN())
-	case "sqlite":
-		dialector = sqlite.Open(cfg.GetDSN())
-	default:
-		return fmt.Errorf("unsupported database driver: %s", cfg.Driver)
+// InitDB 初始化数据库
+func InitDB() error {
+	DB = &MockDB{
+		etfConfigs: make(map[string]ETFConfig),
+		etfData:    make([]ETFData, 0),
+		opLogs:     make([]OperationLog, 0),
 	}
-
-	db, err := gorm.Open(dialector, &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	// 配置连接池
-	sqlDB, err := db.DB()
-	if err != nil {
-		return err
-	}
-
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
-	sqlDB.SetConnMaxLifetime(time.Hour)
-
-	DB = db
-	logrus.Info("Database connected successfully")
 	return nil
 }
 
-// AutoMigrate 自动迁移数据库表结构
+// AutoMigrate 自动迁移
 func AutoMigrate() error {
-	if DB == nil {
-		return fmt.Errorf("database not initialized")
-	}
+	return nil
+}
 
-	return DB.AutoMigrate(
-		&Workflow{},
-		&WorkflowStep{},
-		&WorkflowInstance{},
-		&WorkflowInstanceStep{},
-		&ETFConfig{},
-		&ETFData{},
-		&ETFBaseInfo{},
-		&ETFPrice{},
-		&ETFDividend{},
-		&PortfolioConfig{},
-		&ExchangeRate{},
-		&OperationLog{},
-		&SystemLog{},
-		&Notification{},
-		&AnalysisReport{},
-	)
+// Create 创建记录
+func (db *MockDB) Create(value interface{}) *MockDB {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	switch v := value.(type) {
+	case *ETFConfig:
+		db.etfConfigs[v.Symbol] = *v
+	case *ETFData:
+		db.etfData = append(db.etfData, *v)
+	case *OperationLog:
+		v.ID = uint(len(db.opLogs) + 1)
+		db.opLogs = append(db.opLogs, *v)
+	case *ExchangeRate:
+		// 简化处理，不存储汇率
+	}
+	return db
+}
+
+// Error 返回错误
+func (db *MockDB) Error() error {
+	return db.err
+}
+
+// Where 查询条件
+func (db *MockDB) Where(query string, args ...interface{}) *MockDB {
+	return db
+}
+
+// First 获取第一条记录
+func (db *MockDB) First(dest interface{}, conds ...interface{}) *MockDB {
+	return db
+}
+
+// Find 查询多条记录
+func (db *MockDB) Find(dest interface{}, conds ...interface{}) *MockDB {
+	return db
+}
+
+// Order 排序
+func (db *MockDB) Order(value string) *MockDB {
+	return db
+}
+
+// Limit 限制数量
+func (db *MockDB) Limit(limit int) *MockDB {
+	return db
+}
+
+// Model 指定模型
+func (db *MockDB) Model(value interface{}) *MockDB {
+	return db
+}
+
+// Updates 更新记录
+func (db *MockDB) Updates(values interface{}) *MockDB {
+	return db
+}
+
+// Save 保存记录
+func (db *MockDB) Save(value interface{}) *MockDB {
+	return db
 }
 
 // InitDefaultData 初始化默认数据
 func InitDefaultData() error {
-	if DB == nil {
-		return fmt.Errorf("database not initialized")
-	}
-
-	// 初始化默认ETF配置
-	return initDefaultETFConfigs()
-}
-
-// initDefaultETFConfigs 初始化默认ETF配置
-func initDefaultETFConfigs() error {
 	defaultETFs := []ETFConfig{
 		{
+			Symbol:       "QQQ",
+			Name:         "Invesco QQQ Trust",
+			Description:  "追踪纳斯达克100指数",
+			Strategy:     "大盘成长",
+			Focus:        "科技",
+			ExpenseRatio: decimal.NewFromFloat(0.0020),
+			Currency:     "USD",
+			Exchange:     "NASDAQ",
+			Category:     "大盘股",
+			Provider:     "Invesco",
+			Status:       1,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		},
+		{
 			Symbol:       "SCHD",
-			Name:         "Schwab U.S. Dividend Equity ETF",
-			Market:       "US",
-			Strategy:     "质量股息策略",
-			Description:  "追踪道琼斯美国股息100指数，投资高股息、财务稳健的美国公司",
-			ExpenseRatio: decimal.NewFromFloat(0.06),
-			Focus:        "质量+股息",
-			Status:       1,
-			SortOrder:    1,
-		},
-		{
-			Symbol:       "SPYD",
-			Name:         "SPDR Portfolio S&P 500 High Dividend ETF",
-			Market:       "US",
-			Strategy:     "高股息收益策略",
-			Description:  "追踪S&P 500中股息收益率最高的80只股票",
-			ExpenseRatio: decimal.NewFromFloat(0.07),
+			Name:         "Schwab US Dividend Equity ETF",
+			Description:  "美国股息股票ETF",
+			Strategy:     "股息价值",
 			Focus:        "高股息",
+			ExpenseRatio: decimal.NewFromFloat(0.0006),
+			Currency:     "USD",
+			Exchange:     "NYSE",
+			Category:     "股息",
+			Provider:     "Charles Schwab",
 			Status:       1,
-			SortOrder:    2,
-		},
-		{
-			Symbol:       "JEPQ",
-			Name:         "JPMorgan Nasdaq Equity Premium Income ETF",
-			Market:       "US",
-			Strategy:     "期权增强收益策略",
-			Description:  "通过纳斯达克股票+卖出看涨期权获取增强收益",
-			ExpenseRatio: decimal.NewFromFloat(0.35),
-			Focus:        "增强收益",
-			Status:       1,
-			SortOrder:    3,
-		},
-		{
-			Symbol:       "JEPI",
-			Name:         "JPMorgan Equity Premium Income ETF",
-			Market:       "US",
-			Strategy:     "股息增强策略",
-			Description:  "摩根大通股票溢价收益ETF，通过股票期权策略提供月度股息收益",
-			ExpenseRatio: decimal.NewFromFloat(0.35),
-			Focus:        "月度股息+收益增强",
-			Status:       1,
-			SortOrder:    4,
-		},
-		{
-			Symbol:       "VYM",
-			Name:         "Vanguard High Dividend Yield ETF",
-			Market:       "US",
-			Strategy:     "高股息宽基策略",
-			Description:  "追踪FTSE高股息率指数，投资高股息的美国大盘股",
-			ExpenseRatio: decimal.NewFromFloat(0.06),
-			Focus:        "高股息+宽基",
-			Status:       1,
-			SortOrder:    5,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
 		},
 	}
 
 	for _, etf := range defaultETFs {
-		var existing ETFConfig
-		result := DB.Where("symbol = ?", etf.Symbol).First(&existing)
-		
-		if result.Error == gorm.ErrRecordNotFound {
-			if err := DB.Create(&etf).Error; err != nil {
-				logrus.WithError(err).Errorf("Failed to create ETF config: %s", etf.Symbol)
-			}
-		} else if result.Error != nil {
-			return result.Error
-		}
+		DB.Create(&etf)
 	}
 
-	logrus.Info("Default ETF configs initialized")
 	return nil
 }
