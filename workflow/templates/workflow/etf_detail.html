@@ -1,0 +1,239 @@
+{% extends "workflow/base.html" %}
+
+{% block title %}{{ symbol }} - ETF详情{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'workflow:etf_dashboard' %}">ETF分析</a></li>
+        <li class="breadcrumb-item active">{{ symbol }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>{{ symbol }} 
+            <small class="text-muted">{{ realtime.name }}</small>
+        </h2>
+        <p class="text-muted mb-0">{{ info.strategy }} - {{ info.description }}</p>
+    </div>
+    <div>
+        {% if realtime.change_percent >= 0 %}
+        <span class="badge badge-success badge-lg p-3" style="font-size: 1.2em;">
+            +{{ realtime.change_percent|floatformat:2 }}%
+        </span>
+        {% else %}
+        <span class="badge badge-danger badge-lg p-3" style="font-size: 1.2em;">
+            {{ realtime.change_percent|floatformat:2 }}%
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 实时数据卡片 -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-primary">${{ realtime.current_price|floatformat:2 }}</h3>
+            <p>当前价格</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="{% if realtime.change >= 0 %}text-success{% else %}text-danger{% endif %}">
+                ${{ realtime.change|floatformat:2 }}
+            </h3>
+            <p>今日涨跌</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-info">
+                {% if realtime.dividend_yield %}
+                {{ realtime.dividend_yield|floatformat:2 }}%
+                {% else %}
+                -
+                {% endif %}
+            </h3>
+            <p>股息率</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-warning">{{ realtime.volume|default:0 }}</h3>
+            <p>成交量</p>
+        </div>
+    </div>
+</div>
+
+<!-- 价格走势图 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> 价格走势（近1年）</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="priceChart" height="100"></canvas>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 关键指标 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 关键指标</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <td>年度收益率</td>
+                        <td class="text-right {% if metrics.total_return >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            <strong>{{ metrics.total_return|floatformat:2 }}%</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>年化波动率</td>
+                        <td class="text-right"><strong>{{ metrics.volatility|floatformat:2 }}%</strong></td>
+                    </tr>
+                    <tr>
+                        <td>最大回撤</td>
+                        <td class="text-right text-danger"><strong>{{ metrics.max_drawdown|floatformat:2 }}%</strong></td>
+                    </tr>
+                    <tr>
+                        <td>夏普比率</td>
+                        <td class="text-right"><strong>{{ metrics.sharpe_ratio|floatformat:2 }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>起始价格</td>
+                        <td class="text-right">${{ metrics.start_price|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>当前价格</td>
+                        <td class="text-right">${{ metrics.end_price|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>年内最高</td>
+                        <td class="text-right">${{ metrics.max_price|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>年内最低</td>
+                        <td class="text-right">${{ metrics.min_price|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>交易天数</td>
+                        <td class="text-right">{{ metrics.trading_days }} 天</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 交易信息 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> 交易信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <td>开盘价</td>
+                        <td class="text-right">${{ realtime.open_price|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>前收盘</td>
+                        <td class="text-right">${{ realtime.previous_close|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>日最高</td>
+                        <td class="text-right">${{ realtime.day_high|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>日最低</td>
+                        <td class="text-right">${{ realtime.day_low|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>52周最高</td>
+                        <td class="text-right">${{ realtime.fifty_two_week_high|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>52周最低</td>
+                        <td class="text-right">${{ realtime.fifty_two_week_low|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td>平均成交量</td>
+                        <td class="text-right">{{ realtime.avg_volume|default:0 }}</td>
+                    </tr>
+                    <tr>
+                        <td>费率</td>
+                        <td class="text-right">{{ info.expense_ratio }}%</td>
+                    </tr>
+                    <tr>
+                        <td>策略</td>
+                        <td class="text-right">{{ info.focus }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'workflow:etf_dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 返回列表
+    </a>
+    <a href="{% url 'workflow:etf_comparison' %}" class="btn btn-primary">
+        <i class="fas fa-balance-scale"></i> 对比分析
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    var chartData = {{ chart_data|safe }};
+    
+    if (chartData && chartData.dates && chartData.close) {
+        var ctx = document.getElementById('priceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.dates,
+                datasets: [{
+                    label: '收盘价',
+                    data: chartData.close,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        ticks: {
+                            maxTicksLimit: 12
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: '价格 ($)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

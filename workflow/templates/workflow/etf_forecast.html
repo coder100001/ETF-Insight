@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF收益预测 - ETF配置管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .forecast-card {
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .positive {
+            color: #28a745;
+        }
+        .negative {
+            color: #dc3545;
+        }
+        .year-selector {
+            margin-bottom: 20px;
+        }
+        .etf-selector {
+            margin-bottom: 15px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1><i class="fas fa-chart-line"></i> ETF收益预测</h1>
+        <p class="text-muted">基于当前年化收益率预测未来3、5、10年收益情况</p>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> 预测参数</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="etf-selector">
+                            <label for="etfSelect" class="form-label">选择ETF</label>
+                            <select class="form-select" id="etfSelect">
+                                <option value="SCHD">SCHD - Schwab U.S. Dividend Equity ETF</option>
+                                <option value="SPYD">SPYD - SPDR Portfolio S&P 500 High Dividend ETF</option>
+                                <option value="JEPQ">JEPQ - JPMorgan Nasdaq Equity Premium Income ETF</option>
+                                <option value="JEPI">JEPI - JPMorgan Equity Premium Income ETF</option>
+                                <option value="VYM">VYM - Vanguard High Dividend Yield ETF</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <span class="input-group-text">初始投资</span>
+                            <input type="number" class="form-control" id="initialInvestment" value="10000" min="100" step="100">
+                            <span class="input-group-text">元</span>
+                        </div>
+                        
+                        <div class="input-group">
+                            <span class="input-group-text">年化收益率</span>
+                            <input type="number" class="form-control" id="annualReturnRate" value="" step="0.01" placeholder="留空使用历史数据">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text">股息税率</span>
+                            <input type="number" class="form-control" id="taxRate" value="10" min="0" max="50" step="0.1">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        
+                        <button class="btn btn-primary w-100 mt-3" id="calculateBtn">
+                            <i class="fas fa-calculator"></i> 计算预测结果
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loading" class="text-center d-none">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-2">正在计算预测结果...</p>
+        </div>
+        
+        <div id="resultContainer" class="d-none">
+            <h3 id="resultTitle"></h3>
+            <div id="forecastResults"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#calculateBtn').click(calculateForecast);
+        });
+        
+        function calculateForecast() {
+            const symbol = $('#etfSelect').val();
+            const initialInvestment = parseFloat($('#initialInvestment').val());
+            const annualReturnRateInput = $('#annualReturnRate').val();
+            const taxRate = parseFloat($('#taxRate').val()) / 100;
+            
+            // 如果用户输入了年化收益率，则使用输入值，否则传空值让后端使用历史数据
+            let annualReturnRate = null;
+            if (annualReturnRateInput !== '') {
+                annualReturnRate = parseFloat(annualReturnRateInput) / 100;
+            }
+            
+            if (isNaN(initialInvestment) || initialInvestment <= 0) {
+                alert('请输入有效的初始投资金额');
+                return;
+            }
+            
+            if (isNaN(taxRate) || taxRate < 0 || taxRate > 1) {
+                alert('请输入有效的税率（0-100）');
+                return;
+            }
+            
+            // 显示加载状态
+            $('#loading').removeClass('d-none');
+            $('#resultContainer').addClass('d-none');
+            
+            // 发起API请求
+            $.get(`/workflow/api/etf/${symbol}/forecast/`, {
+                initial_investment: initialInvestment,
+                annual_return_rate: annualReturnRate,
+                tax_rate: taxRate
+            }, function(response) {
+                displayForecastResult(response.forecast);
+            }).fail(function() {
+                alert('计算预测结果失败，请重试');
+                $('#loading').addClass('d-none');
+            });
+        }
+        
+        function displayForecastResult(forecast) {
+            if (forecast.error) {
+                alert(forecast.error);
+                $('#loading').addClass('d-none');
+                return;
+            }
+            
+            // 更新标题
+            $('#resultTitle').html(`<i class="fas fa-chart-pie"></i> ${forecast.symbol} 预测结果`);
+            
+            let html = '';
+            
+            // 添加ETF基本信息
+            html += `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>ETF基本信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <p><strong>初始投资金额</strong></p>
+                            <p class="metric-value">¥${forecast.initial_investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p><strong>年化收益率</strong></p>
+                            <p class="metric-value">${forecast.annual_return_rate.toFixed(2)}%</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p><strong>股息率</strong></p>
+                            <p class="metric-value">${forecast.dividend_yield.toFixed(2)}%</p>
+                        </div>
+                        <div class="col-sm-3">
+                            <p><strong>股息税率</strong></p>
+                            <p class="metric-value">${forecast.tax_rate.toFixed(2)}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            
+            // 为每个年份创建预测结果卡片
+            for (const year of ['3', '5', '10']) {
+                const data = forecast.forecasts[year];
+                
+                html += `
+                <div class="card forecast-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-calendar"></i> ${data.years}年预测</h5>
+                        <span class="badge bg-primary fs-6">预计总资产: ¥${data.future_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-money-bill-wave"></i> 收益明细</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>资本增值</td>
+                                        <td class="text-end">¥${data.capital_appreciation.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>税前股息收入</td>
+                                        <td class="text-end">¥${data.total_dividend_before_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>税后股息收入</td>
+                                        <td class="text-end">¥${data.total_dividend_after_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>股息税额</td>
+                                        <td class="text-end text-danger">-¥${data.dividend_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-chart-bar"></i> 收益指标</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>税后总收益</td>
+                                        <td class="text-end positive">¥${data.total_return_after_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>年化收益率</td>
+                                        <td class="text-end">${data.effective_annual_return_rate.toFixed(2)}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>年均税前股息</td>
+                                        <td class="text-end">¥${data.annual_dividend_before_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>年均税后股息</td>
+                                        <td class="text-end positive">¥${data.annual_dividend_after_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            $('#forecastResults').html(html);
+            $('#loading').addClass('d-none');
+            $('#resultContainer').removeClass('d-none');
+        }
+    </script>
+</body>
+</html>

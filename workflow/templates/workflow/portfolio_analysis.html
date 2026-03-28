@@ -1,0 +1,1031 @@
+{% extends "workflow/base.html" %}
+
+{% block title %}投资组合分析{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'workflow:etf_dashboard' %}">ETF分析</a></li>
+        <li class="breadcrumb-item active">投资组合分析</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-wallet"></i> 投资组合分析</h2>
+    <div>
+        <button id="updateRealtimeBtn" class="btn btn-success btn-sm mr-2" onclick="updateRealtimeData()">
+            <i class="fas fa-sync-alt"></i> 更新实时数据
+        </button>
+        <button id="updateExchangeRateBtn" class="btn btn-info btn-sm mr-2" onclick="updateExchangeRates()">
+            <i class="fas fa-dollar-sign"></i> 更新汇率
+        </button>
+        <a href="{% url 'workflow:etf_config_list' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-cog"></i> 管理ETF配置
+        </a>
+    </div>
+</div>
+
+<!-- 更新状态提示 -->
+<div id="updateStatus" class="alert alert-info alert-dismissible fade d-none" role="alert">
+    <div class="d-flex align-items-center">
+        <span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true" id="updateSpinner"></span>
+        <span id="updateMessage">正在更新实时数据...</span>
+        <button type="button" class="close" onclick="hideUpdateStatus()">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+</div>
+
+<!-- 配置表单 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-cog"></i> 配置组合 
+            <small class="text-muted">(当前启用{{ symbols|length }}个ETF)</small>
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="form-inline" id="portfolioForm">
+            <div class="form-group mr-3">
+                <label for="investment" class="mr-2">投资金额 ($)</label>
+                <input type="number" class="form-control" id="investment" name="investment" 
+                       value="{{ total_investment|floatformat:0 }}" style="width: 120px;">
+            </div>
+            
+            {% for etf in etf_weights %}
+            <div class="form-group mr-3">
+                <label for="{{ etf.symbol|lower }}" class="mr-2">{{ etf.symbol }} (%)</label>
+                <input type="number" class="form-control etf-weight" id="{{ etf.symbol|lower }}" name="{{ etf.symbol|lower }}" 
+                       value="{{ etf.weight|floatformat:0 }}"
+                       min="0" max="100" step="1" style="width: 80px;" data-symbol="{{ etf.symbol }}">
+            </div>
+            {% endfor %}
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-calculator"></i> 计算
+            </button>
+        </form>
+        
+        <div class="mt-3">
+            <small class="text-muted">
+                <i class="fas fa-info-circle"></i> 当前总配比：<span id="totalWeight" class="font-weight-bold">100</span>%
+                <span id="weightWarning" class="text-danger ml-2" style="display:none;">⚠️ 总配比应为100%</span>
+            </small>
+            <span class="ml-3">
+                <a href="?investment={{ total_investment|floatformat:0 }}&schd=40&spyd=30&jepq=30&jepi=0&vym=0" class="btn btn-sm btn-primary">4:3:3（433组合）</a>
+                <a href="?investment={{ total_investment|floatformat:0 }}&schd=40&spyd=40&jepq=20&jepi=0&vym=0" class="btn btn-sm btn-success">4:4:2（442组合）</a>
+            </span>
+            {% if symbols|length >= 4 and 'SCHD' in symbols and 'SPYD' in symbols and 'JEPQ' in symbols and 'JEPI' in symbols %}
+            <br>
+            <small class="text-muted">
+                其他预设方案：
+                <a href="?investment={{ total_investment|floatformat:0 }}&schd=30&spyd=20&jepq=15&jepi=20&vym=15">3:2:1.5:2:1.5（平衡型）</a> |
+                <a href="?investment={{ total_investment|floatformat:0 }}&schd=40&spyd=20&jepq=10&jepi=20&vym=10">4:2:1:2:1（稳健型）</a> |
+                <a href="?investment={{ total_investment|floatformat:0 }}&schd=25&spyd=20&jepq=20&jepi=20&vym=15">均衡配置</a>
+            </small>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 组合概览 -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-primary">${{ result.total_investment|floatformat:0 }}</h3>
+            <p>总投资</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-success">${{ result.total_value|floatformat:2 }}</h3>
+            <p>当前价值</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="{% if result.total_return >= 0 %}text-success{% else %}text-danger{% endif %}">
+                ${{ result.total_return|floatformat:2 }}
+            </h3>
+            <p>资本利得 ({{ result.total_return_percent|floatformat:2 }}%)</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-info">${{ result.annual_dividend_after_tax|floatformat:2 }}</h3>
+            <p>税后年股息 ({{ result.weighted_dividend_yield|floatformat:2 }}%)</p>
+        </div>
+    </div>
+</div>
+
+<!-- 税务和综合收益 -->
+<div class="row mt-3">
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #e67e22;">
+            <h3 class="text-warning">${{ result.annual_dividend_before_tax|floatformat:2 }}</h3>
+            <p>税前年股息</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #e74c3c;">
+            <h3 class="text-danger">${{ result.dividend_tax|floatformat:2 }}</h3>
+            <p>股息税 ({{ result.tax_rate|floatformat:0 }}%)</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #2ecc71;">
+            <h3 class="{% if result.total_return_with_dividend >= 0 %}text-success{% else %}text-danger{% endif %}">
+                ${{ result.total_return_with_dividend|floatformat:2 }}
+            </h3>
+            <p>综合总收益 (资本+税后股息)</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #9b59b6;">
+            <h3 class="{% if result.total_return_with_dividend_percent >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ result.total_return_with_dividend_percent|floatformat:2 }}%
+            </h3>
+            <p>综合收益率</p>
+        </div>
+    </div>
+</div>
+
+<!-- 预测数据部分 -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> 收益预测</h5>
+        <button class="btn btn-primary btn-sm" id="showForecastBtn">
+            <i class="fas fa-calculator"></i> 计算预测
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="forecastLoading" class="text-center d-none">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-2">正在计算预测数据...</p>
+        </div>
+        
+        <div id="forecastResult" class="d-none">
+            <!-- 场景选择 -->
+            <div class="mb-3">
+                <label class="font-weight-bold mr-2">预测场景：</label>
+                <div class="btn-group" role="group" id="scenarioButtons">
+                    <button type="button" class="btn btn-outline-danger" data-scenario="pessimistic">
+                        <i class="fas fa-arrow-down"></i> 悲观 (4%)
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" data-scenario="conservative">
+                        <i class="fas fa-shield-alt"></i> 保守 (6%)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary active" data-scenario="neutral">
+                        <i class="fas fa-chart-line"></i> 中性 (8%)
+                    </button>
+                    <button type="button" class="btn btn-outline-success" data-scenario="optimistic">
+                        <i class="fas fa-arrow-up"></i> 乐观 (12%)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab 导航 -->
+            <ul class="nav nav-tabs" id="forecastTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="year3-tab" data-toggle="tab" href="#year3" role="tab" data-year="3">
+                        <i class="fas fa-calendar-alt"></i> 3年预测
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="year5-tab" data-toggle="tab" href="#year5" role="tab" data-year="5">
+                        <i class="fas fa-calendar-alt"></i> 5年预测
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="year10-tab" data-toggle="tab" href="#year10" role="tab" data-year="10">
+                        <i class="fas fa-calendar-alt"></i> 10年预测
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- Tab 内容 -->
+            <div class="tab-content mt-3">
+                <!-- 3年预测 -->
+                <div class="tab-pane fade show active" id="year3" role="tabpanel">
+                    <!-- 组合汇总卡片 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #3498db;">
+                                <h4 class="text-primary" id="year3-total-investment"></h4>
+                                <p>初始投资</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #2ecc71;">
+                                <h4 class="text-success" id="year3-total-value"></h4>
+                                <p>累计资产总值</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #f39c12;">
+                                <h4 class="text-warning" id="year3-total-dividend"></h4>
+                                <p>累计税后股息</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #9b59b6;">
+                                <h4 class="text-info" id="year3-total-return"></h4>
+                                <p>总收益率</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ETF</th>
+                                    <th>投资金额</th>
+                                    <th>未来价值</th>
+                                    <th>资本增值</th>
+                                    <th>税前股息</th>
+                                    <th>税后股息</th>
+                                    <th>股息税</th>
+                                    <th>年化收益率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="forecastTableBody3">
+                                <!-- 预测数据将通过JavaScript填充 -->
+                            </tbody>
+                            <tfoot class="table-secondary font-weight-bold">
+                                <tr>
+                                    <td>合计</td>
+                                    <td id="year3-investment"></td>
+                                    <td id="year3-future-value"></td>
+                                    <td id="year3-capital-appreciation"></td>
+                                    <td id="year3-dividend-before-tax"></td>
+                                    <td id="year3-dividend-after-tax"></td>
+                                    <td id="year3-dividend-tax"></td>
+                                    <td>-</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 5年预测 -->
+                <div class="tab-pane fade" id="year5" role="tabpanel">
+                    <!-- 组合汇总卡片 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #3498db;">
+                                <h4 class="text-primary" id="year5-total-investment"></h4>
+                                <p>初始投资</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #2ecc71;">
+                                <h4 class="text-success" id="year5-total-value"></h4>
+                                <p>累计资产总值</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #f39c12;">
+                                <h4 class="text-warning" id="year5-total-dividend"></h4>
+                                <p>累计税后股息</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #9b59b6;">
+                                <h4 class="text-info" id="year5-total-return"></h4>
+                                <p>总收益率</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ETF</th>
+                                    <th>投资金额</th>
+                                    <th>未来价值</th>
+                                    <th>资本增值</th>
+                                    <th>税前股息</th>
+                                    <th>税后股息</th>
+                                    <th>股息税</th>
+                                    <th>年化收益率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="forecastTableBody5">
+                                <!-- 预测数据将通过JavaScript填充 -->
+                            </tbody>
+                            <tfoot class="table-secondary font-weight-bold">
+                                <tr>
+                                    <td>合计</td>
+                                    <td id="year5-investment"></td>
+                                    <td id="year5-future-value"></td>
+                                    <td id="year5-capital-appreciation"></td>
+                                    <td id="year5-dividend-before-tax"></td>
+                                    <td id="year5-dividend-after-tax"></td>
+                                    <td id="year5-dividend-tax"></td>
+                                    <td>-</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 10年预测 -->
+                <div class="tab-pane fade" id="year10" role="tabpanel">
+                    <!-- 组合汇总卡片 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #3498db;">
+                                <h4 class="text-primary" id="year10-total-investment"></h4>
+                                <p>初始投资</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #2ecc71;">
+                                <h4 class="text-success" id="year10-total-value"></h4>
+                                <p>累计资产总值</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #f39c12;">
+                                <h4 class="text-warning" id="year10-total-dividend"></h4>
+                                <p>累计税后股息</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card" style="border-left-color: #9b59b6;">
+                                <h4 class="text-info" id="year10-total-return"></h4>
+                                <p>总收益率</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ETF</th>
+                                    <th>投资金额</th>
+                                    <th>未来价值</th>
+                                    <th>资本增值</th>
+                                    <th>税前股息</th>
+                                    <th>税后股息</th>
+                                    <th>股息税</th>
+                                    <th>年化收益率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="forecastTableBody10">
+                                <!-- 预测数据将通过JavaScript填充 -->
+                            </tbody>
+                            <tfoot class="table-secondary font-weight-bold">
+                                <tr>
+                                    <td>合计</td>
+                                    <td id="year10-investment"></td>
+                                    <td id="year10-future-value"></td>
+                                    <td id="year10-capital-appreciation"></td>
+                                    <td id="year10-dividend-before-tax"></td>
+                                    <td id="year10-dividend-after-tax"></td>
+                                    <td id="year10-dividend-tax"></td>
+                                    <td>-</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 持仓明细 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> 持仓明细</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th>ETF</th>
+                    <th class="text-center">配比</th>
+                    <th class="text-right">投资金额</th>
+                    <th class="text-right">当前价格</th>
+                    <th class="text-right">持有份数</th>
+                    <th class="text-right">当前价值</th>
+                    <th class="text-right">预期资本利得</th>
+                    <th class="text-right">区间收益</th>
+                    <th class="text-right">波动率</th>
+                    <th class="text-right">股息率</th>
+                    <th class="text-right">税前年股息</th>
+                    <th class="text-right">税后年股息</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for holding in result.holdings %}
+                <tr>
+                    <td><strong>{{ holding.symbol }}</strong><br><small class="text-muted">{{ holding.name|truncatechars:25 }}</small></td>
+                    <td class="text-center">
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" style="width: {{ holding.weight }}%;">
+                                {{ holding.weight|floatformat:0 }}%
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-right">${{ holding.investment|floatformat:2 }}</td>
+                    <td class="text-right">${{ holding.current_price|floatformat:2 }}</td>
+                    <td class="text-right">{{ holding.shares|floatformat:2 }}</td>
+                    <td class="text-right">${{ holding.current_value|floatformat:2 }}</td>
+                    <td class="text-right {% if holding.capital_gain >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        ${{ holding.capital_gain|floatformat:2 }}<br>
+                        <small>({{ holding.capital_gain_percent|floatformat:2 }}%)</small>
+                    </td>
+                    <td class="text-right {% if holding.total_return >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ holding.total_return|floatformat:2 }}%
+                    </td>
+                    <td class="text-right">{{ holding.volatility|floatformat:2 }}%</td>
+                    <td class="text-right">
+                        {% if holding.dividend_yield %}{{ holding.dividend_yield|floatformat:2 }}%{% else %}-{% endif %}
+                    </td>
+                    <td class="text-right">${{ holding.annual_dividend_before_tax|floatformat:2 }}</td>
+                    <td class="text-right text-success">${{ holding.annual_dividend_after_tax|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="table-secondary">
+                <tr>
+                    <td><strong>合计</strong></td>
+                    <td class="text-center">100%</td>
+                    <td class="text-right"><strong>${{ result.total_investment|floatformat:2 }}</strong></td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right"><strong>${{ result.total_value|floatformat:2 }}</strong></td>
+                    <td class="text-right {% if result.total_return >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        <strong>${{ result.total_return|floatformat:2 }}</strong><br>
+                        <small>({{ result.total_return_percent|floatformat:2 }}%)</small>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right"><strong>{{ result.weighted_dividend_yield|floatformat:2 }}%</strong></td>
+                    <td class="text-right"><strong>${{ result.annual_dividend_before_tax|floatformat:2 }}</strong></td>
+                    <td class="text-right text-success"><strong>${{ result.annual_dividend_after_tax|floatformat:2 }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- 配置饼图 -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 配置比例</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="allocationChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> 组合特点</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-chart-line text-primary"></i>
+                        <strong>资本利得:</strong> 
+                        <span class="{% if result.total_return >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ result.total_return|floatformat:2 }} ({{ result.total_return_percent|floatformat:2 }}%)
+                        </span>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-coins text-warning"></i>
+                        <strong>税前年股息:</strong> ${{ result.annual_dividend_before_tax|floatformat:2 }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-file-invoice-dollar text-danger"></i>
+                        <strong>股息税 ({{ result.tax_rate|floatformat:0 }}%):</strong> -${{ result.dividend_tax|floatformat:2 }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success"></i>
+                        <strong>税后年股息:</strong> ${{ result.annual_dividend_after_tax|floatformat:2 }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-piggy-bank text-info"></i>
+                        <strong>综合股息率:</strong> {{ result.weighted_dividend_yield|floatformat:2 }}%
+                    </li>
+                    <li class="mb-3 mt-3 pt-3" style="border-top: 2px solid #dee2e6;">
+                        <i class="fas fa-trophy text-success"></i>
+                        <strong>综合总收益:</strong> 
+                        <span class="{% if result.total_return_with_dividend >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size: 1.2em;">
+                            ${{ result.total_return_with_dividend|floatformat:2 }} ({{ result.total_return_with_dividend_percent|floatformat:2 }}%)
+                        </span>
+                    </li>
+                    {% if result.portfolio_metrics.weighted_return %}
+                    <li class="mb-2">
+                        <i class="fas fa-balance-scale text-info"></i>
+                        <strong>加权预期收益:</strong> {{ result.portfolio_metrics.weighted_return|floatformat:2 }}%
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <hr>
+                <h6>策略组成:</h6>
+                {% for holding in result.holdings %}
+                <span class="badge badge-{% if holding.symbol == 'SCHD' %}primary{% elif holding.symbol == 'JEPI' %}success{% elif holding.symbol == 'JEPQ' %}warning{% elif holding.symbol == 'SPYD' %}info{% elif holding.symbol == 'VYM' %}secondary{% else %}light{% endif %} mr-1">
+                    {{ holding.symbol }}: {{ holding.weight|floatformat:0 }}%
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'workflow:etf_dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 返回
+    </a>
+    <a href="{% url 'workflow:etf_comparison' %}" class="btn btn-primary">
+        <i class="fas fa-balance-scale"></i> 对比分析
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    // 配比总和计算
+    function updateTotalWeight() {
+        let total = 0;
+        document.querySelectorAll('.etf-weight').forEach(input => {
+            const val = parseFloat(input.value) || 0;
+            total += val;
+        });
+        
+        document.getElementById('totalWeight').textContent = total.toFixed(0);
+        
+        const warning = document.getElementById('weightWarning');
+        if (Math.abs(total - 100) > 0.1) {
+            warning.style.display = 'inline';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+    
+    // 监听输入变化
+    document.querySelectorAll('.etf-weight').forEach(input => {
+        input.addEventListener('input', updateTotalWeight);
+    });
+    
+    // 页面加载时计算一次
+    updateTotalWeight();
+
+    // 更新实时数据
+    function updateRealtimeData() {
+        const updateBtn = document.getElementById('updateRealtimeBtn');
+        const statusDiv = document.getElementById('updateStatus');
+        const spinner = document.getElementById('updateSpinner');
+        const message = document.getElementById('updateMessage');
+
+        // 显示加载状态
+        updateBtn.disabled = true;
+        updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+
+        statusDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+        statusDiv.classList.add('alert-info');
+        spinner.classList.remove('d-none');
+        message.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> 正在从yfinance获取最新ETF价格...<br><small class="text-muted">这可能需要10-20秒，请稍候...</small>';
+
+        // 获取当前投资金额和配比
+        const totalInvestment = document.getElementById('investment').value || 10000;
+        const allocation = getAllocation();
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // 发送更新请求
+        fetch('/workflow/api/update-realtime/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                allocation: allocation,
+                total_investment: parseFloat(totalInvestment)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新成功
+                spinner.classList.add('d-none');
+                statusDiv.classList.remove('alert-info');
+                statusDiv.classList.add('alert-success');
+
+                // 显示详细的更新结果
+                let resultHtml = `<i class="fas fa-check-circle"></i> 实时数据更新完成！最后更新：${data.update_time}<br>`;
+                
+                if (data.update_results && data.update_results.length > 0) {
+                    resultHtml += '<hr class="my-2">';
+                    resultHtml += '<div class="small">';
+                    
+                    data.update_results.forEach(result => {
+                        if (result.success) {
+                            resultHtml += `<div><i class="fas fa-check text-success"></i> ${result.symbol}: $${result.price.toFixed(2)}</div>`;
+                        } else {
+                            resultHtml += `<div><i class="fas fa-times text-danger"></i> ${result.symbol}: ${result.error}</div>`;
+                        }
+                    });
+                    
+                    resultHtml += '</div>';
+                }
+
+                if (data.summary) {
+                    resultHtml += `<hr class="my-2"><div class="small"><i class="fas fa-info-circle"></i> 成功: ${data.summary.success}/${data.summary.total} | 失败: ${data.summary.failed}</div>`;
+                }
+
+                message.innerHTML = resultHtml;
+
+                // 更新页面数据显示
+                updatePageData(data.portfolio);
+
+                // 5秒后自动隐藏提示
+                setTimeout(() => {
+                    hideUpdateStatus();
+                }, 5000);
+
+                updateBtn.disabled = false;
+                updateBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 更新实时数据';
+
+                // 添加成功动画效果
+                animateSuccess();
+            } else {
+                throw new Error(data.message || '更新失败');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            spinner.classList.add('d-none');
+            statusDiv.classList.remove('alert-info');
+            statusDiv.classList.add('alert-danger');
+            message.innerHTML = `<i class="fas fa-exclamation-circle"></i> 更新失败：${error.message || '请稍后重试'}`;
+
+            updateBtn.disabled = false;
+            updateBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 更新实时数据';
+        });
+    }
+
+    // 隐藏更新状态
+    function hideUpdateStatus() {
+        const statusDiv = document.getElementById('updateStatus');
+        statusDiv.classList.add('d-none');
+    }
+
+    // 更新汇率
+    function updateExchangeRates() {
+        const updateBtn = document.getElementById('updateExchangeRateBtn');
+        const statusDiv = document.getElementById('updateStatus');
+        const spinner = document.getElementById('updateSpinner');
+        const message = document.getElementById('updateMessage');
+
+        // 显示加载状态
+        updateBtn.disabled = true;
+        updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+
+        statusDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+        statusDiv.classList.add('alert-info');
+        spinner.classList.remove('d-none');
+        message.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> 正在更新汇率数据...<br><small class="text-muted">使用系统预设汇率</small>';
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // 发送更新请求
+        fetch('/workflow/api/update-exchange-rates/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新成功
+                spinner.classList.add('d-none');
+                statusDiv.classList.remove('alert-info');
+                statusDiv.classList.add('alert-success');
+
+                let resultHtml = `<i class="fas fa-check-circle"></i> 汇率更新完成！最后更新：${data.update_time}<br>`;
+
+                if (data.rates && data.rates.length > 0) {
+                    resultHtml += '<hr class="my-2"><div class="small">';
+                    data.rates.slice(0, 5).forEach(rate => {
+                        resultHtml += `<div>1 ${rate.from_currency} = ${rate.rate.toFixed(6)} ${rate.to_currency}</div>`;
+                    });
+                    resultHtml += '</div>';
+                }
+
+                message.innerHTML = resultHtml;
+
+                // 3秒后自动隐藏提示
+                setTimeout(() => {
+                    hideUpdateStatus();
+                }, 3000);
+
+                updateBtn.disabled = false;
+                updateBtn.innerHTML = '<i class="fas fa-dollar-sign"></i> 更新汇率';
+            } else {
+                throw new Error(data.message || '更新失败');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            spinner.classList.add('d-none');
+            statusDiv.classList.remove('alert-info');
+            statusDiv.classList.add('alert-danger');
+            message.innerHTML = `<i class="fas fa-exclamation-circle"></i> 更新失败：${error.message || '请稍后重试'}`;
+
+            updateBtn.disabled = false;
+            updateBtn.innerHTML = '<i class="fas fa-dollar-sign"></i> 更新汇率';
+        });
+    }
+
+    // 更新页面数据
+    function updatePageData(portfolio) {
+        if (!portfolio) return;
+
+        // 更新投资金额
+        document.querySelector('.card.stat-card h3.text-primary').textContent = '$' + portfolio.total_investment.toFixed(0);
+
+        // 更新当前价值
+        document.querySelector('.card.stat-card h3.text-success').textContent = '$' + portfolio.total_value.toFixed(2);
+
+        // 更新资本利得
+        const returnEl = document.querySelectorAll('.card.stat-card h3')[2];
+        returnEl.textContent = '$' + portfolio.total_return.toFixed(2);
+        returnEl.className = portfolio.total_return >= 0 ? 'text-success' : 'text-danger';
+        returnEl.nextElementSibling.textContent = '资本利得 (' + portfolio.total_return_percent.toFixed(2) + '%)';
+
+        // 更新税后年股息
+        document.querySelectorAll('.card.stat-card h3')[3].textContent = '$' + portfolio.annual_dividend_after_tax.toFixed(2);
+        document.querySelectorAll('.card.stat-card h3')[3].nextElementSibling.textContent =
+            '税后年股息 (' + portfolio.weighted_dividend_yield.toFixed(2) + '%)';
+
+        // 更新税务数据
+        const statCards = document.querySelectorAll('.row.mt-3 .card.stat-card');
+        statCards[0].querySelector('h3').textContent = '$' + portfolio.annual_dividend_before_tax.toFixed(2);
+        statCards[1].querySelector('h3').textContent = '$' + portfolio.dividend_tax.toFixed(2);
+        statCards[1].querySelector('p').textContent = '股息税 (' + portfolio.tax_rate.toFixed(0) + '%)';
+
+        // 更新综合总收益
+        statCards[2].querySelector('h3').textContent = '$' + portfolio.total_return_with_dividend.toFixed(2);
+        statCards[2].querySelector('h3').className = portfolio.total_return_with_dividend >= 0 ? 'text-success' : 'text-danger';
+        statCards[3].querySelector('h3').textContent = portfolio.total_return_with_dividend_percent.toFixed(2) + '%';
+        statCards[3].querySelector('h3').className = portfolio.total_return_with_dividend_percent >= 0 ? 'text-success' : 'text-danger';
+    }
+
+    // 成功动画
+    function animateSuccess() {
+        const cards = document.querySelectorAll('.card.stat-card');
+        cards.forEach((card, index) => {
+            setTimeout(() => {
+                card.style.transform = 'scale(1.02)';
+                card.style.transition = 'transform 0.2s';
+                setTimeout(() => {
+                    card.style.transform = 'scale(1)';
+                }, 200);
+            }, index * 50);
+        });
+    }
+
+    // 饼图数据
+    var holdings = [
+        {% for holding in result.holdings %}
+        {label: '{{ holding.symbol }}', value: {{ holding.weight }}},
+        {% endfor %}
+    ];
+    
+    var colors = ['#3498db', '#2ecc71', '#9b59b6', '#e74c3c', '#f39c12', '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b'];
+    
+    var ctx = document.getElementById('allocationChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: holdings.map(h => h.label),
+            datasets: [{
+                data: holdings.map(h => h.value),
+                backgroundColor: colors.slice(0, holdings.length),
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // 全局变量保存预测数据
+    let allForecastData = null;
+    let currentScenario = 'neutral';
+    
+    // 场景按钮点击事件
+    document.querySelectorAll('[data-scenario]').forEach(button => {
+        button.addEventListener('click', function() {
+            // 更新按钮状态
+            document.querySelectorAll('[data-scenario]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // 更新当前场景
+            currentScenario = this.dataset.scenario;
+            
+            // 更新显示
+            if (allForecastData) {
+                updateForecastDisplay(currentScenario);
+            }
+        });
+    });
+    
+    // 预测功能
+    document.getElementById('showForecastBtn').addEventListener('click', function() {
+        // 显示加载状态
+        document.getElementById('forecastLoading').classList.remove('d-none');
+        document.getElementById('forecastResult').classList.add('d-none');
+        
+        // 获取当前表单数据
+        const formData = new FormData();
+        formData.append('allocation', JSON.stringify(getAllocation()));
+        formData.append('total_investment', document.getElementById('investment').value || 10000);
+        formData.append('tax_rate', 0.10); // 使用默认税率10%
+        formData.append('forecast_years', '3,5,10');
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch('{% url "workflow:portfolio_analysis" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 保存所有预测数据
+            allForecastData = data;
+            
+            // 隐藏加载状态
+            document.getElementById('forecastLoading').classList.add('d-none');
+            document.getElementById('forecastResult').classList.remove('d-none');
+            
+            // 使用当前选择的场景更新显示
+            updateForecastDisplay(currentScenario);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('forecastLoading').classList.add('d-none');
+            alert('计算预测数据时出错，请重试');
+        });
+    });
+    
+    // 更新预测数据显示
+    function updateForecastDisplay(scenario) {
+        if (!allForecastData) return;
+        
+        const portfolio = allForecastData.portfolio;
+        let forecastData;
+        
+        // 根据场景选择数据源
+        if (scenario === 'neutral') {
+            // 中性情况：使用各个ETF的详细预测数据
+            forecastData = allForecastData.forecast_data;
+        } else {
+            // 其他场景：使用场景预测的汇总数据
+            forecastData = allForecastData.scenario_forecasts[scenario];
+        }
+        
+        const years = [3, 5, 10];
+        
+        if (scenario === 'neutral') {
+            // 中性情况：显示每个ETF的详细数据
+            years.forEach(year => {
+                const tableBody = document.getElementById(`forecastTableBody${year}`);
+                tableBody.innerHTML = '';
+                
+                let totalInvestment = 0;
+                let totalFutureValue = 0;
+                let totalCapitalAppreciation = 0;
+                let totalDividendBeforeTax = 0;
+                let totalDividendAfterTax = 0;
+                let totalDividendTax = 0;
+                
+                // 填充表格数据
+                for (const symbol in forecastData) {
+                    const symbolData = forecastData[symbol];
+                    if (symbolData[year]) {
+                        const yearData = symbolData[year];
+                        const investment = portfolio.holdings.find(h => h.symbol === symbol)?.investment || 0;
+                        
+                        totalInvestment += investment;
+                        totalFutureValue += yearData.future_value;
+                        totalCapitalAppreciation += yearData.capital_appreciation;
+                        totalDividendBeforeTax += yearData.total_dividend_before_tax;
+                        totalDividendAfterTax += yearData.total_dividend_after_tax;
+                        totalDividendTax += yearData.dividend_tax;
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><strong>${symbol}</strong></td>
+                            <td>$${investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td class="font-weight-bold text-success">$${yearData.future_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td class="text-primary">$${yearData.capital_appreciation.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td>$${yearData.total_dividend_before_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td class="text-success">$${yearData.total_dividend_after_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td class="text-danger">$${yearData.dividend_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td>${yearData.effective_annual_return_rate.toFixed(2)}%</td>
+                        `;
+                        tableBody.appendChild(row);
+                    }
+                }
+                
+                updateYearSummary(year, totalInvestment, totalFutureValue, totalCapitalAppreciation, totalDividendBeforeTax, totalDividendAfterTax, totalDividendTax);
+            });
+        } else {
+            // 其他场景：显示组合汇总数据
+            years.forEach(year => {
+                const tableBody = document.getElementById(`forecastTableBody${year}`);
+                tableBody.innerHTML = '';
+                
+                if (forecastData.years[year]) {
+                    const yearData = forecastData.years[year];
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>投资组合</strong></td>
+                        <td>$${portfolio.total_investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="font-weight-bold text-success">$${yearData.future_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="text-primary">$${yearData.capital_appreciation.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td>$${yearData.total_dividend_before_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="text-success">$${yearData.total_dividend_after_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="text-danger">$${yearData.dividend_tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td>${yearData.annual_return_rate.toFixed(2)}%</td>
+                    `;
+                    tableBody.appendChild(row);
+                    
+                    updateYearSummary(year, portfolio.total_investment, yearData.future_value, yearData.capital_appreciation, 
+                                   yearData.total_dividend_before_tax, yearData.total_dividend_after_tax, yearData.dividend_tax);
+                }
+            });
+        }
+    }
+    
+    // 更新年份汇总
+    function updateYearSummary(year, totalInvestment, totalFutureValue, totalCapitalAppreciation, totalDividendBeforeTax, totalDividendAfterTax, totalDividendTax) {
+        // 更新汇总卡片
+        document.getElementById(`year${year}-total-investment`).textContent = `$${totalInvestment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-total-value`).textContent = `$${totalFutureValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-total-dividend`).textContent = `$${totalDividendAfterTax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        // 计算总收益率（累计资产总值 / 初始投资 - 1）
+        const totalReturnPercent = ((totalFutureValue / totalInvestment) - 1) * 100;
+        document.getElementById(`year${year}-total-return`).textContent = `${totalReturnPercent >= 0 ? '+' : ''}${totalReturnPercent.toFixed(2)}%`;
+        document.getElementById(`year${year}-total-return`).className = totalReturnPercent >= 0 ? 'text-success' : 'text-danger';
+        
+        // 更新表格总计行
+        document.getElementById(`year${year}-investment`).textContent = `$${totalInvestment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-future-value`).textContent = `$${totalFutureValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-capital-appreciation`).textContent = `$${totalCapitalAppreciation.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-dividend-before-tax`).textContent = `$${totalDividendBeforeTax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-dividend-after-tax`).textContent = `$${totalDividendAfterTax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById(`year${year}-dividend-tax`).textContent = `$${totalDividendTax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+    
+    // 获取当前分配比例
+    function getAllocation() {
+        const allocation = {};
+        document.querySelectorAll('.etf-weight').forEach(input => {
+            const symbol = input.dataset.symbol;
+            const weight = parseFloat(input.value) / 100;
+            if (!isNaN(weight)) {
+                allocation[symbol] = weight;
+            }
+        });
+        return allocation;
+    }
+</script>
+{% endblock %}

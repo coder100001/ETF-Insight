@@ -1,0 +1,379 @@
+{% extends "workflow/base.html" %}
+
+{% block title %}用户操作日志{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'workflow:etf_dashboard' %}">ETF分析</a></li>
+        <li class="breadcrumb-item active">用户操作日志</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-history"></i> 用户操作日志</h2>
+    <button class="btn btn-outline-success btn-sm" onclick="exportLogs()">
+        <i class="fas fa-download"></i> 导出日志
+    </button>
+</div>
+
+<!-- 统计概览 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-primary">{{ stats.total_operations }}</h3>
+            <p>总操作数</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-success">{{ stats.by_type.0.count|default:0 }}</h3>
+            <p>最多操作类型</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-info">{{ stats.by_module.0.count|default:0 }}</h3>
+            <p>最活跃模块</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-warning">{{ stats.by_user.0.count|default:0 }}</h3>
+            <p>最活跃用户</p>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选表单 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-filter"></i> 筛选条件</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="start_date">开始日期</label>
+                    <input type="datetime-local" class="form-control" id="start_date" name="start_date"
+                           value="{{ filters.start_date|default:'' }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="end_date">结束日期</label>
+                    <input type="datetime-local" class="form-control" id="end_date" name="end_date"
+                           value="{{ filters.end_date|default:'' }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label for="user_id">用户ID</label>
+                    <input type="text" class="form-control" id="user_id" name="user_id"
+                           value="{{ filters.user_id|default:'' }}" placeholder="输入用户ID">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label for="operation_type">操作类型</label>
+                    <select class="form-control" id="operation_type" name="operation_type">
+                        <option value="">全部</option>
+                        {% for type_value, type_label in operation_types %}
+                        <option value="{{ type_value }}" {% if filters.operation_type == type_value %}selected{% endif %}>
+                            {{ type_label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label for="module">系统模块</label>
+                    <select class="form-control" id="module" name="module">
+                        <option value="">全部</option>
+                        {% for module_value, module_label in modules %}
+                        <option value="{{ module_value }}" {% if filters.module == module_value %}selected{% endif %}>
+                            {{ module_label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label for="status">操作状态</label>
+                    <select class="form-control" id="status" name="status">
+                        <option value="">全部</option>
+                        {% for status_value, status_label in status_choices %}
+                        <option value="{{ status_value }}" {% if filters.status == status_value %}selected{% endif %}>
+                            {{ status_label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-12 text-right mt-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> 查询
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearFilters()">
+                    <i class="fas fa-times"></i> 清除
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 日志列表 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> 操作日志列表</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>操作时间</th>
+                        <th>用户</th>
+                        <th>模块</th>
+                        <th>操作类型</th>
+                        <th>操作名称</th>
+                        <th>IP地址</th>
+                        <th>状态</th>
+                        <th>耗时</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="log-row" data-log-id="{{ log.id }}">
+                        <td>
+                            <small>{{ log.operation_time|date:"Y-m-d H:i:s" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ log.username|default:log.user_id }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary">{{ log.get_module_display }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ log.operation_type|get_operation_type_color }}">
+                                {{ log.get_operation_type_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="operation-name" title="{{ log.operation_detail|default:log.operation_name }}">
+                                {{ log.operation_name }}
+                            </div>
+                        </td>
+                        <td>
+                            <small>{{ log.ip_address|default:'-' }}</small>
+                        </td>
+                        <td>
+                            {% if log.status == 1 %}
+                            <span class="badge badge-success">成功</span>
+                            {% elif log.status == 2 %}
+                            <span class="badge badge-danger">失败</span>
+                            {% else %}
+                            <span class="badge badge-warning">进行中</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{% if log.execution_time %}{{ log.execution_time }}ms{% else %}-{% endif %}</small>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info" onclick="showLogDetail({{ log.id }})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">
+                            没有找到符合条件的日志
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 分页 -->
+        {% if logs.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if logs.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% for key,value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}page={{ logs.previous_page_number }}">
+                        上一页
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in logs.paginator.page_range %}
+                {% if logs.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% for key,value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}page={{ num }}">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+                {% endfor %}
+                
+                {% if logs.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% for key,value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}page={{ logs.next_page_number }}">
+                        下一页
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        <p class="text-center text-muted">
+            显示第 {{ logs.start_index }} 至 {{ logs.end_index }} 条，共 {{ logs.paginator.count }} 条
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 日志详情模态框 -->
+<div class="modal fade" id="logDetailModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt"></i> 日志详情
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="logDetailContent">
+                <!-- 动态加载 -->
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 清除筛选条件
+    function clearFilters() {
+        document.querySelectorAll('form input').forEach(input => input.value = '');
+        document.querySelectorAll('form select').forEach(select => select.value = '');
+        window.location.href = window.location.pathname;
+    }
+    
+    // 显示日志详情
+    function showLogDetail(logId) {
+        fetch(`/workflow/api/operation-log/${logId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const content = document.getElementById('logDetailContent');
+                content.innerHTML = formatLogDetail(data);
+                $('#logDetailModal').modal('show');
+            })
+            .catch(error => {
+                alert('加载日志详情失败：' + error.message);
+            });
+    }
+    
+    // 格式化日志详情
+    function formatLogDetail(log) {
+        return `
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>操作时间：</strong> ${log.operation_time}
+                </div>
+                <div class="col-md-6">
+                    <strong>操作类型：</strong> ${log.operation_type_display}
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>用户：</strong> ${log.username || log.user_id || '-'}
+                </div>
+                <div class="col-md-6">
+                    <strong>模块：</strong> ${log.module_display}
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-12">
+                    <strong>操作名称：</strong> ${log.operation_name}
+                </div>
+            </div>
+            ${log.operation_detail ? `
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <strong>操作详情：</strong>
+                    <pre class="bg-light p-2">${log.operation_detail}</pre>
+                </div>
+            </div>
+            ` : ''}
+            <hr>
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>请求方法：</strong> ${log.request_method || '-'}
+                </div>
+                <div class="col-md-4">
+                    <strong>IP地址：</strong> ${log.ip_address || '-'}
+                </div>
+                <div class="col-md-4">
+                    <strong>响应状态：</strong> ${log.response_status || '-'}
+                </div>
+            </div>
+            <hr>
+            ${log.error_message ? `
+            <div class="alert alert-danger">
+                <strong>错误信息：</strong>
+                <pre>${log.error_message}</pre>
+            </div>
+            ` : ''}
+            ${log.stack_trace ? `
+            <div class="alert alert-warning">
+                <strong>堆栈跟踪：</strong>
+                <pre class="stack-trace">${log.stack_trace}</pre>
+            </div>
+            ` : ''}
+        `;
+    }
+    
+    // 导出日志
+    function exportLogs() {
+        const filters = getFilters();
+        const queryString = new URLSearchParams(filters).toString();
+        
+        window.location.href = `/workflow/api/operation-logs/export/?${queryString}`;
+    }
+    
+    // 获取筛选条件
+    function getFilters() {
+        return {
+            start_date: document.getElementById('start_date').value,
+            end_date: document.getElementById('end_date').value,
+            user_id: document.getElementById('user_id').value,
+            operation_type: document.getElementById('operation_type').value,
+            module: document.getElementById('module').value,
+            status: document.getElementById('status').value,
+        };
+    }
+</script>
+{% endblock %}

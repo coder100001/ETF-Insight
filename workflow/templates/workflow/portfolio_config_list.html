@@ -1,0 +1,967 @@
+{% extends "workflow/base.html" %}
+{% load static %}
+
+{% block title %}组合配置管理 - ETF投资组合系统{% endblock %}
+
+{% block extra_css %}
+<style>
+.portfolio-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.portfolio-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.allocation-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin: 2px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.config-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.config-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stats-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.stats-card .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.nav-pills .nav-link {
+    border-radius: 8px;
+    padding: 8px 20px;
+    margin: 0 4px;
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.btn-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.allocation-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    outline: none;
+}
+
+.allocation-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.realtime-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.performance-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-pie text-primary"></i>
+                        组合配置管理
+                    </h2>
+                    <p class="text-muted mb-0">创建、编辑和管理您的投资组合配置方案</p>
+                </div>
+                <div>
+                    <button class="btn btn-gradient" data-toggle="modal" data-target="#createPortfolioModal">
+                        <i class="fas fa-plus mr-2"></i>创建新组合
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6">
+            <div class="card stats-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon bg-primary text-white mr-3">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 text-muted">总组合数</h6>
+                            <h4 class="mb-0 font-weight-bold">{{ total_configs }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card stats-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon bg-success text-white mr-3">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 text-muted">启用配置</h6>
+                            <h4 class="mb-0 font-weight-bold">{{ active_configs }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card stats-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon bg-info text-white mr-3">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 text-muted">支持ETF数</h6>
+                            <h4 class="mb-0 font-weight-bold">{{ total_etfs }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card stats-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon bg-warning text-white mr-3">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 text-muted">平均配置数</h6>
+                            <h4 class="mb-0 font-weight-bold">{{ avg_allocation_count }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选和搜索 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card config-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <ul class="nav nav-pills" id="portfolioTabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#" data-status="all">
+                                        <i class="fas fa-th-large mr-1"></i>全部
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#" data-status="active">
+                                        <i class="fas fa-check mr-1"></i>启用
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#" data-status="inactive">
+                                        <i class="fas fa-ban mr-1"></i>禁用
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="searchInput" placeholder="搜索组合名称或描述...">
+                                <div class="input-group-append">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-md-right">
+                            <button class="btn btn-outline-primary btn-sm" id="autoBalanceBtn">
+                                <i class="fas fa-balance-scale mr-1"></i>自动平衡权重
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 组合配置卡片列表 -->
+    <div class="row" id="portfolioList">
+        {% for config in configs %}
+        <div class="col-lg-4 col-md-6 col-12 portfolio-card-wrapper" data-status="{{ config.status }}" data-name="{{ config.name|lower }}" data-description="{{ config.description|lower }}">
+            <div class="card config-card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title mb-1">{{ config.name }}</h5>
+                            <p class="text-muted small mb-0">{{ config.description|truncatewords:10 }}</p>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-link text-muted" data-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item" href="#" onclick="loadConfig({{ config.id }})">
+                                    <i class="fas fa-play-circle mr-2"></i>加载此配置
+                                </a>
+                                <a class="dropdown-item" href="#" onclick="analyzeConfig({{ config.id }})">
+                                    <i class="fas fa-chart-line mr-2"></i>分析此配置
+                                </a>
+                                <a class="dropdown-item" href="#" onclick="editConfig({{ config.id }})">
+                                    <i class="fas fa-edit mr-2"></i>编辑配置
+                                </a>
+                                <a class="dropdown-item" href="#" onclick="duplicateConfig({{ config.id }})">
+                                    <i class="fas fa-copy mr-2"></i>复制配置
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                {% if config.status %}
+                                <a class="dropdown-item text-warning" href="#" onclick="toggleStatus({{ config.id }})">
+                                    <i class="fas fa-ban mr-2"></i>禁用配置
+                                </a>
+                                {% else %}
+                                <a class="dropdown-item text-success" href="#" onclick="toggleStatus({{ config.id }})">
+                                    <i class="fas fa-check-circle mr-2"></i>启用配置
+                                </a>
+                                {% endif %}
+                                <a class="dropdown-item text-danger" href="#" onclick="deleteConfig({{ config.id }})">
+                                    <i class="fas fa-trash-alt mr-2"></i>删除配置
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投资金额 -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">投资金额</span>
+                            <span class="font-weight-bold">${{ config.total_investment|floatformat:0 }}</span>
+                        </div>
+                    </div>
+
+                    <!-- 配置权重 -->
+                    <div class="mb-3">
+                        <span class="text-muted small mb-2 d-block">权重配置</span>
+                        {% for symbol, weight in config.allocation.items %}
+                        {% if weight > 0 %}
+                        <div class="d-flex align-items-center mb-1">
+                            <div class="allocation-badge" style="background-color: {% if symbol == 'SCHD' %}#3498db{% elif symbol == 'SPYD' %}#2ecc71{% elif symbol == 'JEPQ' %}#9b59b6{% elif symbol == 'JEPI' %}#e67e22{% elif symbol == 'VYM' %}#e74c3c{% else %}#95a5a6{% endif %}; color: white;">
+                                {{ symbol }}
+                            </div>
+                            <div class="progress flex-grow-1 mx-2" style="height: 8px;">
+                                <div class="progress-bar" style="width: {{ weight|floatformat:0 }}%; background-color: {% if symbol == 'SCHD' %}#3498db{% elif symbol == 'SPYD' %}#2ecc71{% elif symbol == 'JEPQ' %}#9b59b6{% elif symbol == 'JEPI' %}#e67e22{% elif symbol == 'VYM' %}#e74c3c{% else %}#95a5a6{% endif %};"></div>
+                            </div>
+                            <span class="small text-muted">{{ weight|floatformat:1 }}%</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- 状态和时间 -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if config.status %}
+                            <span class="badge badge-success">已启用</span>
+                            {% else %}
+                            <span class="badge badge-secondary">已禁用</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-right">
+                            <small class="text-muted">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ config.updated_at|date:"Y-m-d" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-folder-open text-muted" style="font-size: 64px;"></i>
+            <h4 class="text-muted mt-3">暂无组合配置</h4>
+            <p class="text-muted">点击"创建新组合"开始创建您的第一个投资组合配置</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 创建/编辑组合配置模态框 -->
+<div class="modal fade" id="createPortfolioModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="portfolioModalTitle">
+                    <i class="fas fa-plus-circle mr-2"></i>创建新组合配置
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="portfolioConfigForm">
+                    <input type="hidden" id="configId" name="config_id">
+                    
+                    <div class="form-group">
+                        <label class="font-weight-bold">组合名称</label>
+                        <input type="text" class="form-control" id="portfolioName" name="name" required placeholder="例如：433组合、稳健组合等">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">组合描述</label>
+                        <textarea class="form-control" id="portfolioDescription" name="description" rows="2" placeholder="描述此组合的投资策略和目标"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">投资金额 (美元)</label>
+                        <input type="number" class="form-control" id="totalInvestment" name="total_investment" value="10000" min="100" step="100">
+                        <small class="text-muted">建议投资金额：$1,000 - $1,000,000</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">权重配置 (%)</label>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <small>所有权重之和应为100%。当前总和：<span id="totalWeight" class="font-weight-bold">0%</span></small>
+                        </div>
+
+                        <div class="card" style="border-radius: 8px; background-color: #f8f9fa;">
+                            <div class="card-body p-3" id="allocationForm">
+                                <!-- 动态生成权重配置表单 -->
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addETFAllocation()">
+                                <i class="fas fa-plus mr-1"></i>添加ETF
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="autoBalanceWeights()">
+                                <i class="fas fa-balance-scale mr-1"></i>自动平衡
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm" onclick="resetWeights()">
+                                <i class="fas fa-undo mr-1"></i>重置权重
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-gradient" onclick="savePortfolioConfig()">
+                    <i class="fas fa-save mr-2"></i>保存配置
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 预览分析模态框 -->
+<div class="modal fade" id="analysisPreviewModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-chart-line mr-2"></i>组合分析预览
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="analysisPreviewContent">
+                    <!-- 动态加载分析内容 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-gradient" onclick="goToAnalysis()">
+                    <i class="fas fa-external-link-alt mr-2"></i>查看完整分析
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let availableETFs = [];
+let currentConfig = null;
+
+// 页面加载完成后初始化
+$(document).ready(function() {
+    loadAvailableETFs();
+    setupEventListeners();
+    renderAllocationForm();
+});
+
+// 加载可用的ETF列表
+function loadAvailableETFs() {
+    $.ajax({
+        url: '/workflow/api/etf-configs/',
+        method: 'GET',
+        success: function(response) {
+            availableETFs = response.filter(etf => etf.status === 1);
+            renderAllocationForm();
+        },
+        error: function(xhr) {
+            console.error('加载ETF列表失败:', xhr);
+            showToast('加载ETF列表失败', 'error');
+        }
+    });
+}
+
+// 设置事件监听器
+function setupEventListeners() {
+    // 筛选标签点击
+    $('#portfolioTabs .nav-link').click(function(e) {
+        e.preventDefault();
+        $('#portfolioTabs .nav-link').removeClass('active');
+        $(this).addClass('active');
+        
+        const status = $(this).data('status');
+        filterPortfolios(status);
+    });
+
+    // 搜索输入
+    $('#searchInput').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        searchPortfolios(searchTerm);
+    });
+
+    // 权重变化监听
+    $(document).on('input change', '.weight-input', function() {
+        updateTotalWeight();
+    });
+}
+
+// 渲染权重配置表单
+function renderAllocationForm() {
+    const container = $('#allocationForm');
+    container.empty();
+
+    availableETFs.forEach(etf => {
+        const row = `
+            <div class="row align-items-center mb-2 etf-allocation-row" data-symbol="${etf.symbol}">
+                <div class="col-md-4">
+                    <label class="small mb-0">${etf.symbol}</label>
+                    <small class="text-muted d-block">${etf.name.substring(0, 20)}...</small>
+                </div>
+                <div class="col-md-5">
+                    <input type="range" class="allocation-slider weight-slider" 
+                           data-symbol="${etf.symbol}" min="0" max="100" value="0">
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                        <input type="number" class="form-control weight-input" 
+                               name="weight_${etf.symbol}" 
+                               min="0" max="100" step="0.1" value="0">
+                        <div class="input-group-append">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.append(row);
+    });
+
+    // 同步滑块和输入框
+    $(document).on('input', '.weight-slider', function() {
+        const symbol = $(this).data('symbol');
+        const value = $(this).val();
+        $(`input[name="weight_${symbol}"]`).val(value);
+        updateTotalWeight();
+    });
+
+    $(document).on('input', '.weight-input', function() {
+        const symbol = $(this).closest('.etf-allocation-row').data('symbol');
+        const value = $(this).val();
+        $(`.weight-slider[data-symbol="${symbol}"]`).val(value);
+    });
+}
+
+// 更新总权重
+function updateTotalWeight() {
+    let total = 0;
+    $('.weight-input').each(function() {
+        total += parseFloat($(this).val()) || 0;
+    });
+    
+    $('#totalWeight').text(total.toFixed(1) + '%');
+    
+    if (Math.abs(total - 100) < 0.1) {
+        $('#totalWeight').removeClass('text-danger text-warning').addClass('text-success');
+    } else if (total > 100) {
+        $('#totalWeight').removeClass('text-success text-warning').addClass('text-danger');
+    } else {
+        $('#totalWeight').removeClass('text-success text-danger').addClass('text-warning');
+    }
+}
+
+// 添加ETF到权重配置
+function addETFAllocation() {
+    // 弹出ETF选择对话框
+    let options = availableETFs.map(etf => 
+        `<option value="${etf.symbol}">${etf.symbol} - ${etf.name}</option>`
+    ).join('');
+    
+    // 这里简化实现，实际可以使用模态框
+    showToast('请在现有ETF列表中调整权重', 'info');
+}
+
+// 自动平衡权重
+function autoBalanceWeights() {
+    const rows = $('.etf-allocation-row');
+    const count = rows.length;
+    
+    if (count === 0) {
+        showToast('没有可用的ETF', 'error');
+        return;
+    }
+    
+    const avgWeight = (100 / count).toFixed(1);
+    
+    rows.each(function() {
+        const symbol = $(this).data('symbol');
+        $(this).find('.weight-slider').val(avgWeight);
+        $(this).find('.weight-input').val(avgWeight);
+    });
+    
+    updateTotalWeight();
+    showToast('权重已自动平衡为平均分配', 'success');
+}
+
+// 重置权重
+function resetWeights() {
+    $('.weight-slider').val(0);
+    $('.weight-input').val(0);
+    updateTotalWeight();
+    showToast('权重已重置', 'success');
+}
+
+// 保存组合配置
+function savePortfolioConfig() {
+    const form = $('#portfolioConfigForm');
+    const name = $('#portfolioName').val().trim();
+    const description = $('#portfolioDescription').val().trim();
+    const totalInvestment = $('#totalInvestment').val();
+    const configId = $('#configId').val();
+    
+    // 验证
+    if (!name) {
+        showToast('请输入组合名称', 'error');
+        return;
+    }
+    
+    if (!totalInvestment || totalInvestment < 100) {
+        showToast('请输入有效的投资金额（至少$100）', 'error');
+        return;
+    }
+    
+    // 收集权重配置
+    const allocation = {};
+    let totalWeight = 0;
+    
+    $('.weight-input').each(function() {
+        const symbol = $(this).attr('name').replace('weight_', '');
+        const weight = parseFloat($(this).val()) || 0;
+        
+        if (weight > 0) {
+            allocation[symbol] = weight / 100; // 转换为小数
+            totalWeight += weight;
+        }
+    });
+    
+    if (Object.keys(allocation).length === 0) {
+        showToast('请至少配置一个ETF的权重', 'error');
+        return;
+    }
+    
+    if (Math.abs(totalWeight - 100) > 0.1) {
+        showToast(`权重总和应为100%，当前为${totalWeight.toFixed(1)}%`, 'error');
+        return;
+    }
+    
+    // 准备数据
+    const data = {
+        name: name,
+        description: description,
+        total_investment: parseFloat(totalInvestment),
+        allocation: allocation,
+        status: 1
+    };
+    
+    const url = configId ? `/workflow/api/portfolio-configs/${configId}/` : '/workflow/api/portfolio-configs/';
+    const method = configId ? 'PUT' : 'POST';
+    
+    $.ajax({
+        url: url,
+        method: method,
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        beforeSend: function() {
+            showLoading();
+        },
+        success: function(response) {
+            hideLoading();
+            $('#createPortfolioModal').modal('hide');
+            showToast(configId ? '配置更新成功' : '配置创建成功', 'success');
+            location.reload();
+        },
+        error: function(xhr) {
+            hideLoading();
+            console.error('保存配置失败:', xhr);
+            const errorMsg = xhr.responseJSON?.detail || '保存配置失败';
+            showToast(errorMsg, 'error');
+        }
+    });
+}
+
+// 加载配置
+function loadConfig(configId) {
+    $.ajax({
+        url: `/workflow/api/portfolio-configs/${configId}/`,
+        method: 'GET',
+        success: function(config) {
+            // 构建URL参数
+            let params = `investment=${config.total_investment}`;
+            for (const [symbol, weight] of Object.entries(config.allocation)) {
+                params += `&${symbol.toLowerCase()}=${(weight * 100).toFixed(0)}`;
+            }
+            
+            // 跳转到组合分析页面
+            window.location.href = `/workflow/portfolio/?${params}`;
+        },
+        error: function(xhr) {
+            console.error('加载配置失败:', xhr);
+            showToast('加载配置失败', 'error');
+        }
+    });
+}
+
+// 分析配置
+function analyzeConfig(configId) {
+    showLoading();
+    
+    $.ajax({
+        url: `/workflow/api/portfolio-configs/${configId}/`,
+        method: 'GET',
+        success: function(config) {
+            // 构建分析请求
+            const data = {
+                allocation: config.allocation,
+                total_investment: config.total_investment
+            };
+            
+            $.ajax({
+                url: '/workflow/api/analyze-portfolio/',
+                method: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function(analysis) {
+                    hideLoading();
+                    displayAnalysisPreview(config, analysis);
+                    $('#analysisPreviewModal').modal('show');
+                },
+                error: function(xhr) {
+                    hideLoading();
+                    console.error('分析失败:', xhr);
+                    showToast('分析失败', 'error');
+                }
+            });
+        },
+        error: function(xhr) {
+            hideLoading();
+            console.error('加载配置失败:', xhr);
+            showToast('加载配置失败', 'error');
+        }
+    });
+}
+
+// 显示分析预览
+function displayAnalysisPreview(config, analysis) {
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-info-circle mr-2"></i>组合信息</h6>
+                <table class="table table-sm">
+                    <tr><td>组合名称</td><td><strong>${config.name}</strong></td></tr>
+                    <tr><td>投资金额</td><td><strong>$${config.total_investment.toFixed(2)}</strong></td></tr>
+                    <tr><td>当前价值</td><td><strong class="text-success">$${analysis.total_value.toFixed(2)}</strong></td></tr>
+                    <tr><td>总收益</td><td><strong class="${analysis.total_return >= 0 ? 'text-success' : 'text-danger'}">$${analysis.total_return.toFixed(2)}</strong></td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-chart-pie mr-2"></i>持仓详情</h6>
+                <div class="table-responsive" style="max-height: 200px;">
+                    <table class="table table-sm table-hover">
+                        <thead><tr><th>ETF</th><th>权重</th><th>价值</th><th>收益</th></tr></thead>
+                        <tbody>
+                            ${analysis.holdings.map(h => `
+                                <tr>
+                                    <td>${h.symbol}</td>
+                                    <td>${(h.weight * 100).toFixed(0)}%</td>
+                                    <td>$${h.current_value.toFixed(2)}</td>
+                                    <td class="${h.total_return >= 0 ? 'text-success' : 'text-danger'}">$${h.total_return.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#analysisPreviewContent').html(content);
+}
+
+// 跳转到分析页面
+function goToAnalysis() {
+    const configId = currentConfig?.id;
+    if (configId) {
+        loadConfig(configId);
+    }
+}
+
+// 编辑配置
+function editConfig(configId) {
+    $.ajax({
+        url: `/workflow/api/portfolio-configs/${configId}/`,
+        method: 'GET',
+        success: function(config) {
+            $('#configId').val(config.id);
+            $('#portfolioName').val(config.name);
+            $('#portfolioDescription').val(config.description || '');
+            $('#totalInvestment').val(config.total_investment);
+            
+            // 设置权重
+            for (const [symbol, weight] of Object.entries(config.allocation)) {
+                const weightPercent = (weight * 100).toFixed(1);
+                $(`.weight-slider[data-symbol="${symbol}"]`).val(weightPercent);
+                $(`input[name="weight_${symbol}"]`).val(weightPercent);
+            }
+            
+            updateTotalWeight();
+            $('#portfolioModalTitle').html('<i class="fas fa-edit mr-2"></i>编辑组合配置');
+            $('#createPortfolioModal').modal('show');
+        },
+        error: function(xhr) {
+            console.error('加载配置失败:', xhr);
+            showToast('加载配置失败', 'error');
+        }
+    });
+}
+
+// 复制配置
+function duplicateConfig(configId) {
+    $.ajax({
+        url: `/workflow/api/portfolio-configs/${configId}/`,
+        method: 'GET',
+        success: function(config) {
+            const newData = {
+                ...config,
+                name: config.name + ' (副本)',
+                id: undefined
+            };
+            
+            $.ajax({
+                url: '/workflow/api/portfolio-configs/',
+                method: 'POST',
+                data: JSON.stringify(newData),
+                contentType: 'application/json',
+                success: function() {
+                    showToast('配置复制成功', 'success');
+                    location.reload();
+                },
+                error: function(xhr) {
+                    console.error('复制配置失败:', xhr);
+                    showToast('复制配置失败', 'error');
+                }
+            });
+        },
+        error: function(xhr) {
+            console.error('加载配置失败:', xhr);
+            showToast('加载配置失败', 'error');
+        }
+    });
+}
+
+// 切换配置状态
+function toggleStatus(configId) {
+    $.ajax({
+        url: `/workflow/api/portfolio-configs/${configId}/toggle-status/`,
+        method: 'POST',
+        success: function() {
+            showToast('状态切换成功', 'success');
+            location.reload();
+        },
+        error: function(xhr) {
+            console.error('状态切换失败:', xhr);
+            showToast('状态切换失败', 'error');
+        }
+    });
+}
+
+// 删除配置
+function deleteConfig(configId) {
+    if (!confirm('确定要删除此组合配置吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    $.ajax({
+        url: `/workflow/api/portfolio-configs/${configId}/`,
+        method: 'DELETE',
+        success: function() {
+            showToast('配置删除成功', 'success');
+            location.reload();
+        },
+        error: function(xhr) {
+            console.error('删除配置失败:', xhr);
+            showToast('删除配置失败', 'error');
+        }
+    });
+}
+
+// 筛选组合
+function filterPortfolios(status) {
+    $('.portfolio-card-wrapper').each(function() {
+        const cardStatus = $(this).data('status');
+        let show = true;
+        
+        if (status === 'active') {
+            show = cardStatus === 1;
+        } else if (status === 'inactive') {
+            show = cardStatus === 0;
+        }
+        
+        $(this).toggle(show);
+    });
+}
+
+// 搜索组合
+function searchPortfolios(searchTerm) {
+    const term = searchTerm.toLowerCase();
+    
+    $('.portfolio-card-wrapper').each(function() {
+        const name = $(this).data('name');
+        const description = $(this).data('description');
+        const match = name.includes(term) || description.includes(term);
+        $(this).toggle(match);
+    });
+}
+
+// 显示加载中
+function showLoading() {
+    // 实现加载提示
+    $('body').append('<div class="loading-overlay"><div class="spinner-border text-primary" role="status"></div></div>');
+}
+
+// 隐藏加载中
+function hideLoading() {
+    $('.loading-overlay').remove();
+}
+
+// 显示提示消息
+function showToast(message, type = 'info') {
+    const toast = $(`
+        <div class="toast show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+            <div class="toast-header">
+                <i class="fas fa-${type === 'success' ? 'check-circle text-success' : type === 'error' ? 'exclamation-circle text-danger' : 'info-circle text-info'} mr-2"></i>
+                <strong class="mr-auto">${type === 'success' ? '成功' : type === 'error' ? '错误' : '提示'}</strong>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button>
+            </div>
+            <div class="toast-body">${message}</div>
+        </div>
+    `);
+    
+    $('body').append(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// 模态框关闭时重置表单
+$('#createPortfolioModal').on('hidden.bs.modal', function() {
+    $('#portfolioConfigForm')[0].reset();
+    $('#configId').val('');
+    resetWeights();
+    $('#portfolioModalTitle').html('<i class="fas fa-plus-circle mr-2"></i>创建新组合配置');
+});
+</script>
+{% endblock %}

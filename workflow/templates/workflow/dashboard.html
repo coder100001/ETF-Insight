@@ -1,0 +1,152 @@
+{% extends "workflow/base.html" %}
+
+{% block title %}仪表板 - ETF工作流管理系统{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">仪表板</h2>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-primary">{{ today_total }}</h3>
+            <p>今日执行总数</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-success">{{ today_success }}</h3>
+            <p>执行成功</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-danger">{{ today_failed }}</h3>
+            <p>执行失败</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <h3 class="text-warning">{{ today_running }}</h3>
+            <p>正在运行</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> 近7天执行趋势</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="trendChart" height="80"></canvas>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-project-diagram"></i> 工作流统计</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>工作流名称</th>
+                    <th>总执行次数</th>
+                    <th>成功次数</th>
+                    <th>成功率</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if workflow_stats %}
+                {% for wf in workflow_stats %}
+                <tr>
+                    <td>{{ wf.name }}</td>
+                    <td>{{ wf.total }}</td>
+                    <td>{{ wf.success }}</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar {% if wf.success_rate >= 90 %}bg-success{% elif wf.success_rate >= 70 %}bg-warning{% else %}bg-danger{% endif %}"
+                                 style="width: {{ wf.success_rate }}%">
+                                {{ wf.success_rate|floatformat:1 }}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if wf.success_rate >= 90 %}
+                        <span class="badge badge-success">良好</span>
+                        {% elif wf.success_rate >= 70 %}
+                        <span class="badge badge-warning">一般</span>
+                        {% else %}
+                        <span class="badge badge-danger">需关注</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">
+                        <i class="fas fa-info-circle"></i> 暂无工作流统计数据
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    var ctx = document.getElementById('trendChart').getContext('2d');
+    var dailyStats = {{ daily_stats|safe }};
+    
+    var dates = Object.keys(dailyStats).sort();
+    var totalData = dates.map(d => dailyStats[d].total);
+    var successData = dates.map(d => dailyStats[d].success);
+    var failedData = dates.map(d => dailyStats[d].failed);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: '总执行',
+                data: totalData,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4
+            }, {
+                label: '成功',
+                data: successData,
+                borderColor: '#2ecc71',
+                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                tension: 0.4
+            }, {
+                label: '失败',
+                data: failedData,
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
