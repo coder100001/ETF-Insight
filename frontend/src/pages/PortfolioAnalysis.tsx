@@ -2,7 +2,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import {
   Row, Col, Card, InputNumber, Slider, Button, Table,
-  message, Progress, Statistic, Space
+  Progress, Statistic, Space, App
 } from 'antd';
 import {
   PieChartOutlined, LineChartOutlined, CalculatorOutlined,
@@ -184,6 +184,7 @@ const mockPortfolioResult: PortfolioResult = {
 };
 
 const PortfolioAnalysis: React.FC = () => {
+  const { message } = App.useApp();
   const [calculating, setCalculating] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioResult>(mockPortfolioResult);
 
