@@ -143,7 +143,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    BASE_DIR / 'frontend' / 'dist',  # React构建输出目录
+]
+
+# 添加模板目录
+TEMPLATES[0]['DIRS'] = [BASE_DIR / 'frontend' / 'dist']
 
 # CORS配置
 CORS_ALLOW_ALL_ORIGINS = True
