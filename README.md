@@ -380,6 +380,14 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
 - [x] 移除 Gin 依赖，使用标准库 HTTP
 - [x] 前端 API 集成（替换 mock 数据）
 
+### 第一阶段优化 ✅ (2026-03-29)
+- [x] GitHub Actions CI/CD 工作流
+- [x] 后端单元测试（5 个测试用例）
+- [x] 代码质量工具（Go lint、ESLint）
+- [x] Swagger API 文档（OpenAPI 3.0.3）
+- [x] 代码格式自动修复
+- [x] Go vet 静态分析
+
 ### 进行中 🚧
 - [ ] ETF 持仓数据获取
 - [ ] ETF 行情数据展示
