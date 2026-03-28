@@ -2,7 +2,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import {
   Row, Col, Card, InputNumber, Slider, Button, Table,
-  Progress, Statistic, Space, App
+  Progress, Statistic, Space, App, Tabs
 } from 'antd';
 import {
   PieChartOutlined, LineChartOutlined, CalculatorOutlined,
@@ -13,6 +13,7 @@ import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
 import type { PortfolioResult, PortfolioHolding, UserConfig } from '../types';
+import HoldingPieChart from '../components/HoldingPieChart';
 
 const PageHeader = styled.div`
   display: flex;
@@ -561,6 +562,44 @@ const PortfolioAnalysis: React.FC = () => {
           />
         </StyledTable>
       </Card>
+
+      {/* 持仓分布图表 */}
+      {portfolio.holdings.length > 0 && (
+        <Card
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <PieChartOutlined />
+              <span>持仓可视化</span>
+            </div>
+          }
+          style={{ boxShadow: theme.shadows.card, marginTop: 20 }}
+        >
+          <Tabs
+            items={[
+              {
+                key: 'pie',
+                label: (
+                  <span>
+                    <PieChartOutlined />
+                    持仓分布
+                  </span>
+                ),
+                children: (
+                  <HoldingPieChart
+                    data={portfolio.holdings.map(h => ({
+                      symbol: h.symbol,
+                      name: h.name,
+                      weight: h.weight,
+                      value: h.current_value,
+                    }))}
+                    title=""
+                  />
+                ),
+              },
+            ]}
+          />
+        </Card>
+      )}
 
       {/* 综合收益 */}
       <Card
