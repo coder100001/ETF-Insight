@@ -6,11 +6,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"etf-insight/utils"
 )
 
 // YahooFinanceClient Yahoo Finance API客户端
@@ -352,7 +351,7 @@ func (c *YahooFinanceClient) RetryGetQuote(symbol string, maxRetries int) (*Quot
 			return quote, nil
 		}
 		lastErr = err
-		logrus.Warnf("Failed to get quote for %s (attempt %d/%d): %v", symbol, i+1, maxRetries, err)
+		utils.Warn("Failed to get quote", err, "symbol", symbol, "attempt", i+1, "maxRetries", maxRetries)
 		time.Sleep(time.Duration(i+1) * time.Second)
 	}
 	return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
@@ -367,7 +366,7 @@ func (c *YahooFinanceClient) RetryGetHistoricalData(symbol string, period string
 			return data, nil
 		}
 		lastErr = err
-		logrus.Warnf("Failed to get historical data for %s (attempt %d/%d): %v", symbol, i+1, maxRetries, err)
+		utils.Warn("Failed to get historical data", err, "symbol", symbol, "attempt", i+1, "maxRetries", maxRetries)
 		time.Sleep(time.Duration(i+1) * time.Second)
 	}
 	return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
@@ -397,58 +396,4 @@ func ParsePeriodDays(period string) int {
 	default:
 		return 365
 	}
-}
-
-// ParsePeriodToString 将period转换为Yahoo Finance格式
-func ParsePeriodToString(period string) string {
-	switch period {
-	case "1d":
-		return "1d"
-	case "5d":
-		return "5d"
-	case "1mo":
-		return "1mo"
-	case "3mo":
-		return "3mo"
-	case "6mo":
-		return "6mo"
-	case "1y":
-		return "1y"
-	case "2y":
-		return "2y"
-	case "5y":
-		return "5y"
-	case "10y":
-		return "10y"
-	case "ytd":
-		return "ytd"
-	case "max":
-		return "max"
-	default:
-		return "1y"
-	}
-}
-
-// FormatVolume 格式化成交量
-func FormatVolume(volume int64) string {
-	if volume >= 1_000_000_000 {
-		return fmt.Sprintf("%.2fB", float64(volume)/1_000_000_000)
-	} else if volume >= 1_000_000 {
-		return fmt.Sprintf("%.2fM", float64(volume)/1_000_000)
-	} else if volume >= 1_000 {
-		return fmt.Sprintf("%.2fK", float64(volume)/1_000)
-	}
-	return strconv.FormatInt(volume, 10)
-}
-
-// FormatMarketCap 格式化市值
-func FormatMarketCap(cap int64) string {
-	if cap >= 1_000_000_000_000 {
-		return fmt.Sprintf("%.2fT", float64(cap)/1_000_000_000_000)
-	} else if cap >= 1_000_000_000 {
-		return fmt.Sprintf("%.2fB", float64(cap)/1_000_000_000)
-	} else if cap >= 1_000_000 {
-		return fmt.Sprintf("%.2fM", float64(cap)/1_000_000)
-	}
-	return strconv.FormatInt(cap, 10)
 }

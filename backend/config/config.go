@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -13,7 +12,6 @@ import (
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
 	ETF      ETFConfig      `yaml:"etf"`
 	Schedule ScheduleConfig `yaml:"schedule"`
 	Log      LogConfig      `yaml:"log"`
@@ -29,24 +27,10 @@ type ServerConfig struct {
 
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	Driver   string `yaml:"driver"` // mysql, sqlite
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Database string `yaml:"database"`
-	Charset  string `yaml:"charset"`
-	DSN      string `yaml:"dsn"` // 直接指定DSN
+	DSN string `yaml:"dsn"` // SQLite 数据库文件路径
 }
 
-// RedisConfig Redis配置
-type RedisConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Password string `yaml:"password"`
-	DB       int    `yaml:"db"`
-	PoolSize int    `yaml:"pool_size"`
-}
+
 
 // ETFConfig ETF相关配置
 type ETFConfig struct {
@@ -96,21 +80,7 @@ func DefaultConfig() *Config {
 			WriteTimeout: 30 * time.Second,
 		},
 		Database: DatabaseConfig{
-			Driver:   getEnv("DB_DRIVER", "sqlite"),
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnvAsInt("DB_PORT", 3306),
-			Username: getEnv("DB_USER", "root"),
-			Password: getEnv("DB_PASSWORD", ""),
-			Database: getEnv("DB_NAME", "etf_insight"),
-			Charset:  "utf8mb4",
-			DSN:      getEnv("DB_DSN", "etf_insight.db"),
-		},
-		Redis: RedisConfig{
-			Host:     getEnv("REDIS_HOST", "localhost"),
-			Port:     getEnvAsInt("REDIS_PORT", 6379),
-			Password: getEnv("REDIS_PASSWORD", ""),
-			DB:       getEnvAsInt("REDIS_DB", 0),
-			PoolSize: 50,
+			DSN: getEnv("DB_DSN", "etf_insight.db"),
 		},
 		ETF: ETFConfig{
 			DefaultSymbols: []string{"SCHD", "SPYD", "JEPQ", "JEPI", "VYM"},
@@ -152,7 +122,6 @@ func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logrus.Warnf("Config file not found: %s, using default config", path)
 			return cfg, nil
 		}
 		return nil, err
@@ -163,26 +132,6 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// GetDSN 获取数据库DSN
-func (c *DatabaseConfig) GetDSN() string {
-	if c.DSN != "" {
-		return c.DSN
-	}
-
-	if c.Driver == "mysql" {
-		return c.Username + ":" + c.Password + "@tcp(" + c.Host + ":" + 
-			strconv.Itoa(c.Port) + ")/" + c.Database + "?charset=" + c.Charset + 
-			"&parseTime=True&loc=Local"
-	}
-
-	return c.Database + ".db"
-}
-
-// GetRedisAddr 获取Redis地址
-func (c *RedisConfig) GetRedisAddr() string {
-	return c.Host + ":" + strconv.Itoa(c.Port)
 }
 
 // Helper functions

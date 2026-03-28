@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { etfAPI } from '../services/api';
 import type { PortfolioResult, PortfolioHolding, UserConfig } from '../types';
 
 const PageHeader = styled.div`
@@ -184,7 +185,7 @@ const mockPortfolioResult: PortfolioResult = {
 
 const PortfolioAnalysis: React.FC = () => {
   const [calculating, setCalculating] = useState(false);
-  const [portfolio] = useState<PortfolioResult>(mockPortfolioResult);
+  const [portfolio, setPortfolio] = useState<PortfolioResult>(mockPortfolioResult);
 
   // 配置状态
   const [config, setConfig] = useState<UserConfig>({
@@ -220,11 +221,58 @@ const PortfolioAnalysis: React.FC = () => {
 
     setCalculating(true);
     try {
-      // 模拟计算
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      message.success('计算完成');
+      // 调用后端 API
+      const allocation: Record<string, number> = {};
+      Object.entries(config.allocation).forEach(([symbol, weight]) => {
+        if (weight > 0) {
+          allocation[symbol] = Math.round(weight * 100);
+        }
+      });
+
+      const response = await etfAPI.getPortfolioAnalysis(
+        allocation,
+        config.total_investment,
+        config.tax_rate / 100
+      );
+
+      if (response.success && response.data) {
+        // 转换后端数据为前端格式
+        const backendData = response.data;
+        setPortfolio({
+          total_investment: backendData.total_value || config.total_investment,
+          total_value: backendData.total_value || config.total_investment,
+          total_return: backendData.total_return || 0,
+          total_return_percent: backendData.total_return_pct || 0,
+          annual_dividend_before_tax: backendData.annual_dividend || 0,
+          annual_dividend_after_tax: (backendData.annual_dividend || 0) * (1 - config.tax_rate / 100),
+          dividend_tax: (backendData.annual_dividend || 0) * (config.tax_rate / 100),
+          tax_rate: config.tax_rate,
+          weighted_dividend_yield: backendData.dividend_yield || 0,
+          total_return_with_dividend: (backendData.total_return || 0) + (backendData.annual_dividend || 0) * (1 - config.tax_rate / 100),
+          total_return_with_dividend_percent: ((backendData.total_return || 0) + (backendData.annual_dividend || 0) * (1 - config.tax_rate / 100)) / (backendData.total_value || config.total_investment) * 100,
+          holdings: (backendData.holdings || []).map((h: {symbol: string; weight: number; value: number}) => ({
+            symbol: h.symbol,
+            name: h.symbol + ' ETF',
+            weight: h.weight,
+            investment: h.value,
+            current_price: 0,
+            shares: 0,
+            current_value: h.value,
+            capital_gain: 0,
+            capital_gain_percent: 0,
+            total_return: 0,
+            volatility: 0,
+            dividend_yield: 0,
+            annual_dividend_before_tax: 0,
+            annual_dividend_after_tax: 0,
+          })),
+        });
+        message.success('计算完成');
+      } else {
+        message.error('获取数据失败');
+      }
     } catch (error) {
-      message.error('计算失败');
+      message.error('计算失败: ' + (error as Error).message);
     } finally {
       setCalculating(false);
     }
