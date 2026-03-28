@@ -2,7 +2,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import {
   Row, Col, Card, InputNumber, Slider, Button, Table,
-  message, Progress, Statistic
+  message, Progress, Statistic, Space
 } from 'antd';
 import {
   PieChartOutlined, LineChartOutlined, CalculatorOutlined,
@@ -356,15 +356,17 @@ const PortfolioAnalysis: React.FC = () => {
                     max={100}
                     step={1}
                   />
-                  <InputNumber
-                    className="input"
-                    value={weight * 100}
-                    onChange={(value) => handleAllocationChange(symbol, value || 0)}
-                    min={0}
-                    max={100}
-                    precision={0}
-                    addonAfter="%"
-                  />
+                  <Space.Compact>
+                    <InputNumber
+                      className="input"
+                      value={weight * 100}
+                      onChange={(value) => handleAllocationChange(symbol, value || 0)}
+                      min={0}
+                      max={100}
+                      precision={0}
+                    />
+                    <span style={{ padding: '0 8px', display: 'flex', alignItems: 'center' }}>%</span>
+                  </Space.Compact>
                 </AllocationItem>
               ))}
 
@@ -405,16 +407,18 @@ const PortfolioAnalysis: React.FC = () => {
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
                 股息税率
               </label>
-              <InputNumber
-                style={{ width: '100%' }}
-                prefix={<PercentageOutlined />}
-                value={config.tax_rate}
-                onChange={(value) => setConfig(prev => ({ ...prev, tax_rate: value || 0 }))}
-                min={0}
-                max={50}
-                precision={1}
-                addonAfter="%"
-              />
+              <Space.Compact style={{ width: '100%' }}>
+                <InputNumber
+                  style={{ flex: 1 }}
+                  prefix={<PercentageOutlined />}
+                  value={config.tax_rate}
+                  onChange={(value) => setConfig(prev => ({ ...prev, tax_rate: value || 0 }))}
+                  min={0}
+                  max={50}
+                  precision={1}
+                />
+                <span style={{ padding: '0 8px', display: 'flex', alignItems: 'center' }}>%</span>
+              </Space.Compact>
             </div>
           </Col>
         </Row>
@@ -569,9 +573,11 @@ const PortfolioAnalysis: React.FC = () => {
               value={portfolio.total_return_with_dividend}
               precision={2}
               prefix="$"
-              valueStyle={{
-                color: portfolio.total_return_with_dividend >= 0 ? theme.colors.success : theme.colors.danger,
-                fontSize: 32,
+              styles={{
+                content: {
+                  color: portfolio.total_return_with_dividend >= 0 ? theme.colors.success : theme.colors.danger,
+                  fontSize: 32,
+                }
               }}
             />
             <div style={{ marginTop: 8, color: theme.colors.textSecondary }}>
@@ -584,9 +590,11 @@ const PortfolioAnalysis: React.FC = () => {
               value={portfolio.total_return_with_dividend_percent}
               precision={2}
               suffix="%"
-              valueStyle={{
-                color: portfolio.total_return_with_dividend_percent >= 0 ? theme.colors.success : theme.colors.danger,
-                fontSize: 32,
+              styles={{
+                content: {
+                  color: portfolio.total_return_with_dividend_percent >= 0 ? theme.colors.success : theme.colors.danger,
+                  fontSize: 32,
+                }
               }}
             />
             <div style={{ marginTop: 8, color: theme.colors.textSecondary }}>
