@@ -1,6 +1,6 @@
 # ETF-Insight
 
-一个专业的 ETF 数据管理与分析平台，提供完整的 ETF 基础信息、持仓数据、行情数据、技术指标等一站式解决方案。
+一个专业的 ETF 数据管理与分析平台，基于 Go + React 技术栈，提供完整的 ETF 基础信息、持仓数据、行情数据、技术指标等一站式解决方案。
 
 ## 🌟 核心特性
 
@@ -45,215 +45,188 @@
 
 ## 🛠️ 技术栈
 
-### 后端
-- **Python 3.7+** - 核心语言
-- **Django** - Web 框架
-- **Django REST Framework** - API 框架
-- **APScheduler** - 定时任务调度
-- **yfinance** - 财经数据获取
-- **Pandas / NumPy** - 数据分析
+### 后端 (Go)
+- **Go 1.21+** - 核心语言
+- **Gin** - Web 框架
+- **GORM** - ORM 框架
+- **cron** - 定时任务调度
+- **logrus** - 日志框架
+- **go-cache** - 内存缓存
 
 ### 数据库
 - **MySQL** - 主数据库，存储所有历史数据
 - **Redis** - 缓存层，提升查询性能
+- **SQLite** - 开发环境轻量级数据库
 
-### 前端
+### 前端 (React)
 - **React 18** - 前端框架
 - **TypeScript** - 类型安全
 - **Vite** - 构建工具
 - **Ant Design** - UI 组件库
-- **ECharts / Chart.js** - 数据可视化
+- **ECharts** - 数据可视化
 
 ## 🚀 快速开始
 
-### 1. 克隆项目
+### 方式一：使用 Docker（推荐）
 
 ```bash
+# 克隆项目
 git clone git@github.com:coder100001/ETF-Insight.git
 cd ETF-Insight
+
+# 启动所有服务
+docker-compose up -d
+
+# 访问 http://localhost:8080
 ```
 
-### 2. 安装依赖
+### 方式二：本地开发
+
+#### 1. 启动后端服务
 
 ```bash
-pip install -r requirements.txt
+cd backend
+
+# 配置 Go 代理（国内用户）
+go env -w GOPROXY=https://goproxy.cn,direct
+
+# 下载依赖
+go mod tidy
+
+# 启动服务
+go run main.go
+
+# 或带配置文件启动
+go run main.go -config=config.yaml
+
+# 初始化数据库
+go run main.go -init-db
 ```
 
-### 3. 配置数据库
+后端服务默认运行在 http://localhost:8080
+
+#### 2. 启动前端服务
 
 ```bash
-python manage.py migrate
+cd frontend
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 访问 http://localhost:5173
 ```
-
-### 4. 初始化 ETF 配置
-
-```bash
-python init_etf_config.py
-```
-
-### 5. 启动服务
-
-```bash
-python manage.py runserver
-```
-
-访问 http://localhost:8000 查看 Web 界面
-
-## 📖 使用指南
-
-### 命令行工具
-
-```bash
-# 更新所有 ETF 数据
-python etf_manager.py update
-
-# 更新指定 ETF
-python etf_manager.py update SCHD SPYD
-
-# 获取实时数据
-python etf_manager.py realtime
-
-# 启动定时更新服务
-python etf_manager.py schedule start
-
-# 查看数据状态
-python etf_manager.py status
-
-# 完整同步 ETF 数据（包含持仓、行业分布等）
-python etf_manager.py sync SCHD
-```
-
-### Python API
-
-```python
-from core import quick_update, get_fetcher, get_scheduler
-
-# 快速更新
-result = quick_update()
-
-# 获取数据
-fetcher = get_fetcher()
-data = fetcher.fetch_historical_data('SCHD', period='1y')
-
-# 设置定时更新
-scheduler = get_scheduler()
-scheduler.schedule_market_close_update()
-
-# 同步 ETF 基础数据
-from core.etf_data_service import get_etf_data_service
-service = get_etf_data_service()
-service.sync_etf_base_info('SCHD')
-service.sync_etf_holdings('SCHD')
-service.sync_etf_sectors('SCHD')
-service.sync_etf_regions('SCHD')
-service.sync_etf_dividends('SCHD')
-service.full_sync_etf('SCHD')
-```
-
-### Web 界面
-
-| 页面 | URL | 功能 |
-|------|-----|------|
-| 仪表盘 | http://localhost:8000/dashboard/ | 实时数据概览 |
-| ETF列表 | http://localhost:8000/etf/ | ETF配置管理 |
-| ETF详情 | http://localhost:8000/etf/{symbol}/ | ETF详细信息 |
-| 持仓分析 | http://localhost:8000/etf/{symbol}/holdings/ | 持仓明细 |
-| 行业分布 | http://localhost:8000/etf/{symbol}/sectors/ | 行业分布 |
-| 地区分布 | http://localhost:8000/etf/{symbol}/regions/ | 地区分布 |
-| 对比分析 | http://localhost:8000/etf/comparison/ | 多 ETF 对比 |
-| 操作日志 | http://localhost:8000/logs/ | 系统操作日志 |
 
 ## 📁 项目结构
 
 ```
 ETF-Insight/
-├── core/                          # 核心模块
-│   ├── config.py                  # 配置管理
-│   ├── data_fetcher.py            # 数据获取器
-│   ├── data_storage.py            # 数据存储器
-│   ├── etf_data_service.py        # ETF 数据服务
-│   ├── scheduler_service.py       # 定时任务服务
-│   └── cli.py                     # 命令行接口
-├── workflow/                      # Django App
-│   ├── models.py                  # 数据模型
-│   ├── models_etf_data_layer.py   # ETF 基础数据层模型
-│   ├── views.py                   # 视图
-│   ├── services.py                # 业务逻辑
-│   ├── scheduler.py               # 定时任务
-│   └── urls.py                    # 路由配置
-├── frontend/                      # 前端项目
+├── backend/                 # Go 后端服务
+│   ├── config/             # 配置管理
+│   │   └── config.go
+│   ├── handlers/           # HTTP 处理器
+│   │   ├── admin.go
+│   │   ├── etf.go
+│   │   ├── exchange_rate.go
+│   │   ├── portfolio.go
+│   │   ├── scheduler.go
+│   │   └── workflow.go
+│   ├── models/             # 数据模型
+│   │   ├── db.go
+│   │   └── models.go
+│   ├── routers/            # 路由配置
+│   │   └── router.go
+│   ├── services/           # 业务逻辑
+│   │   ├── cache.go
+│   │   ├── etf_analysis.go
+│   │   ├── exchange_rate.go
+│   │   └── yahoo_finance.go
+│   ├── tasks/              # 定时任务
+│   │   └── scheduler.go
+│   ├── go.mod
+│   ├── go.sum
+│   ├── main.go
+│   └── README.md
+├── frontend/               # React 前端
 │   ├── src/
-│   │   ├── components/            # UI组件
-│   │   ├── pages/                 # 页面
-│   │   ├── styles/                # 样式
-│   │   └── utils/                 # 工具函数
-│   └── package.json
-├── etf_manager.py                 # 统一入口
-├── init_etf_config.py             # ETF配置初始化
-├── manage.py                      # Django 管理
-└── requirements.txt               # 依赖列表
+│   │   ├── components/     # UI 组件
+│   │   ├── pages/          # 页面
+│   │   ├── services/       # API 服务
+│   │   ├── styles/         # 样式
+│   │   ├── types/          # TypeScript 类型
+│   │   └── utils/          # 工具函数
+│   ├── package.json
+│   └── vite.config.ts
+├── Dockerfile              # Docker 构建文件
+├── docker-compose.yml      # Docker Compose 配置
+├── Makefile               # 构建脚本
+└── README.md
+```
+
+## 📖 API 接口
+
+### ETF 配置 API
+
+```http
+GET    /api/etf-configs          # 获取所有 ETF 配置
+POST   /api/etf-configs          # 添加 ETF 配置
+GET    /api/etf-configs/:id      # 获取 ETF 详情
+PUT    /api/etf-configs/:id      # 更新 ETF
+DELETE /api/etf-configs/:id      # 删除 ETF
+PATCH  /api/etf-configs/:id      # 切换启用/禁用状态
+```
+
+### ETF 数据 API
+
+```http
+GET    /api/etf-data/:symbol          # 获取 ETF 价格数据
+GET    /api/etf-nav/:symbol           # 获取 ETF 净值数据
+GET    /api/etf-holdings/:symbol      # 获取 ETF 持仓数据
+GET    /api/etf-sectors/:symbol       # 获取 ETF 行业分布
+GET    /api/etf-regions/:symbol       # 获取 ETF 地区分布
+GET    /api/etf-rebalances/:symbol    # 获取 ETF 调仓记录
+GET    /api/etf-dividends/:symbol     # 获取 ETF 分红数据
+GET    /api/etf-indicators/:symbol    # 获取 ETF 技术指标
+```
+
+### 汇率 API
+
+```http
+GET    /api/exchange-rates           # 获取所有汇率
+POST   /api/exchange-rates           # 添加汇率
+GET    /api/exchange-rates/latest    # 获取最新汇率
+PUT    /api/exchange-rates/:id       # 更新汇率
 ```
 
 ## 🗄️ 数据模型
 
-### ETF 基础信息 (ETFBaseInfo)
+### ETF 基础信息 (ETFConfig)
 - ETF代码、名称、英文名称
-- 市场、资产类别、分类
-- 发行方、官网
-- 跟踪指数、跟踪方式
-- 成立日期、AUM、流通股数
-- 管理费率、其他费用
-- 上市交易所、交易货币
-- 杠杆信息、反向信息
-- 投资策略、投资目标、业绩基准
+- 市场（US/CN/HK）、资产类别
+- 发行方、费率、AUM
+- 跟踪指数、成立日期
+- 启用/禁用状态
 
-### 价格数据 (ETFPrice)
+### ETF 价格数据 (ETFPrice)
 - 开高低收、昨收价
 - 成交量、成交额
 - 涨跌额、涨跌幅、换手率
-- 买卖盘、买卖量
 - 时间周期（1分钟至月线）
-
-### 净值数据 (ETFNav)
-- NAV、净值涨跌、净值涨跌幅
-- 市价
-- 溢价率 = (市价 - NAV) / NAV * 100
 
 ### 持仓数据 (ETFHolding)
 - 持仓代码、名称、资产类型
 - 持仓数量、市值、权重
-- 权重变化、当前价格
-- 报告日期、是否估算
+- 报告日期
 
 ### 行业分布 (ETFHoldingSector)
-- 行业名称、行业代码
-- 权重、权重变化
+- 行业名称、权重
 - 市值、股票数量
 
 ### 地区分布 (ETFHoldingRegion)
-- 地区名称、地区代码、国家
-- 权重、权重变化
+- 地区名称、国家、权重
 - 市值、股票数量
-
-### 调仓记录 (ETFRebalance)
-- 持仓代码、名称
-- 变化类型（新增/移除/增持/减持/不变）
-- 原权重、新权重、权重变化
-- 报告期、上期报告期
-
-### 分红数据 (ETFDividend)
-- 分红类型、每股分红金额
-- 除息日、股权登记日、派息日
-- 派息频率
-- 股息率、年化股息率
-
-### 技术指标 (ETFIndicator)
-- 移动平均线（MA5/10/20/60/120）
-- 波动率（20日、60日）
-- RSI（6/12/24）
-- MACD（DIF、DEA、柱状图）
-- 布林带（上轨、中轨、下轨）
-- 夏普比率、最大回撤、Beta、Alpha
 
 ## ⏰ 定时任务
 
@@ -267,9 +240,36 @@ ETF-Insight/
 
 ## 🔧 配置管理
 
+### 后端配置 (config.yaml)
+
+```yaml
+server:
+  port: 8080
+  mode: debug  # debug/release
+
+database:
+  driver: mysql  # mysql/sqlite
+  host: localhost
+  port: 3306
+  user: root
+  password: password
+  name: etf_insight
+  charset: utf8mb4
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+scheduler:
+  enabled: true
+  timezone: "America/New_York"
+```
+
 ### ETF 动态配置
 
-访问 http://localhost:8000/workflow/etf-config/ 管理 ETF
+访问 http://localhost:8080/api/etf-configs 管理 ETF
 
 功能：
 - ✅ 美股/A股/港股分 Tab 展示
@@ -278,81 +278,32 @@ ETF-Insight/
 - ✅ 统计信息（总数、美股数、A股数、启用数）
 - ✅ 排序显示
 
-### 默认 ETF 配置
-
-系统初始化时自动添加以下 ETF：
-
-| 代码 | 名称 | 策略 | 市场 |
-|------|------|------|------|
-| SCHD | Schwab U.S. Dividend Equity ETF | 质量股息策略 | US |
-| SPYD | SPDR Portfolio S&P 500 High Dividend ETF | 高股息收益策略 | US |
-| JEPQ | JPMorgan Nasdaq Equity Premium Income ETF | 期权增强收益策略 | US |
-| JEPI | JPMorgan Equity Premium Income ETF | 股息增强策略 | US |
-| VYM | Vanguard High Dividend Yield ETF | 高股息宽基策略 | US |
-
-## 📊 API 接口
-
-### ETF 配置 API
-
-```http
-GET    /workflow/etf-config/          # 获取所有 ETF 配置
-POST   /workflow/etf-config/          # 添加 ETF 配置
-GET    /workflow/etf-config/{id}/     # 获取 ETF 详情
-PUT    /workflow/etf-config/{id}/     # 更新 ETF
-DELETE /workflow/etf-config/{id}/     # 删除 ETF
-PATCH  /workflow/etf-config/{id}/     # 切换启用/禁用状态
-```
-
-### 数据获取 API
-
-```http
-GET    /workflow/etf-data/{symbol}/          # 获取 ETF 价格数据
-GET    /workflow/etf-nav/{symbol}/           # 获取 ETF 净值数据
-GET    /workflow/etf-holdings/{symbol}/      # 获取 ETF 持仓数据
-GET    /workflow/etf-sectors/{symbol}/       # 获取 ETF 行业分布
-GET    /workflow/etf-regions/{symbol}/       # 获取 ETF 地区分布
-GET    /workflow/etf-rebalances/{symbol}/    # 获取 ETF 调仓记录
-GET    /workflow/etf-dividends/{symbol}/     # 获取 ETF 分红数据
-GET    /workflow/etf-indicators/{symbol}/    # 获取 ETF 技术指标
-```
-
-## 🧪 测试
-
-```bash
-# 运行测试
-python test_etf_config.py
-
-# 运行所有测试
-python manage.py test
-```
-
 ## 📝 开发计划
 
 ### 已完成 ✅
-- [x] ETF 基础数据层模型设计
-- [x] ETF 持仓数据结构
-- [x] 实时 & 历史行情数据
-- [x] ETF 基础信息获取逻辑
-- [x] ETF 动态配置管理
-- [x] ETF 配置初始化脚本
-- [x] ETF 配置 Web 管理界面
-- [x] ETF 配置服务层动态读取
-- [x] 操作日志分页功能
+- [x] Go 后端框架搭建
+- [x] ETF 基础数据模型
+- [x] ETF 配置管理 API
+- [x] 汇率管理功能
+- [x] 定时任务调度
+- [x] React 前端框架
+- [x] ETF 配置管理页面
+- [x] Docker 容器化
 
 ### 进行中 🚧
-- [ ] ETF 基础数据 Web 界面
-- [ ] ETF 持仓数据可视化
-- [ ] ETF 技术指标展示
-- [ ] ETF 对比分析功能
+- [ ] ETF 持仓数据获取
+- [ ] ETF 行情数据展示
+- [ ] K线图表组件
+- [ ] 技术指标计算
 
 ### 待开发 📋
-- [ ] 批量操作（批量启用/禁用、批量删除）
-- [ ] ETF 配置导入导出（CSV/Excel）
-- [ ] ETF 配置修改历史记录
+- [ ] ETF 持仓数据可视化
+- [ ] 行业分布图表
+- [ ] 地区分布图表
+- [ ] ETF 对比分析
+- [ ] 投资组合分析
+- [ ] 数据导出功能
 - [ ] 用户权限控制
-- [ ] 数据验证规则（费率范围检查等）
-- [ ] ETF 搜索功能
-- [ ] ETF 分析报告生成
 - [ ] 邮件通知功能
 
 ## 🤝 贡献
