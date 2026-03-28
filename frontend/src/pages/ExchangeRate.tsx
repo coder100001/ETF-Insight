@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Badge, Space, message } from 'antd';
+import { Card, Table, Button, Badge, Space, App } from 'antd';
 import { SwapOutlined, ReloadOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
+import axios from 'axios';
 
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
@@ -79,72 +80,42 @@ interface ExchangeRate {
   source: string;
 }
 
-const mockRates: ExchangeRate[] = [
-  {
-    id: 1,
-    from_currency: 'USD',
-    to_currency: 'CNY',
-    rate: 7.2345,
-    previous_rate: 7.2156,
-    change_percent: 0.26,
-    updated_at: '2024-03-28 10:00:00',
-    source: '央行中间价',
-  },
-  {
-    id: 2,
-    from_currency: 'EUR',
-    to_currency: 'CNY',
-    rate: 7.8234,
-    previous_rate: 7.8456,
-    change_percent: -0.28,
-    updated_at: '2024-03-28 10:00:00',
-    source: '央行中间价',
-  },
-  {
-    id: 3,
-    from_currency: 'GBP',
-    to_currency: 'CNY',
-    rate: 9.1234,
-    previous_rate: 9.1056,
-    change_percent: 0.20,
-    updated_at: '2024-03-28 10:00:00',
-    source: '央行中间价',
-  },
-  {
-    id: 4,
-    from_currency: 'JPY',
-    to_currency: 'CNY',
-    rate: 0.0478,
-    previous_rate: 0.0481,
-    change_percent: -0.62,
-    updated_at: '2024-03-28 10:00:00',
-    source: '央行中间价',
-  },
-  {
-    id: 5,
-    from_currency: 'HKD',
-    to_currency: 'CNY',
-    rate: 0.9234,
-    previous_rate: 0.9245,
-    change_percent: -0.12,
-    updated_at: '2024-03-28 10:00:00',
-    source: '央行中间价',
-  },
-];
-
 const ExchangeRatePage: React.FC = () => {
-  const [rates] = useState<ExchangeRate[]>(mockRates);
+  const { message } = App.useApp();
+  const [rates, setRates] = useState<ExchangeRate[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchRates();
+  }, []);
+
+  const fetchRates = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/exchange-rates');
+      if (response.data.success && response.data.data) {
+        setRates(response.data.data);
+      } else {
+        message.error('获取汇率数据失败');
+      }
+    } catch (error) {
+      message.error('获取汇率数据失败: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRefresh = () => {
+    fetchRates();
     message.success('汇率数据已更新');
   };
 
-  const columns = [
+  const columns: import('antd').TableProps<ExchangeRate>['columns'] = [
     {
       title: '货币对',
       dataIndex: 'from_currency',
       key: 'pair',
-      render: (_: string, record: ExchangeRate) => (
+      render: (_, record) => (
         <strong>{record.from_currency}/{record.to_currency}</strong>
       ),
     },
@@ -153,18 +124,18 @@ const ExchangeRatePage: React.FC = () => {
       dataIndex: 'rate',
       key: 'rate',
       align: 'center' as const,
-      render: (rate: number) => <strong>{rate.toFixed(4)}</strong>,
+      render: (rate) => <strong>{(rate as number).toFixed(4)}</strong>,
     },
     {
       title: '涨跌',
       dataIndex: 'change_percent',
       key: 'change_percent',
       align: 'center' as const,
-      render: (value: number) => (
+      render: (value) => (
         <Badge
-          count={`${value >= 0 ? '+' : ''}${value.toFixed(2)}%`}
+          count={`${(value as number) >= 0 ? '+' : ''}${(value as number).toFixed(2)}%`}
           style={{
-            backgroundColor: value >= 0 ? theme.colors.success : theme.colors.danger,
+            backgroundColor: (value as number) >= 0 ? theme.colors.success : theme.colors.danger,
           }}
         />
       ),
@@ -228,9 +199,10 @@ const ExchangeRatePage: React.FC = () => {
       <Card style={{ boxShadow: theme.shadows.card }}>
         <StyledTable
           dataSource={rates}
-          columns={columns as any}
+          columns={columns}
           rowKey="id"
           pagination={false}
+          loading={loading}
         />
       </Card>
     </Layout>

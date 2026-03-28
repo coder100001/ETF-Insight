@@ -1,10 +1,12 @@
 
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Card, Button, Badge, Row, Col, Statistic } from 'antd';
+import { Card, Button, Badge, Row, Col, Statistic, App } from 'antd';
 import { ArrowLeftOutlined, BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { etfAPI } from '../services/api';
 import type { ETFData } from '../types';
 
 const PageHeader = styled.div`
@@ -108,128 +110,56 @@ const InfoItem = styled.div`
   }
 `;
 
-// 模拟ETF数据
-const mockETFData: { [key: string]: ETFData } = {
-  SCHD: {
-    symbol: 'SCHD',
-    name: 'Schwab US Dividend Equity ETF',
-    current_price: 30.44,
-    previous_close: 31.67,
-    change: -1.23,
-    change_percent: -3.88,
-    open_price: 30.35,
-    high_price: 30.59,
-    low_price: 30.20,
-    volume: 8500000,
-    dividend_yield: 3.45,
-    volatility: 15.2,
-    total_return: 12.5,
-    max_drawdown: -8.3,
-    sharpe_ratio: 1.2,
-    expense_ratio: 0.06,
-    info: {
-      focus: '美股高股息',
-      strategy: '质量因子筛选',
-      description: 'SCHD追踪道琼斯美国股息100指数，投资于具有至少10年连续分红历史的高质量股息股票。',
-    },
-  },
-  SPYD: {
-    symbol: 'SPYD',
-    name: 'SPDR S&P 500 High Dividend ETF',
-    current_price: 47.85,
-    previous_close: 48.14,
-    change: -0.29,
-    change_percent: -0.60,
-    open_price: 47.71,
-    high_price: 48.09,
-    low_price: 47.47,
-    volume: 6200000,
-    dividend_yield: 4.12,
-    volatility: 16.8,
-    total_return: 8.3,
-    max_drawdown: -10.5,
-    sharpe_ratio: 0.9,
-    expense_ratio: 0.07,
-    info: {
-      focus: 'S&P高股息',
-      strategy: '股息率加权',
-      description: 'SPYD投资于S&P 500指数中股息率最高的80只股票，采用股息率加权。',
-    },
-  },
-  JEPQ: {
-    symbol: 'JEPQ',
-    name: 'JPMorgan Nasdaq Equity Premium Income ETF',
-    current_price: 57.20,
-    previous_close: 57.51,
-    change: -0.31,
-    change_percent: -0.54,
-    open_price: 57.03,
-    high_price: 57.49,
-    low_price: 56.74,
-    volume: 4800000,
-    dividend_yield: 11.2,
-    volatility: 18.5,
-    total_return: 15.8,
-    max_drawdown: -12.1,
-    sharpe_ratio: 1.1,
-    expense_ratio: 0.35,
-    info: {
-      focus: '纳斯达克备兑',
-      strategy: '期权收益增强',
-      description: 'JEPQ通过持有纳斯达克股票并卖出看涨期权来产生收入。',
-    },
-  },
-  JEPI: {
-    symbol: 'JEPI',
-    name: 'JPMorgan Equity Premium Income ETF',
-    current_price: 58.90,
-    previous_close: 59.31,
-    change: -0.41,
-    change_percent: -0.69,
-    open_price: 58.72,
-    high_price: 59.19,
-    low_price: 58.43,
-    volume: 9200000,
-    dividend_yield: 9.8,
-    volatility: 14.2,
-    total_return: 11.2,
-    max_drawdown: -7.5,
-    sharpe_ratio: 1.3,
-    expense_ratio: 0.35,
-    info: {
-      focus: '美股备兑',
-      strategy: '期权收益增强',
-      description: 'JEPI通过卖出标普500指数的备兑看涨期权来产生月收入。',
-    },
-  },
-  VYM: {
-    symbol: 'VYM',
-    name: 'Vanguard High Dividend Yield ETF',
-    current_price: 154.50,
-    previous_close: 155.37,
-    change: -0.87,
-    change_percent: -0.56,
-    open_price: 154.04,
-    high_price: 155.27,
-    low_price: 153.26,
-    volume: 3800000,
-    dividend_yield: 2.95,
-    volatility: 13.8,
-    total_return: 9.6,
-    max_drawdown: -9.2,
-    sharpe_ratio: 1.0,
-    expense_ratio: 0.06,
-    info: {
-      focus: '美股高股息',
-      strategy: '股息率筛选',
-      description: 'VYM追踪富时高股息收益率指数，投资于股息率高于平均水平的大型美国股票。',
-    },
-  },
-};
-
 const ETFDetail: React.FC = () => {
+  const { message } = App.useApp();
   const { symbol } = useParams<{ symbol: string }>();
-  const etf = symbol ? mockETFData[symbol.toUpperCase()] : null;
+  const [etf, setEtf] = useState<ETFData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (symbol) {
+      fetchETFData(symbol);
+    }
+  }, [symbol]);
+
+  const fetchETFData = async (sym: string) => {
+    setLoading(true);
+    try {
+      const response = await etfAPI.getRealtimeData(sym);
+      if (response.success && response.data) {
+        const data = response.data;
+        setEtf({
+          symbol: data.symbol,
+          name: data.name,
+          current_price: data.current_price || 0,
+          previous_close: data.previous_close || 0,
+          change: data.change || 0,
+          change_percent: data.change_percent || 0,
+          open_price: data.open_price || 0,
+          high_price: data.high_price || 0,
+          low_price: data.low_price || 0,
+          volume: data.volume || 0,
+          dividend_yield: data.dividend_yield || 0,
+          volatility: data.volatility || 0,
+          total_return: data.total_return || 0,
+          max_drawdown: data.max_drawdown || 0,
+          sharpe_ratio: data.sharpe_ratio || 0,
+          expense_ratio: data.expense_ratio || 0,
+          info: {
+            focus: data.focus || '',
+            strategy: data.strategy || '',
+            description: data.description || '',
+          },
+        });
+      } else {
+        message.error('获取ETF数据失败');
+      }
+    } catch (error) {
+      message.error('获取ETF数据失败: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!etf) {
     return (
@@ -240,8 +170,8 @@ const ETFDetail: React.FC = () => {
           </Link>
           <h2>ETF详情</h2>
         </PageHeader>
-        <Card style={{ textAlign: 'center', padding: '40px' }}>
-          <p>未找到ETF: {symbol}</p>
+        <Card style={{ textAlign: 'center', padding: '40px' }} loading={loading}>
+          {!loading && <p>未找到ETF: {symbol}</p>}
         </Card>
       </Layout>
     );

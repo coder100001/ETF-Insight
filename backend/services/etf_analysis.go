@@ -223,7 +223,7 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 		Allocation:      allocation,
 		Holdings:        []PortfolioHolding{},
 		ExchangeRates:   make(map[string]float64),
-		TaxRate:         taxRate.Mul(decimal.NewFromInt(100)),
+		TaxRate:         taxRate,
 	}
 
 	var totalValueUSD decimal.Decimal
@@ -231,28 +231,9 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 	var totalAnnualDividendAfterTax decimal.Decimal
 	var totalCapitalGain decimal.Decimal
 
-	// 获取所有启用的ETF配置
-	var etfConfigs []models.ETFConfig
-	_ = models.DB.Where("status = ?", 1).Find(&etfConfigs)
-	// 简化处理，使用硬编码数据
-	etfConfigs = []models.ETFConfig{
-		{Symbol: "QQQ", Currency: "USD", ExpenseRatio: decimal.NewFromFloat(0.0020)},
-		{Symbol: "SCHD", Currency: "USD", ExpenseRatio: decimal.NewFromFloat(0.0006)},
-	}
-
-	etfConfigMap := make(map[string]models.ETFConfig)
-	for _, cfg := range etfConfigs {
-		etfConfigMap[cfg.Symbol] = cfg
-	}
-
 	for symbol, weight := range allocation {
-		if weight <= 0 {
-			continue
-		}
-
-		cfg, exists := etfConfigMap[symbol]
-		if !exists {
-			utils.Warn("ETF not found in config", nil, "symbol", symbol)
+		weightDecimal := decimal.NewFromFloat(weight).Div(decimal.NewFromInt(100))
+		if weightDecimal.IsZero() {
 			continue
 		}
 
@@ -263,63 +244,29 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			continue
 		}
 
-		// 获取历史数据计算指标
-		var prices []models.ETFData
-		if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").Limit(252).Find(&prices).Error; err != nil {
-			utils.Warn("Failed to get historical data", err, "symbol", symbol)
-		}
-
-		var metrics *ETFMetrics
-		if len(prices) > 0 {
-			metrics, _ = s.CalculateMetrics(symbol, prices, "1y")
-		}
-
-		// 获取ETF货币
-		currency := s.getETFCurrency(symbol)
-
 		// 计算投资金额
-		weightDecimal := decimal.NewFromFloat(weight)
 		investmentUSD := totalInvestment.Mul(weightDecimal)
-
-		// 转换为ETF计价货币
-		var investment decimal.Decimal
-		if currency == "USD" {
-			investment = investmentUSD
-		} else {
-			rate := s.exchangeRate.GetRate(currency, "USD")
-			investment = investmentUSD.Div(decimal.NewFromFloat(rate))
-			result.ExchangeRates[currency+"_to_USD"] = rate
-		}
 
 		currentPrice := decimal.NewFromFloat(realtimeData.CurrentPrice)
 		var shares decimal.Decimal
 		if currentPrice.IsPositive() {
-			shares = investment.Div(currentPrice)
+			shares = investmentUSD.Div(currentPrice)
 		}
 
-		currentValue := shares.Mul(currentPrice)
-		currentValueUSD := s.convertToUSD(currentValue, currency)
+		// 计算当前价值 (假设等于初始投资)
+		currentValueUSD := investmentUSD
+		capitalGain := decimal.Zero
+		capitalGainPercent := decimal.Zero
 
 		// 计算股息
-		dividendYield := decimal.NewFromFloat(realtimeData.DividendYield).Div(decimal.NewFromInt(100))
-		annualDividendBeforeTax := currentValue.Mul(dividendYield)
-		annualDividendBeforeTaxUSD := s.convertToUSD(annualDividendBeforeTax, currency)
+		dividendYield := decimal.NewFromFloat(realtimeData.DividendYield)
+		annualDividendBeforeTax := investmentUSD.Mul(dividendYield).Div(decimal.NewFromInt(100))
 		annualDividendAfterTax := annualDividendBeforeTax.Mul(decimal.NewFromInt(1).Sub(taxRate))
-		annualDividendAfterTaxUSD := s.convertToUSD(annualDividendAfterTax, currency)
-
-		// 计算资本利得
-		var capitalGain decimal.Decimal
-		var capitalGainPercent decimal.Decimal
-		if metrics != nil {
-			historicalReturn := metrics.TotalReturn.Div(decimal.NewFromInt(100))
-			capitalGain = investmentUSD.Mul(historicalReturn)
-			capitalGainPercent = metrics.TotalReturn
-		}
 
 		holding := PortfolioHolding{
 			Symbol:                  symbol,
 			Name:                    realtimeData.Name,
-			Currency:                currency,
+			Currency:                "USD",
 			Weight:                  weightDecimal.Mul(decimal.NewFromInt(100)),
 			Investment:              investmentUSD,
 			InvestmentUSD:           investmentUSD,
@@ -327,31 +274,25 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			CurrentPrice:            currentPrice,
 			CurrentValue:            currentValueUSD,
 			CurrentValueUSD:         currentValueUSD,
-			DividendYield:           decimal.NewFromFloat(realtimeData.DividendYield),
-			AnnualDividendBeforeTax: annualDividendBeforeTaxUSD,
-			AnnualDividendAfterTax:  annualDividendAfterTaxUSD,
+			DividendYield:           dividendYield,
+			AnnualDividendBeforeTax: annualDividendBeforeTax,
+			AnnualDividendAfterTax:  annualDividendAfterTax,
 			CapitalGain:             capitalGain,
 			CapitalGainPercent:      capitalGainPercent,
-		}
-
-		if metrics != nil {
-			holding.TotalReturn = metrics.TotalReturn
-			holding.Volatility = metrics.Volatility
+			TotalReturn:             decimal.Zero,
+			Volatility:              decimal.Zero,
 		}
 
 		result.Holdings = append(result.Holdings, holding)
 		totalValueUSD = totalValueUSD.Add(currentValueUSD)
-		totalAnnualDividendBeforeTax = totalAnnualDividendBeforeTax.Add(annualDividendBeforeTaxUSD)
-		totalAnnualDividendAfterTax = totalAnnualDividendAfterTax.Add(annualDividendAfterTaxUSD)
+		totalAnnualDividendBeforeTax = totalAnnualDividendBeforeTax.Add(annualDividendBeforeTax)
+		totalAnnualDividendAfterTax = totalAnnualDividendAfterTax.Add(annualDividendAfterTax)
 		totalCapitalGain = totalCapitalGain.Add(capitalGain)
 
 		// 计算加权股息率
 		result.WeightedDividendYield = result.WeightedDividendYield.Add(
-			decimal.NewFromFloat(realtimeData.DividendYield).Mul(weightDecimal),
+			dividendYield.Mul(weightDecimal),
 		)
-
-		// 保存ETF配置信息
-		_ = cfg
 	}
 
 	result.TotalValue = totalValueUSD
