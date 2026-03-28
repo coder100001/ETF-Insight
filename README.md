@@ -1,6 +1,6 @@
 # ETF-Insight
 
-一个专业的 ETF 数据管理与分析平台，基于 Go + React 技术栈，提供完整的 ETF 基础信息、持仓数据、行情数据、技术指标等一站式解决方案。
+一个专业的 ETF 数据管理与分析平台，基于 Go + React 技术栈，提供完整的 ETF 基础信息、持仓数据、行情数据、技术指标、投资组合分析等一站式解决方案。
 
 ## 🌟 核心特性
 
@@ -16,7 +16,7 @@
 - 🔄 **自动定时更新** - 美股开盘前和收盘后自动更新数据
 - ⚡ **并发获取** - 多线程并发拉取，提升效率
 - 🛡️ **智能重试** - 指数退避重试机制，应对 API 限制
-- 💾 **双存储架构** - MySQL 持久化 + Redis 缓存
+- 💾 **内存缓存** - 高性能实时数据缓存
 
 ### 动态配置管理
 - 📋 **ETF动态配置** - 支持美股/A股/港股，灵活增删改查
@@ -30,13 +30,14 @@
 - 🔄 **持仓分析** - 持仓明细、行业分布、地区分布可视化
 - 📉 **技术指标** - MA、RSI、MACD 等技术指标展示
 - 📊 **对比分析** - 多 ETF 对比分析
+- 💼 **投资组合分析** - 自定义配置组合，实时计算收益、股息、税后收益
 
 ## 📊 支持的 ETF 策略
 
 | 策略类型 | 示例 ETF | 描述 |
 |---------|---------|------|
-| **质量股息** | SCHD | Schwab U.S. Dividend Equity ETF |
-| **高股息收益** | SPYD | SPDR Portfolio S&P 500 High Dividend ETF |
+| **质量股息** | SCHD | Schwab US Dividend Equity ETF |
+| **高股息收益** | SPYD | SPDR S&P 500 High Dividend ETF |
 | **期权增强收益** | JEPQ | JPMorgan Nasdaq Equity Premium Income ETF |
 | **股息增强** | JEPI | JPMorgan Equity Premium Income ETF |
 | **高股息宽基** | VYM | Vanguard High Dividend Yield ETF |
@@ -46,17 +47,18 @@
 ## 🛠️ 技术栈
 
 ### 后端 (Go)
-- **Go 1.21+** - 核心语言
-- **Gin** - Web 框架
-- **GORM** - ORM 框架
+- **Go 1.24.3** - 核心语言，使用最新稳定版本
+- **标准库 HTTP** - 轻量级 Web 框架，无外部依赖
+- **GORM** - ORM 框架，支持 MySQL/SQLite
 - **cron** - 定时任务调度
-- **logrus** - 日志框架
+- **slog (Go 1.21+ 标准库)** - 现代化日志框架
 - **go-cache** - 内存缓存
+- **decimal** - 精确金融计算
 
 ### 数据库
 - **MySQL** - 主数据库，存储所有历史数据
-- **Redis** - 缓存层，提升查询性能
 - **SQLite** - 开发环境轻量级数据库
+- **内存缓存** - 高性能实时数据缓存
 
 ### 前端 (React)
 - **React 18** - 前端框架
@@ -64,6 +66,7 @@
 - **Vite** - 构建工具
 - **Ant Design** - UI 组件库
 - **ECharts** - 数据可视化
+- **styled-components** - CSS-in-JS 样式方案
 
 ## 🚀 快速开始
 
@@ -88,19 +91,21 @@ docker-compose up -d
 cd backend
 
 # 配置 Go 代理（国内用户）
-go env -w GOPROXY=https://goproxy.cn,direct
+go env -w GOPROXY=https://goproxy.cn
+go env -w GOSUMDB=sum.golang.google.cn
+go env -w GOPRIVATE=
 
 # 下载依赖
 go mod tidy
+
+# 初始化数据库
+go run main.go -init-db
 
 # 启动服务
 go run main.go
 
 # 或带配置文件启动
 go run main.go -config=config.yaml
-
-# 初始化数据库
-go run main.go -init-db
 ```
 
 后端服务默认运行在 http://localhost:8080
@@ -126,18 +131,9 @@ ETF-Insight/
 ├── backend/                 # Go 后端服务
 │   ├── config/             # 配置管理
 │   │   └── config.go
-│   ├── handlers/           # HTTP 处理器
-│   │   ├── admin.go
-│   │   ├── etf.go
-│   │   ├── exchange_rate.go
-│   │   ├── portfolio.go
-│   │   ├── scheduler.go
-│   │   └── workflow.go
 │   ├── models/             # 数据模型
-│   │   ├── db.go
-│   │   └── models.go
-│   ├── routers/            # 路由配置
-│   │   └── router.go
+│   │   ├── models.go
+│   │   └── db.go
 │   ├── services/           # 业务逻辑
 │   │   ├── cache.go
 │   │   ├── etf_analysis.go
@@ -145,27 +141,62 @@ ETF-Insight/
 │   │   └── yahoo_finance.go
 │   ├── tasks/              # 定时任务
 │   │   └── scheduler.go
+│   ├── utils/              # 工具函数
+│   │   └── logger.go
+│   ├── main.go
 │   ├── go.mod
 │   ├── go.sum
-│   ├── main.go
-│   └── README.md
+│   └── config.yaml
 ├── frontend/               # React 前端
 │   ├── src/
 │   │   ├── components/     # UI 组件
 │   │   ├── pages/          # 页面
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── ETFDashboard.tsx
+│   │   │   ├── ETFDetail.tsx
+│   │   │   ├── ETFComparison.tsx
+│   │   │   ├── PortfolioAnalysis.tsx
+│   │   │   ├── ExchangeRate.tsx
+│   │   │   └── ETFConfig.tsx
 │   │   ├── services/       # API 服务
+│   │   │   └── api.ts
 │   │   ├── styles/         # 样式
+│   │   │   └── theme.ts
 │   │   ├── types/          # TypeScript 类型
+│   │   │   └── index.ts
 │   │   └── utils/          # 工具函数
+│   │       └── format.ts
+│   ├── public/             # 静态资源
 │   ├── package.json
 │   └── vite.config.ts
 ├── Dockerfile              # Docker 构建文件
 ├── docker-compose.yml      # Docker Compose 配置
-├── Makefile               # 构建脚本
 └── README.md
 ```
 
 ## 📖 API 接口
+
+### ETF 列表 API
+
+```http
+GET /api/etf/list          # 获取所有 ETF 列表（包含实时数据）
+GET /api/etf/comparison    # 获取 ETF 对比数据
+```
+
+### ETF 数据 API
+
+```http
+GET /api/etf/:symbol/realtime    # 获取 ETF 实时行情
+GET /api/etf/:symbol/history     # 获取 ETF 历史数据
+GET /api/etf/:symbol/metrics     # 获取 ETF 技术指标
+GET /api/etf/:symbol/forecast    # 获取 ETF 增长预测
+```
+
+### 投资组合 API
+
+```http
+POST /api/etf/portfolio    # 分析投资组合（计算收益、股息、税后收益）
+```
 
 ### ETF 配置 API
 
@@ -176,19 +207,6 @@ GET    /api/etf-configs/:id      # 获取 ETF 详情
 PUT    /api/etf-configs/:id      # 更新 ETF
 DELETE /api/etf-configs/:id      # 删除 ETF
 PATCH  /api/etf-configs/:id      # 切换启用/禁用状态
-```
-
-### ETF 数据 API
-
-```http
-GET    /api/etf-data/:symbol          # 获取 ETF 价格数据
-GET    /api/etf-nav/:symbol           # 获取 ETF 净值数据
-GET    /api/etf-holdings/:symbol      # 获取 ETF 持仓数据
-GET    /api/etf-sectors/:symbol       # 获取 ETF 行业分布
-GET    /api/etf-regions/:symbol       # 获取 ETF 地区分布
-GET    /api/etf-rebalances/:symbol    # 获取 ETF 调仓记录
-GET    /api/etf-dividends/:symbol     # 获取 ETF 分红数据
-GET    /api/etf-indicators/:symbol    # 获取 ETF 技术指标
 ```
 
 ### 汇率 API
@@ -209,22 +227,27 @@ PUT    /api/exchange-rates/:id       # 更新汇率
 - 跟踪指数、成立日期
 - 启用/禁用状态
 
-### ETF 价格数据 (ETFPrice)
+### ETF 价格数据 (ETFData)
 - 开高低收、昨收价
 - 成交量、成交额
 - 涨跌额、涨跌幅、换手率
 - 时间周期（1分钟至月线）
 
-### 持仓数据 (ETFHolding)
+### ETF 指标数据 (ETFMetrics)
+- 总收益率、平均日收益率
+- 年化波动率、夏普比率
+- 最大回撤、交易日数
+
+### ETF 持仓数据 (ETFHolding)
 - 持仓代码、名称、资产类型
 - 持仓数量、市值、权重
 - 报告日期
 
-### 行业分布 (ETFHoldingSector)
+### ETF 行业分布 (ETFHoldingSector)
 - 行业名称、权重
 - 市值、股票数量
 
-### 地区分布 (ETFHoldingRegion)
+### ETF 地区分布 (ETFHoldingRegion)
 - 地区名称、国家、权重
 - 市值、股票数量
 
@@ -256,11 +279,11 @@ database:
   name: etf_insight
   charset: utf8mb4
 
-redis:
-  host: localhost
-  port: 6379
-  password: ""
-  db: 0
+cache:
+  realtime_ttl: 5m
+  historical_ttl: 168h
+  metrics_ttl: 24h
+  comparison_ttl: 1h
 
 scheduler:
   enabled: true
@@ -278,6 +301,68 @@ scheduler:
 - ✅ 统计信息（总数、美股数、A股数、启用数）
 - ✅ 排序显示
 
+## 💼 投资组合分析
+
+### 功能特性
+- ✅ 自定义 ETF 配比（SCHD、SPYD、JEPQ、JEPI、VYM、QQQ）
+- ✅ 实时计算总投资额、当前价值
+- ✅ 计算资本利得、股息收益
+- ✅ 税前/税后股息计算
+- ✅ 综合收益分析（资本利得 + 税后股息）
+- ✅ 持仓明细展示（价格、份数、当前价值、股息率）
+
+### 使用示例
+
+```bash
+# 计算投资组合
+curl -X POST http://localhost:8080/api/etf/portfolio \
+  -H "Content-Type: application/json" \
+  -d '{
+    "allocation": {
+      "SCHD": 40,
+      "SPYD": 30,
+      "JEPQ": 30
+    },
+    "total_investment": 100000,
+    "tax_rate": 10
+  }'
+```
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "total_value": 108450.50,
+    "total_return": 8450.50,
+    "total_return_pct": 8.45,
+    "annual_dividend": 4850.25,
+    "dividend_yield": 4.85,
+    "tax_rate": 10,
+    "after_tax_return": 12815.73,
+    "holdings": [
+      {
+        "symbol": "SCHD",
+        "weight": 40,
+        "value": 40000,
+        "name": "Schwab US Dividend Equity ETF",
+        "current_price": 30.44,
+        "shares": 1314.06,
+        "current_value": 40000,
+        "capital_gain": 0,
+        "capital_gain_percent": 0,
+        "total_return": 12.5,
+        "volatility": 15.2,
+        "dividend_yield": 3.45,
+        "annual_dividend_before_tax": 1380,
+        "annual_dividend_after_tax": 1242
+      }
+    ]
+  }
+}
+```
+
 ## 📝 开发计划
 
 ### 已完成 ✅
@@ -288,20 +373,24 @@ scheduler:
 - [x] 定时任务调度
 - [x] React 前端框架
 - [x] ETF 配置管理页面
+- [x] ETF 实时数据 API
+- [x] 投资组合分析功能
 - [x] Docker 容器化
+- [x] 标准库 slog 替代 logrus
+- [x] 移除 Gin 依赖，使用标准库 HTTP
+- [x] 前端 API 集成（替换 mock 数据）
 
 ### 进行中 🚧
 - [ ] ETF 持仓数据获取
 - [ ] ETF 行情数据展示
-- [ ] K线图表组件
-- [ ] 技术指标计算
+- [ ] K线图表组件优化
+- [ ] 技术指标计算优化
 
 ### 待开发 📋
 - [ ] ETF 持仓数据可视化
 - [ ] 行业分布图表
 - [ ] 地区分布图表
-- [ ] ETF 对比分析
-- [ ] 投资组合分析
+- [ ] ETF 对比分析页面
 - [ ] 数据导出功能
 - [ ] 用户权限控制
 - [ ] 邮件通知功能
