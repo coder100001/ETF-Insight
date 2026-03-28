@@ -169,21 +169,21 @@ const StockCard: React.FC<StockCardProps> = ({ etf, onClick, onDetailClick }) =>
         </InfoItem>
         <InfoItem>
           <InfoLabel>年化波动率</InfoLabel>
-          <InfoValue>{etf.volatility.toFixed(2)}%</InfoValue>
+          <InfoValue>{etf.volatility?.toFixed(2) ?? '-'}%</InfoValue>
         </InfoItem>
         <InfoItem>
           <InfoLabel>年度收益</InfoLabel>
-          <InfoValue $color={etf.total_return >= 0 ? theme.colors.up : theme.colors.down}>
-            {etf.total_return >= 0 ? '+' : ''}{etf.total_return.toFixed(2)}%
+          <InfoValue $color={(etf.total_return ?? 0) >= 0 ? theme.colors.up : theme.colors.down}>
+            {(etf.total_return ?? 0) >= 0 ? '+' : ''}{etf.total_return?.toFixed(2) ?? '-'}%
           </InfoValue>
         </InfoItem>
         <InfoItem>
           <InfoLabel>夏普比率</InfoLabel>
-          <InfoValue>{etf.sharpe_ratio.toFixed(2)}</InfoValue>
+          <InfoValue>{etf.sharpe_ratio?.toFixed(2) ?? '-'}</InfoValue>
         </InfoItem>
       </InfoGrid>
 
-      <StrategyTag>{etf.info.strategy}</StrategyTag>
+      <StrategyTag>{etf.info?.strategy ?? '-'}</StrategyTag>
 
       <ActionButton onClick={handleDetailClick}>
         <LineChartOutlined />

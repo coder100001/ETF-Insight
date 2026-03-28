@@ -13,32 +13,32 @@ import (
 
 // CacheService 缓存服务
 type CacheService struct {
-	memory    *cache.Cache
-	cfg       *config.CacheConfig
+	memory *cache.Cache
+	cfg    *config.CacheConfig
 }
 
 // RealtimeData 实时数据
 type RealtimeData struct {
-	Symbol             string  `json:"symbol"`
-	Name               string  `json:"name"`
-	CurrentPrice       float64 `json:"current_price"`
-	PreviousClose      float64 `json:"previous_close"`
-	OpenPrice          float64 `json:"open_price"`
-	DayHigh            float64 `json:"day_high"`
-	DayLow             float64 `json:"day_low"`
-	Volume             int64   `json:"volume"`
-	Change             float64 `json:"change"`
-	ChangePercent      float64 `json:"change_percent"`
-	MarketCap          int64   `json:"market_cap"`
-	DividendYield      float64 `json:"dividend_yield"`
-	FiftyTwoWeekHigh   float64 `json:"fifty_two_week_high"`
-	FiftyTwoWeekLow    float64 `json:"fifty_two_week_low"`
-	AverageVolume      int64   `json:"average_volume"`
-	Beta               float64 `json:"beta"`
-	PERatio            float64 `json:"pe_ratio"`
-	Currency           string  `json:"currency"`
-	DataSource         string  `json:"data_source"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	Symbol           string    `json:"symbol"`
+	Name             string    `json:"name"`
+	CurrentPrice     float64   `json:"current_price"`
+	PreviousClose    float64   `json:"previous_close"`
+	OpenPrice        float64   `json:"open_price"`
+	DayHigh          float64   `json:"day_high"`
+	DayLow           float64   `json:"day_low"`
+	Volume           int64     `json:"volume"`
+	Change           float64   `json:"change"`
+	ChangePercent    float64   `json:"change_percent"`
+	MarketCap        int64     `json:"market_cap"`
+	DividendYield    float64   `json:"dividend_yield"`
+	FiftyTwoWeekHigh float64   `json:"fifty_two_week_high"`
+	FiftyTwoWeekLow  float64   `json:"fifty_two_week_low"`
+	AverageVolume    int64     `json:"average_volume"`
+	Beta             float64   `json:"beta"`
+	PERatio          float64   `json:"pe_ratio"`
+	Currency         string    `json:"currency"`
+	DataSource       string    `json:"data_source"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // NewCacheService 创建新的缓存服务

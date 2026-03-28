@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Space, Switch, Tag } from 'antd';
+import { Card, Table, Button, Space, Switch, Tag, type TableColumnsType } from 'antd';
 import { SettingOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
@@ -115,7 +115,7 @@ const ETFConfigPage: React.FC = () => {
     );
   };
 
-  const columns = [
+  const columns: TableColumnsType<ETFConfig> = [
     {
       title: '代码',
       dataIndex: 'symbol',
@@ -131,7 +131,7 @@ const ETFConfigPage: React.FC = () => {
       title: '状态',
       dataIndex: 'is_active',
       key: 'is_active',
-      align: 'center' as const,
+      align: 'center',
       render: (is_active: boolean, record: ETFConfig) => (
         <Switch
           checked={is_active}
@@ -143,7 +143,7 @@ const ETFConfigPage: React.FC = () => {
       title: '自动更新',
       dataIndex: 'auto_update',
       key: 'auto_update',
-      align: 'center' as const,
+      align: 'center',
       render: (auto_update: boolean, record: ETFConfig) => (
         <Switch
           checked={auto_update}
@@ -155,25 +155,25 @@ const ETFConfigPage: React.FC = () => {
       title: '更新频率',
       dataIndex: 'update_frequency',
       key: 'update_frequency',
-      align: 'center' as const,
+      align: 'center',
       render: (freq: string) => <Tag>{freq}</Tag>,
     },
     {
       title: '数据源',
       dataIndex: 'data_source',
       key: 'data_source',
-      align: 'center' as const,
+      align: 'center',
     },
     {
       title: '最后更新',
       dataIndex: 'last_updated',
       key: 'last_updated',
-      align: 'center' as const,
+      align: 'center',
     },
     {
       title: '操作',
       key: 'action',
-      align: 'center' as const,
+      align: 'center',
       render: () => (
         <Space>
           <Button size="small" icon={<ReloadOutlined />}>更新</Button>
@@ -196,7 +196,7 @@ const ETFConfigPage: React.FC = () => {
       <Card style={{ boxShadow: theme.shadows.card }}>
         <StyledTable
           dataSource={configs}
-          columns={columns as any}
+          columns={columns}
           rowKey="id"
           pagination={false}
         />

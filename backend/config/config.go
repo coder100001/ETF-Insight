@@ -30,38 +30,36 @@ type DatabaseConfig struct {
 	DSN string `yaml:"dsn"` // SQLite 数据库文件路径
 }
 
-
-
 // ETFConfig ETF相关配置
 type ETFConfig struct {
-	DefaultSymbols []string          `yaml:"default_symbols"`
-	DataFetch      DataFetchConfig   `yaml:"data_fetch"`
-	Cache          CacheConfig       `yaml:"cache"`
+	DefaultSymbols []string        `yaml:"default_symbols"`
+	DataFetch      DataFetchConfig `yaml:"data_fetch"`
+	Cache          CacheConfig     `yaml:"cache"`
 }
 
 // DataFetchConfig 数据获取配置
 type DataFetchConfig struct {
-	RetryTimes       int           `yaml:"retry_times"`
-	RetryDelay       time.Duration `yaml:"retry_delay"`
-	RequestTimeout   time.Duration `yaml:"request_timeout"`
-	RateLimitDelay   time.Duration `yaml:"rate_limit_delay"`
-	MaxWorkers       int           `yaml:"max_workers"`
+	RetryTimes     int           `yaml:"retry_times"`
+	RetryDelay     time.Duration `yaml:"retry_delay"`
+	RequestTimeout time.Duration `yaml:"request_timeout"`
+	RateLimitDelay time.Duration `yaml:"rate_limit_delay"`
+	MaxWorkers     int           `yaml:"max_workers"`
 }
 
 // CacheConfig 缓存配置
 type CacheConfig struct {
-	RealtimeTTL    time.Duration `yaml:"realtime_ttl"`
-	HistoricalTTL  time.Duration `yaml:"historical_ttl"`
-	MetricsTTL     time.Duration `yaml:"metrics_ttl"`
-	ComparisonTTL  time.Duration `yaml:"comparison_ttl"`
+	RealtimeTTL   time.Duration `yaml:"realtime_ttl"`
+	HistoricalTTL time.Duration `yaml:"historical_ttl"`
+	MetricsTTL    time.Duration `yaml:"metrics_ttl"`
+	ComparisonTTL time.Duration `yaml:"comparison_ttl"`
 }
 
 // ScheduleConfig 定时任务配置
 type ScheduleConfig struct {
-	DailyUpdateTime    string `yaml:"daily_update_time"`
-	MarketCloseUpdate  string `yaml:"market_close_update"`
-	Timezone           string `yaml:"timezone"`
-	ExchangeRateTime   string `yaml:"exchange_rate_time"`
+	DailyUpdateTime   string `yaml:"daily_update_time"`
+	MarketCloseUpdate string `yaml:"market_close_update"`
+	Timezone          string `yaml:"timezone"`
+	ExchangeRateTime  string `yaml:"exchange_rate_time"`
 }
 
 // LogConfig 日志配置
