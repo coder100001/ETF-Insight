@@ -1,0 +1,437 @@
+openapi: 3.0.3
+info:
+  title: ETF-Insight API
+  description: ETF 数据管理与分析平台 API
+  version: 1.0.0
+  contact:
+    name: ETF-Insight Team
+    email: coder100001@gmail.com
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发服务器
+
+tags:
+  - name: ETF
+    description: ETF 数据相关接口
+  - name: 投资组合
+    description: 投资组合分析接口
+  - name: 汇率
+    description: 汇率管理接口
+  - name: 配置
+    description: ETF 配置管理接口
+
+paths:
+  /health:
+    get:
+      tags:
+        - 系统
+      summary: 健康检查
+      description: 检查服务是否正常运行
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/etf/list:
+    get:
+      tags:
+        - ETF
+      summary: 获取 ETF 列表
+      description: 获取所有 ETF 列表，包含实时数据
+      responses:
+        '200':
+          description: 成功返回 ETF 列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ETF'
+
+  /api/etf/comparison:
+    get:
+      tags:
+        - ETF
+      summary: 获取 ETF 对比数据
+      description: 获取用于对比的 ETF 数据
+      responses:
+        '200':
+          description: 成功返回对比数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ETFComparison'
+
+  /api/etf/{symbol}/realtime:
+    get:
+      tags:
+        - ETF
+      summary: 获取 ETF 实时行情
+      description: 获取指定 ETF 的实时行情数据
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: ETF 代码
+          schema:
+            type: string
+            example: SCHD
+      responses:
+        '200':
+          description: 成功返回实时行情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ETFRealtime'
+
+  /api/etf/portfolio:
+    post:
+      tags:
+        - 投资组合
+      summary: 分析投资组合
+      description: 计算投资组合的收益、股息、税后收益等指标
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioRequest'
+      responses:
+        '200':
+          description: 成功返回分析结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/PortfolioAnalysis'
+
+  /api/exchange-rates:
+    get:
+      tags:
+        - 汇率
+      summary: 获取所有汇率
+      description: 获取所有汇率数据
+      responses:
+        '200':
+          description: 成功返回汇率数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExchangeRate'
+
+  /api/etf-configs:
+    get:
+      tags:
+        - 配置
+      summary: 获取所有 ETF 配置
+      description: 获取所有 ETF 配置列表
+      responses:
+        '200':
+          description: 成功返回配置列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ETFConfig'
+
+components:
+  schemas:
+    ETF:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: SCHD
+        name:
+          type: string
+          example: Schwab US Dividend Equity ETF
+        market:
+          type: string
+          example: US
+        category:
+          type: string
+          example: 股息
+        current_price:
+          type: number
+          format: float
+          example: 30.44
+        change:
+          type: number
+          format: float
+          example: -1.23
+        change_percent:
+          type: number
+          format: float
+          example: -3.88
+        dividend_yield:
+          type: number
+          format: float
+          example: 3.45
+
+    ETFComparison:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: QQQ
+        name:
+          type: string
+          example: Invesco QQQ Trust
+        price:
+          type: number
+          format: float
+          example: 385.20
+        change:
+          type: number
+          format: float
+          example: 2.5
+        yield:
+          type: number
+          format: float
+          example: 0.56
+
+    ETFRealtime:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: SCHD
+        name:
+          type: string
+          example: Schwab US Dividend Equity ETF
+        current_price:
+          type: number
+          format: float
+          example: 30.44
+        previous_close:
+          type: number
+          format: float
+          example: 31.67
+        change:
+          type: number
+          format: float
+          example: -1.23
+        change_percent:
+          type: number
+          format: float
+          example: -3.88
+        open_price:
+          type: number
+          format: float
+          example: 30.35
+        day_high:
+          type: number
+          format: float
+          example: 30.59
+        day_low:
+          type: number
+          format: float
+          example: 30.20
+        volume:
+          type: integer
+          format: int64
+          example: 8500000
+        dividend_yield:
+          type: number
+          format: float
+          example: 3.45
+
+    PortfolioRequest:
+      type: object
+      required:
+        - allocation
+        - total_investment
+        - tax_rate
+      properties:
+        allocation:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+          example:
+            SCHD: 40
+            SPYD: 30
+            JEPQ: 30
+        total_investment:
+          type: number
+          format: float
+          example: 100000
+        tax_rate:
+          type: number
+          format: float
+          example: 0.1
+
+    PortfolioAnalysis:
+      type: object
+      properties:
+        total_value:
+          type: number
+          format: float
+          example: 108450.5
+        total_return:
+          type: number
+          format: float
+          example: 8450.5
+        total_return_pct:
+          type: number
+          format: float
+          example: 8.45
+        annual_dividend:
+          type: number
+          format: float
+          example: 4850.25
+        dividend_yield:
+          type: number
+          format: float
+          example: 4.85
+        tax_rate:
+          type: number
+          format: float
+          example: 10
+        after_tax_return:
+          type: number
+          format: float
+          example: 12815.73
+        holdings:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioHolding'
+
+    PortfolioHolding:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: SCHD
+        name:
+          type: string
+          example: Schwab US Dividend Equity ETF
+        weight:
+          type: number
+          format: float
+          example: 40
+        value:
+          type: number
+          format: float
+          example: 40000
+        current_price:
+          type: number
+          format: float
+          example: 30.44
+        shares:
+          type: number
+          format: float
+          example: 1314.06
+        current_value:
+          type: number
+          format: float
+          example: 40000
+        capital_gain:
+          type: number
+          format: float
+          example: 0
+        capital_gain_percent:
+          type: number
+          format: float
+          example: 0
+        total_return:
+          type: number
+          format: float
+          example: 12.5
+        volatility:
+          type: number
+          format: float
+          example: 15.2
+        dividend_yield:
+          type: number
+          format: float
+          example: 3.45
+        annual_dividend_before_tax:
+          type: number
+          format: float
+          example: 1380
+        annual_dividend_after_tax:
+          type: number
+          format: float
+          example: 1242
+
+    ExchangeRate:
+      type: object
+      properties:
+        from:
+          type: string
+          example: USD
+        to:
+          type: string
+          example: CNY
+        rate:
+          type: number
+          format: float
+          example: 7.25
+
+    ETFConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        symbol:
+          type: string
+          example: SCHD
+        name:
+          type: string
+          example: Schwab US Dividend Equity ETF
+        market:
+          type: string
+          example: US
+        status:
+          type: integer
+          example: 1
