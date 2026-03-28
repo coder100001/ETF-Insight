@@ -11,12 +11,15 @@ export interface ETFData {
   low_price: number;
   volume: number;
   dividend_yield?: number;
-  volatility: number;
-  total_return: number;
-  max_drawdown: number;
-  sharpe_ratio: number;
-  expense_ratio: number;
-  info: {
+  volatility?: number;
+  total_return?: number;
+  max_drawdown?: number;
+  sharpe_ratio?: number;
+  expense_ratio?: number;
+  focus?: string;
+  strategy?: string;
+  description?: string;
+  info?: {
     focus: string;
     strategy: string;
     description?: string;
@@ -60,6 +63,30 @@ export interface PortfolioResult {
     volatility: number;
     sharpe_ratio: number;
   };
+}
+
+// 投资组合分析（API返回类型）
+export interface PortfolioAnalysisResult {
+  total_value: number;
+  total_return: number;
+  total_return_pct: number;
+  annual_dividend: number;
+  dividend_yield: number;
+  tax_rate: number;
+  after_tax_return: number;
+  holdings: PortfolioHolding[];
+}
+
+// 投资组合配置
+export interface PortfolioConfig {
+  id: number;
+  name: string;
+  description?: string;
+  allocation: Record<string, number>;
+  total_investment: number;
+  status: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // 预测数据
@@ -139,7 +166,7 @@ export interface ExchangeRate {
 export interface ChartDataPoint {
   date: string;
   value: number;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 }
 
 // 菜单项

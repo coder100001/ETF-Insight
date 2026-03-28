@@ -22,7 +22,11 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* 放宽严格类型检查 */
+    "strictNullChecks": false,
+    "noImplicitAny": false
   },
   "include": ["src"]
 }

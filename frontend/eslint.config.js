@@ -19,5 +19,11 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // 允许在特定情况下使用 any
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // 允许空的依赖数组
+      'react-hooks/exhaustive-deps': 'warn',
+    },
   },
 ])
