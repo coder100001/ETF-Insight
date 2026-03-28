@@ -2,111 +2,46 @@ package services
 
 import (
 	"testing"
+	"time"
+
+	"etf-insight/config"
+	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-type MockCacheService struct {
-	mock.Mock
-}
+func TestAnalyzePortfolio_Basic(t *testing.T) {
+	// 初始化日志
+	utils.InitLogger("warn")
 
-func (m *MockCacheService) GetRealtimeData(symbol string) (*RealtimeData, error) {
-	args := m.Called(symbol)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
+	// 创建测试数据
+	cacheCfg := &config.CacheConfig{
+		RealtimeTTL:   5 * time.Minute,
+		HistoricalTTL: 24 * time.Hour,
+		MetricsTTL:    1 * time.Hour,
+		ComparisonTTL: 30 * time.Minute,
 	}
-	return args.Get(0).(*RealtimeData), args.Error(1)
-}
+	mockCache := NewCacheService(cacheCfg)
+	defer mockCache.Close()
 
-func (m *MockCacheService) SetRealtimeData(symbol string, data *RealtimeData) {
-	m.Called(symbol, data)
-}
-
-func (m *MockCacheService) Close() {
-	m.Called()
-}
-
-func (m *MockCacheService) GetCacheStats() map[string]interface{} {
-	args := m.Called()
-	return args.Get(0).(map[string]interface{})
-}
-
-func (m *MockCacheService) GetRealtimeDataJSON(symbol string) ([]byte, error) {
-	args := m.Called(symbol)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockCacheService) GetHistoricalData(symbol string, period string) ([]byte, error) {
-	args := m.Called(symbol, period)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockCacheService) SetHistoricalData(symbol string, period string, data []byte) {
-	m.Called(symbol, period, data)
-}
-
-func (m *MockCacheService) GetMetrics(symbol string, period string) ([]byte, error) {
-	args := m.Called(symbol, period)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockCacheService) SetMetrics(symbol string, period string, data []byte) {
-	m.Called(symbol, period, data)
-}
-
-func (m *MockCacheService) GetComparison(symbols []string, period string) ([]byte, error) {
-	args := m.Called(symbols, period)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockCacheService) SetComparison(symbols []string, period string, data []byte) {
-	m.Called(symbols, period, data)
-}
-
-type MockExchangeRateService struct {
-	mock.Mock
-}
-
-func (m *MockExchangeRateService) GetRate(from, to string) float64 {
-	args := m.Called(from, to)
-	return args.Get(0).(float64)
-}
-
-func TestAnalyzePortfolio(t *testing.T) {
-	mockCache := new(MockCacheService)
-	mockExchange := new(MockExchangeRateService)
-
-	service := NewETFAnalysisService(mockCache, mockExchange)
-
-	mockCache.On("GetRealtimeData", "SCHD").Return(&RealtimeData{
+	// 添加模拟数据
+	mockCache.SetRealtimeData("SCHD", &RealtimeData{
 		Symbol:        "SCHD",
 		Name:          "Schwab US Dividend Equity ETF",
 		CurrentPrice:  30.44,
 		DividendYield: 3.45,
-	}, nil)
+	})
 
-	mockCache.On("GetRealtimeData", "SPYD").Return(&RealtimeData{
+	mockCache.SetRealtimeData("SPYD", &RealtimeData{
 		Symbol:        "SPYD",
 		Name:          "SPDR S&P 500 High Dividend ETF",
 		CurrentPrice:  47.85,
 		DividendYield: 4.12,
-	}, nil)
+	})
 
-	mockCache.On("Close").Return()
+	mockExchange := NewExchangeRateService()
+	service := NewETFAnalysisService(mockCache, mockExchange)
 
 	allocation := map[string]float64{
 		"SCHD": 40,
@@ -121,24 +56,29 @@ func TestAnalyzePortfolio(t *testing.T) {
 	assert.NotNil(t, result)
 	assert.True(t, result.TotalValue.Equal(decimal.NewFromInt(100000)))
 	assert.Equal(t, 2, len(result.Holdings))
-
-	mockCache.AssertExpectations(t)
 }
 
 func TestAnalyzePortfolio_TaxCalculation(t *testing.T) {
-	mockCache := new(MockCacheService)
-	mockExchange := new(MockExchangeRateService)
+	utils.InitLogger("warn")
 
-	service := NewETFAnalysisService(mockCache, mockExchange)
+	cacheCfg := &config.CacheConfig{
+		RealtimeTTL:   5 * time.Minute,
+		HistoricalTTL: 24 * time.Hour,
+		MetricsTTL:    1 * time.Hour,
+		ComparisonTTL: 30 * time.Minute,
+	}
+	mockCache := NewCacheService(cacheCfg)
+	defer mockCache.Close()
 
-	mockCache.On("GetRealtimeData", "SCHD").Return(&RealtimeData{
+	mockCache.SetRealtimeData("SCHD", &RealtimeData{
 		Symbol:        "SCHD",
 		Name:          "Schwab US Dividend Equity ETF",
 		CurrentPrice:  30.44,
 		DividendYield: 3.45,
-	}, nil)
+	})
 
-	mockCache.On("Close").Return()
+	mockExchange := NewExchangeRateService()
+	service := NewETFAnalysisService(mockCache, mockExchange)
 
 	allocation := map[string]float64{
 		"SCHD": 100,
@@ -156,14 +96,21 @@ func TestAnalyzePortfolio_TaxCalculation(t *testing.T) {
 
 	assert.True(t, result.AnnualDividendBeforeTax.Equal(expectedDividendBeforeTax))
 	assert.True(t, result.AnnualDividendAfterTax.Equal(expectedDividendAfterTax))
-
-	mockCache.AssertExpectations(t)
 }
 
 func TestAnalyzePortfolio_EmptyAllocation(t *testing.T) {
-	mockCache := new(MockCacheService)
-	mockExchange := new(MockExchangeRateService)
+	utils.InitLogger("warn")
 
+	cacheCfg := &config.CacheConfig{
+		RealtimeTTL:   5 * time.Minute,
+		HistoricalTTL: 24 * time.Hour,
+		MetricsTTL:    1 * time.Hour,
+		ComparisonTTL: 30 * time.Minute,
+	}
+	mockCache := NewCacheService(cacheCfg)
+	defer mockCache.Close()
+
+	mockExchange := NewExchangeRateService()
 	service := NewETFAnalysisService(mockCache, mockExchange)
 
 	allocation := map[string]float64{}
@@ -178,19 +125,26 @@ func TestAnalyzePortfolio_EmptyAllocation(t *testing.T) {
 }
 
 func TestAnalyzePortfolio_DefaultTaxRate(t *testing.T) {
-	mockCache := new(MockCacheService)
-	mockExchange := new(MockExchangeRateService)
+	utils.InitLogger("warn")
 
-	service := NewETFAnalysisService(mockCache, mockExchange)
+	cacheCfg := &config.CacheConfig{
+		RealtimeTTL:   5 * time.Minute,
+		HistoricalTTL: 24 * time.Hour,
+		MetricsTTL:    1 * time.Hour,
+		ComparisonTTL: 30 * time.Minute,
+	}
+	mockCache := NewCacheService(cacheCfg)
+	defer mockCache.Close()
 
-	mockCache.On("GetRealtimeData", "SCHD").Return(&RealtimeData{
+	mockCache.SetRealtimeData("SCHD", &RealtimeData{
 		Symbol:        "SCHD",
 		Name:          "Schwab US Dividend Equity ETF",
 		CurrentPrice:  30.44,
 		DividendYield: 3.45,
-	}, nil)
+	})
 
-	mockCache.On("Close").Return()
+	mockExchange := NewExchangeRateService()
+	service := NewETFAnalysisService(mockCache, mockExchange)
 
 	allocation := map[string]float64{
 		"SCHD": 100,
@@ -203,6 +157,61 @@ func TestAnalyzePortfolio_DefaultTaxRate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.True(t, result.TaxRate.Equal(decimal.NewFromFloat(0.10)))
+}
 
-	mockCache.AssertExpectations(t)
+func TestAnalyzePortfolio_MultipleHoldings(t *testing.T) {
+	utils.InitLogger("warn")
+
+	cacheCfg := &config.CacheConfig{
+		RealtimeTTL:   5 * time.Minute,
+		HistoricalTTL: 24 * time.Hour,
+		MetricsTTL:    1 * time.Hour,
+		ComparisonTTL: 30 * time.Minute,
+	}
+	mockCache := NewCacheService(cacheCfg)
+	defer mockCache.Close()
+
+	mockCache.SetRealtimeData("SCHD", &RealtimeData{
+		Symbol:        "SCHD",
+		Name:          "Schwab US Dividend Equity ETF",
+		CurrentPrice:  30.44,
+		DividendYield: 3.45,
+	})
+
+	mockCache.SetRealtimeData("SPYD", &RealtimeData{
+		Symbol:        "SPYD",
+		Name:          "SPDR S&P 500 High Dividend ETF",
+		CurrentPrice:  47.85,
+		DividendYield: 4.12,
+	})
+
+	mockCache.SetRealtimeData("JEPQ", &RealtimeData{
+		Symbol:        "JEPQ",
+		Name:          "JPMorgan Nasdaq Equity Premium Income ETF",
+		CurrentPrice:  57.20,
+		DividendYield: 11.2,
+	})
+
+	mockExchange := NewExchangeRateService()
+	service := NewETFAnalysisService(mockCache, mockExchange)
+
+	allocation := map[string]float64{
+		"SCHD": 40,
+		"SPYD": 30,
+		"JEPQ": 30,
+	}
+	totalInvestment := decimal.NewFromInt(100000)
+	taxRate := decimal.NewFromFloat(0.10)
+
+	result, err := service.AnalyzePortfolio(allocation, totalInvestment, taxRate)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, 3, len(result.Holdings))
+	assert.True(t, result.TotalValue.Equal(decimal.NewFromInt(100000)))
+
+	// 验证加权股息率
+	weightedYield := result.WeightedDividendYield.InexactFloat64()
+	expectedYield := 3.45*0.4 + 4.12*0.3 + 11.2*0.3
+	assert.InDelta(t, expectedYield, weightedYield, 0.01)
 }

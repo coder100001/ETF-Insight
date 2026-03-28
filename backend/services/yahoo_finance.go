@@ -34,26 +34,26 @@ func NewYahooFinanceClient() *YahooFinanceClient {
 type QuoteResponse struct {
 	QuoteResponse struct {
 		Result []struct {
-			Symbol             string  `json:"symbol"`
-			ShortName          string  `json:"shortName"`
-			LongName           string  `json:"longName"`
-			RegularMarketPrice float64 `json:"regularMarketPrice"`
-			RegularMarketOpen  float64 `json:"regularMarketOpen"`
-			RegularMarketDayHigh float64 `json:"regularMarketDayHigh"`
-			RegularMarketDayLow  float64 `json:"regularMarketDayLow"`
-			RegularMarketVolume  int64   `json:"regularMarketVolume"`
-			PreviousClose        float64 `json:"regularMarketPreviousClose"`
-			MarketCap            int64   `json:"marketCap"`
-			FiftyTwoWeekHigh     float64 `json:"fiftyTwoWeekHigh"`
-			FiftyTwoWeekLow      float64 `json:"fiftyTwoWeekLow"`
-			AverageVolume        int64   `json:"averageVolume"`
-			Beta                 float64 `json:"beta"`
-			TrailingPE           float64 `json:"trailingPE"`
-			DividendYield        float64 `json:"dividendYield"`
+			Symbol                     string  `json:"symbol"`
+			ShortName                  string  `json:"shortName"`
+			LongName                   string  `json:"longName"`
+			RegularMarketPrice         float64 `json:"regularMarketPrice"`
+			RegularMarketOpen          float64 `json:"regularMarketOpen"`
+			RegularMarketDayHigh       float64 `json:"regularMarketDayHigh"`
+			RegularMarketDayLow        float64 `json:"regularMarketDayLow"`
+			RegularMarketVolume        int64   `json:"regularMarketVolume"`
+			PreviousClose              float64 `json:"regularMarketPreviousClose"`
+			MarketCap                  int64   `json:"marketCap"`
+			FiftyTwoWeekHigh           float64 `json:"fiftyTwoWeekHigh"`
+			FiftyTwoWeekLow            float64 `json:"fiftyTwoWeekLow"`
+			AverageVolume              int64   `json:"averageVolume"`
+			Beta                       float64 `json:"beta"`
+			TrailingPE                 float64 `json:"trailingPE"`
+			DividendYield              float64 `json:"dividendYield"`
 			TrailingAnnualDividendRate float64 `json:"trailingAnnualDividendRate"`
-			Currency             string  `json:"currency"`
-			Exchange             string  `json:"exchange"`
-			QuoteType            string  `json:"quoteType"`
+			Currency                   string  `json:"currency"`
+			Exchange                   string  `json:"exchange"`
+			QuoteType                  string  `json:"quoteType"`
 		} `json:"result"`
 		Error interface{} `json:"error"`
 	} `json:"quoteResponse"`
@@ -97,25 +97,25 @@ type HistoricalData struct {
 
 // QuoteData 实时报价数据
 type QuoteData struct {
-	Symbol             string
-	Name               string
-	CurrentPrice       float64
-	OpenPrice          float64
-	DayHigh            float64
-	DayLow             float64
-	Volume             int64
-	PreviousClose      float64
-	Change             float64
-	ChangePercent      float64
-	MarketCap          int64
-	FiftyTwoWeekHigh   float64
-	FiftyTwoWeekLow    float64
-	AverageVolume      int64
-	Beta               float64
-	PERatio            float64
-	DividendYield      float64
-	Currency           string
-	Exchange           string
+	Symbol           string
+	Name             string
+	CurrentPrice     float64
+	OpenPrice        float64
+	DayHigh          float64
+	DayLow           float64
+	Volume           int64
+	PreviousClose    float64
+	Change           float64
+	ChangePercent    float64
+	MarketCap        int64
+	FiftyTwoWeekHigh float64
+	FiftyTwoWeekLow  float64
+	AverageVolume    int64
+	Beta             float64
+	PERatio          float64
+	DividendYield    float64
+	Currency         string
+	Exchange         string
 }
 
 // HistoricalPrice 历史价格数据
@@ -136,9 +136,9 @@ func (c *YahooFinanceClient) GetQuotes(symbols []string) ([]QuoteData, error) {
 
 	symbolsStr := strings.Join(symbols, ",")
 	encodedSymbols := url.QueryEscape(symbolsStr)
-	
+
 	url := fmt.Sprintf("%s/v7/finance/quote?symbols=%s", c.baseURL, encodedSymbols)
-	
+
 	resp, err := c.makeRequest(url)
 	if err != nil {
 		return nil, err

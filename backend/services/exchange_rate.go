@@ -47,7 +47,7 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
 		fromCurrency, toCurrency,
 	).Order("rate_date DESC").First(&rate)
 
-	if result.Error == nil {
+	if result.Error() == nil {
 		return rate.Rate.InexactFloat64()
 	}
 
