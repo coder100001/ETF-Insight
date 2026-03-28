@@ -388,6 +388,19 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
 - [x] 代码格式自动修复
 - [x] Go vet 静态分析
 
+### 第二阶段优化 ✅ (2026-03-29)
+- [x] 数据可视化增强
+  - [x] 持仓分布饼图（HoldingPieChart）
+  - [x] 行业分布柱状图（SectorBarChart）
+  - [x] ETF 对比雷达图（ComparisonRadarChart）
+- [x] 高级搜索和筛选功能（ETFFilter）
+  - [x] 关键词搜索
+  - [x] 策略筛选
+  - [x] 股息率范围筛选
+  - [x] 风险等级筛选
+  - [x] 多维度排序
+- [x] 响应式设计优化
+
 ### 进行中 🚧
 - [ ] ETF 持仓数据获取
 - [ ] ETF 行情数据展示
