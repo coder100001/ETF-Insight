@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Card, Table, Progress, Badge } from 'antd';
 import { LineChartOutlined, ProjectOutlined } from '@ant-design/icons';
+import * as echarts from 'echarts';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import type { WorkflowStat } from '../types';
@@ -61,14 +62,9 @@ const StyledCard = styled(Card)`
   }
 `;
 
-const ChartPlaceholder = styled.div`
+const ChartWrapper = styled.div`
   height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${theme.colors.background};
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.textSecondary};
+  width: 100%;
 `;
 
 // 模拟数据
@@ -79,23 +75,78 @@ const mockWorkflowStats: WorkflowStat[] = [
   { name: '数据备份', total: 30, success: 22, failed: 8, success_rate: 73.3, status: 'danger' },
 ];
 
-// const mockDailyStats: DailyStat = {
-//   '2024-03-22': { total: 12, success: 11, failed: 1 },
-//   '2024-03-23': { total: 15, success: 14, failed: 1 },
-//   '2024-03-24': { total: 8, success: 7, failed: 1 },
-//   '2024-03-25': { total: 18, success: 16, failed: 2 },
-//   '2024-03-26': { total: 20, success: 19, failed: 1 },
-//   '2024-03-27': { total: 14, success: 13, failed: 1 },
-//   '2024-03-28': { total: 10, success: 9, failed: 1 },
-// };
+const mockDailyStats = [
+  { date: '03-22', total: 12, success: 11, failed: 1 },
+  { date: '03-23', total: 15, success: 14, failed: 1 },
+  { date: '03-24', total: 8, success: 7, failed: 1 },
+  { date: '03-25', total: 18, success: 16, failed: 2 },
+  { date: '03-26', total: 20, success: 19, failed: 1 },
+  { date: '03-27', total: 14, success: 13, failed: 1 },
+  { date: '03-28', total: 10, success: 9, failed: 1 },
+];
 
 const Dashboard: React.FC = () => {
+  const chartRef = useRef<HTMLDivElement>(null);
   const [todayStats] = useState({
     total: 10,
     success: 9,
     failed: 1,
     running: 2,
   });
+
+  useEffect(() => {
+    if (chartRef.current) {
+      const chart = echarts.init(chartRef.current);
+      const option: echarts.EChartsOption = {
+        tooltip: {
+          trigger: 'axis',
+        },
+        legend: {
+          data: ['成功', '失败'],
+          bottom: 0,
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          top: '10%',
+          containLabel: true,
+        },
+        xAxis: {
+          type: 'category',
+          data: mockDailyStats.map(d => d.date),
+        },
+        yAxis: {
+          type: 'value',
+        },
+        series: [
+          {
+            name: '成功',
+            type: 'line',
+            smooth: true,
+            data: mockDailyStats.map(d => d.success),
+            itemStyle: { color: theme.colors.success },
+          },
+          {
+            name: '失败',
+            type: 'line',
+            smooth: true,
+            data: mockDailyStats.map(d => d.failed),
+            itemStyle: { color: theme.colors.danger },
+          },
+        ],
+      };
+      chart.setOption(option);
+
+      const handleResize = () => chart.resize();
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        chart.dispose();
+      };
+    }
+  }, []);
 
   const columns = [
     {
@@ -134,13 +185,13 @@ const Dashboard: React.FC = () => {
       key: 'status',
       align: 'center' as const,
       render: (status: string) => {
-        const statusMap: { [key: string]: { text: string; color: string } } = {
+        const statusMap: { [key: string]: { text: string; color: 'success' | 'warning' | 'error' | 'default' } } = {
           good: { text: '良好', color: 'success' },
           warning: { text: '一般', color: 'warning' },
           danger: { text: '需关注', color: 'error' },
         };
         const { text, color } = statusMap[status] || statusMap.good;
-        return <Badge status={color as any} text={text} />;
+        return <Badge status={color} text={text} />;
       },
     },
   ];
@@ -176,12 +227,7 @@ const Dashboard: React.FC = () => {
           </div>
         }
       >
-        <ChartPlaceholder>
-          <div style={{ textAlign: 'center' }}>
-            <LineChartOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-            <p>图表区域 - 需要集成 Chart.js 或 ECharts</p>
-          </div>
-        </ChartPlaceholder>
+        <ChartWrapper ref={chartRef} />
       </StyledCard>
 
       <StyledCard

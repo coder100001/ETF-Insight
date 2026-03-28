@@ -17,7 +17,99 @@ import (
 	"etf-insight/services"
 	"etf-insight/tasks"
 	"etf-insight/utils"
+
+	"github.com/shopspring/decimal"
 )
+
+// initMockData 初始化模拟数据
+func initMockData(cacheService *services.CacheService) {
+	mockData := []*services.RealtimeData{
+		{
+			Symbol:        "SCHD",
+			Name:          "Schwab US Dividend Equity ETF",
+			CurrentPrice:  30.44,
+			PreviousClose: 31.67,
+			Change:        -1.23,
+			ChangePercent: -3.88,
+			OpenPrice:     30.35,
+			DayHigh:       30.59,
+			DayLow:        30.20,
+			Volume:        8500000,
+			DividendYield: 3.45,
+		},
+		{
+			Symbol:        "SPYD",
+			Name:          "SPDR S&P 500 High Dividend ETF",
+			CurrentPrice:  47.85,
+			PreviousClose: 48.14,
+			Change:        -0.29,
+			ChangePercent: -0.60,
+			OpenPrice:     47.71,
+			DayHigh:       48.09,
+			DayLow:        47.47,
+			Volume:        6200000,
+			DividendYield: 4.12,
+		},
+		{
+			Symbol:        "JEPQ",
+			Name:          "JPMorgan Nasdaq Equity Premium Income ETF",
+			CurrentPrice:  57.20,
+			PreviousClose: 57.51,
+			Change:        -0.31,
+			ChangePercent: -0.54,
+			OpenPrice:     57.03,
+			DayHigh:       57.49,
+			DayLow:        56.74,
+			Volume:        4800000,
+			DividendYield: 11.2,
+		},
+		{
+			Symbol:        "JEPI",
+			Name:          "JPMorgan Equity Premium Income ETF",
+			CurrentPrice:  58.90,
+			PreviousClose: 59.31,
+			Change:        -0.41,
+			ChangePercent: -0.69,
+			OpenPrice:     58.72,
+			DayHigh:       59.19,
+			DayLow:        58.43,
+			Volume:        9200000,
+			DividendYield: 9.8,
+		},
+		{
+			Symbol:        "VYM",
+			Name:          "Vanguard High Dividend Yield ETF",
+			CurrentPrice:  154.50,
+			PreviousClose: 155.37,
+			Change:        -0.87,
+			ChangePercent: -0.56,
+			OpenPrice:     154.04,
+			DayHigh:       155.27,
+			DayLow:        153.26,
+			Volume:        3800000,
+			DividendYield: 2.95,
+		},
+		{
+			Symbol:        "QQQ",
+			Name:          "Invesco QQQ Trust",
+			CurrentPrice:  385.20,
+			PreviousClose: 380.15,
+			Change:        5.05,
+			ChangePercent: 1.33,
+			OpenPrice:     381.50,
+			DayHigh:       386.20,
+			DayLow:        380.10,
+			Volume:        52000000,
+			DividendYield: 0.65,
+		},
+	}
+
+	for _, data := range mockData {
+		cacheService.SetRealtimeData(data.Symbol, data)
+	}
+
+	utils.Info("Mock data initialized")
+}
 
 func main() {
 	var (
@@ -50,6 +142,9 @@ func main() {
 
 	exchangeService := services.NewExchangeRateService()
 	analysisService := services.NewETFAnalysisService(cacheService, exchangeService)
+
+	// 预填充模拟数据
+	initMockData(cacheService)
 
 	// 初始化调度器
 	scheduler := tasks.NewScheduler(&cfg.Schedule, cacheService, analysisService, exchangeService)
@@ -92,16 +187,71 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	// API路由 - ETF列表
+	// API 路由 - ETF 列表
 	mux.HandleFunc("/api/etf/list", func(w http.ResponseWriter, r *http.Request) {
+		// 获取所有启用的 ETF 配置
+		var etfConfigs []models.ETFConfig
+		if err := models.DB.Where("status = ?", 1).Find(&etfConfigs).Error; err != nil {
+			etfConfigs = []models.ETFConfig{}
+		}
+
+		// 如果没有配置，使用默认的 ETF 列表
+		if len(etfConfigs) == 0 {
+			etfConfigs = []models.ETFConfig{
+				{Symbol: "QQQ", Name: "Invesco QQQ Trust", Currency: "USD"},
+				{Symbol: "SCHD", Name: "Schwab US Dividend Equity ETF", Currency: "USD"},
+				{Symbol: "VNQ", Name: "Vanguard Real Estate ETF", Currency: "USD"},
+				{Symbol: "VYM", Name: "Vanguard High Dividend Yield ETF", Currency: "USD"},
+				{Symbol: "SPYD", Name: "SPDR S&P 500 High Dividend ETF", Currency: "USD"},
+				{Symbol: "JEPQ", Name: "JPMorgan Nasdaq Equity Premium Income ETF", Currency: "USD"},
+				{Symbol: "JEPI", Name: "JPMorgan Equity Premium Income ETF", Currency: "USD"},
+			}
+		}
+
+		// 构建返回数据
+		var etfList []map[string]interface{}
+		for _, cfg := range etfConfigs {
+			// 尝试从缓存获取实时数据
+			realtimeData, err := cacheService.GetRealtimeData(cfg.Symbol)
+			if err != nil {
+				// 没有缓存数据，使用基本信息
+				etfList = append(etfList, map[string]interface{}{
+					"symbol":         cfg.Symbol,
+					"name":           cfg.Name,
+					"market":         "US",
+					"category":       "ETF",
+					"current_price":  0.0,
+					"change":         0.0,
+					"change_percent": 0.0,
+					"dividend_yield": 0.0,
+				})
+			} else {
+				// 有缓存数据，使用实时数据
+				etfList = append(etfList, map[string]interface{}{
+					"symbol":              realtimeData.Symbol,
+					"name":                realtimeData.Name,
+					"market":              "US",
+					"category":            "ETF",
+					"current_price":       realtimeData.CurrentPrice,
+					"previous_close":      realtimeData.PreviousClose,
+					"change":              realtimeData.Change,
+					"change_percent":      realtimeData.ChangePercent,
+					"open_price":          realtimeData.OpenPrice,
+					"day_high":            realtimeData.DayHigh,
+					"day_low":             realtimeData.DayLow,
+					"volume":              realtimeData.Volume,
+					"market_cap":          realtimeData.MarketCap,
+					"dividend_yield":      realtimeData.DividendYield,
+					"fifty_two_week_high": realtimeData.FiftyTwoWeekHigh,
+					"fifty_two_week_low":  realtimeData.FiftyTwoWeekLow,
+					"currency":            realtimeData.Currency,
+				})
+			}
+		}
+
 		result := map[string]interface{}{
 			"success": true,
-			"data": []map[string]interface{}{
-				{"symbol": "QQQ", "name": "Invesco QQQ Trust", "market": "US", "category": "大盘股"},
-				{"symbol": "SCHD", "name": "Schwab US Dividend Equity ETF", "market": "US", "category": "股息"},
-				{"symbol": "VNQ", "name": "Vanguard Real Estate ETF", "market": "US", "category": "REITs"},
-				{"symbol": "VYM", "name": "Vanguard High Dividend Yield ETF", "market": "US", "category": "股息"},
-			},
+			"data":    etfList,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)
@@ -260,31 +410,59 @@ func main() {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			// 使用默认数据
 			req.Allocation = map[string]float64{"QQQ": 50, "SCHD": 50}
-			req.TotalInvestment = 10000
+			req.TotalInvestment = 100000
 			req.TaxRate = 0.10
 		}
 
-		// 计算持仓
-		var holdings []map[string]interface{}
-		for symbol, weight := range req.Allocation {
-			holdings = append(holdings, map[string]interface{}{
-				"symbol": symbol,
-				"weight": weight,
-				"value":  req.TotalInvestment * weight / 100,
-			})
+		// 调用分析服务
+		portfolioResult, err := analysisService.AnalyzePortfolio(
+			req.Allocation,
+			decimal.NewFromFloat(req.TotalInvestment),
+			decimal.NewFromFloat(req.TaxRate),
+		)
+
+		if err != nil {
+			result := map[string]interface{}{
+				"success": false,
+				"message": "分析失败: " + err.Error(),
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(result)
+			return
 		}
 
 		result := map[string]interface{}{
 			"success": true,
 			"data": map[string]interface{}{
-				"total_value":      req.TotalInvestment,
-				"total_return":     req.TotalInvestment * 0.05,
-				"total_return_pct": 5.0,
-				"annual_dividend":  req.TotalInvestment * 0.025,
-				"dividend_yield":   2.5,
-				"tax_rate":         req.TaxRate,
-				"after_tax_return": req.TotalInvestment * 0.05 * (1 - req.TaxRate),
-				"holdings":         holdings,
+				"total_value":      portfolioResult.TotalValue.InexactFloat64(),
+				"total_return":     portfolioResult.TotalReturn.InexactFloat64(),
+				"total_return_pct": portfolioResult.TotalReturnPercent.InexactFloat64(),
+				"annual_dividend":  portfolioResult.AnnualDividendBeforeTax.InexactFloat64(),
+				"dividend_yield":   portfolioResult.WeightedDividendYield.InexactFloat64(),
+				"tax_rate":         portfolioResult.TaxRate.InexactFloat64(),
+				"after_tax_return": portfolioResult.TotalReturnWithDividend.InexactFloat64(),
+				"holdings": func() []map[string]interface{} {
+					h := make([]map[string]interface{}, len(portfolioResult.Holdings))
+					for i, holding := range portfolioResult.Holdings {
+						h[i] = map[string]interface{}{
+							"symbol":                     holding.Symbol,
+							"weight":                     holding.Weight.InexactFloat64(),
+							"value":                      holding.InvestmentUSD.InexactFloat64(),
+							"name":                       holding.Name,
+							"current_price":              holding.CurrentPrice.InexactFloat64(),
+							"shares":                     holding.Shares.InexactFloat64(),
+							"current_value":              holding.CurrentValueUSD.InexactFloat64(),
+							"capital_gain":               holding.CapitalGain.InexactFloat64(),
+							"capital_gain_percent":       holding.CapitalGainPercent.InexactFloat64(),
+							"total_return":               holding.TotalReturn.InexactFloat64(),
+							"volatility":                 holding.Volatility.InexactFloat64(),
+							"dividend_yield":             holding.DividendYield.InexactFloat64(),
+							"annual_dividend_before_tax": holding.AnnualDividendBeforeTax.InexactFloat64(),
+							"annual_dividend_after_tax":  holding.AnnualDividendAfterTax.InexactFloat64(),
+						}
+					}
+					return h
+				}(),
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")

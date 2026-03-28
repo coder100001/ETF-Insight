@@ -239,33 +239,38 @@ const PortfolioAnalysis: React.FC = () => {
       if (response.success && response.data) {
         // 转换后端数据为前端格式
         const backendData = response.data;
+        const annualDividendBeforeTax = backendData.annual_dividend || 0;
+        const taxRate = backendData.tax_rate || (config.tax_rate / 100);
+        const dividendTax = annualDividendBeforeTax * taxRate;
+        const annualDividendAfterTax = annualDividendBeforeTax - dividendTax;
+        
         setPortfolio({
-          total_investment: backendData.total_value || config.total_investment,
+          total_investment: config.total_investment,
           total_value: backendData.total_value || config.total_investment,
           total_return: backendData.total_return || 0,
           total_return_percent: backendData.total_return_pct || 0,
-          annual_dividend_before_tax: backendData.annual_dividend || 0,
-          annual_dividend_after_tax: (backendData.annual_dividend || 0) * (1 - config.tax_rate / 100),
-          dividend_tax: (backendData.annual_dividend || 0) * (config.tax_rate / 100),
-          tax_rate: config.tax_rate,
+          annual_dividend_before_tax: annualDividendBeforeTax,
+          annual_dividend_after_tax: annualDividendAfterTax,
+          dividend_tax: dividendTax,
+          tax_rate: taxRate * 100,
           weighted_dividend_yield: backendData.dividend_yield || 0,
-          total_return_with_dividend: (backendData.total_return || 0) + (backendData.annual_dividend || 0) * (1 - config.tax_rate / 100),
-          total_return_with_dividend_percent: ((backendData.total_return || 0) + (backendData.annual_dividend || 0) * (1 - config.tax_rate / 100)) / (backendData.total_value || config.total_investment) * 100,
-          holdings: (backendData.holdings || []).map((h: {symbol: string; weight: number; value: number}) => ({
+          total_return_with_dividend: backendData.after_tax_return || 0,
+          total_return_with_dividend_percent: (backendData.after_tax_return || 0) / config.total_investment * 100,
+          holdings: (backendData.holdings || []).map((h: any) => ({
             symbol: h.symbol,
-            name: h.symbol + ' ETF',
+            name: h.name || h.symbol + ' ETF',
             weight: h.weight,
             investment: h.value,
-            current_price: 0,
-            shares: 0,
-            current_value: h.value,
-            capital_gain: 0,
-            capital_gain_percent: 0,
-            total_return: 0,
-            volatility: 0,
-            dividend_yield: 0,
-            annual_dividend_before_tax: 0,
-            annual_dividend_after_tax: 0,
+            current_price: h.current_price || 0,
+            shares: h.shares || 0,
+            current_value: h.current_value || h.value,
+            capital_gain: h.capital_gain || 0,
+            capital_gain_percent: h.capital_gain_percent || 0,
+            total_return: h.total_return || 0,
+            volatility: h.volatility || 0,
+            dividend_yield: h.dividend_yield || 0,
+            annual_dividend_before_tax: h.annual_dividend_before_tax || 0,
+            annual_dividend_after_tax: h.annual_dividend_after_tax || 0,
           })),
         });
         message.success('计算完成');

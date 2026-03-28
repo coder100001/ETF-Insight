@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Card, Table, Badge, Button } from 'antd';
+import { Card, Table, Badge, Button, App } from 'antd';
 import { BarChartOutlined, WalletOutlined } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { etfAPI } from '../services/api';
 import type { ETFData } from '../types';
 
 const PageHeader = styled.div`
@@ -133,122 +134,74 @@ const StyledTable = styled(Table)`
   }
 `;
 
-// 模拟ETF数据
-const mockETFData: ETFData[] = [
-  {
-    symbol: 'SCHD',
-    name: 'Schwab US Dividend Equity ETF',
-    current_price: 30.44,
-    previous_close: 31.67,
-    change: -1.23,
-    change_percent: -3.88,
-    open_price: 30.35,
-    high_price: 30.59,
-    low_price: 30.20,
-    volume: 8500000,
-    dividend_yield: 3.45,
-    volatility: 15.2,
-    total_return: 12.5,
-    max_drawdown: -8.3,
-    sharpe_ratio: 1.2,
-    expense_ratio: 0.06,
-    info: {
-      focus: '美股高股息',
-      strategy: '质量因子筛选',
-    },
-  },
-  {
-    symbol: 'SPYD',
-    name: 'SPDR S&P 500 High Dividend ETF',
-    current_price: 47.85,
-    previous_close: 48.14,
-    change: -0.29,
-    change_percent: -0.60,
-    open_price: 47.71,
-    high_price: 48.09,
-    low_price: 47.47,
-    volume: 6200000,
-    dividend_yield: 4.12,
-    volatility: 16.8,
-    total_return: 8.3,
-    max_drawdown: -10.5,
-    sharpe_ratio: 0.9,
-    expense_ratio: 0.07,
-    info: {
-      focus: 'S&P高股息',
-      strategy: '股息率加权',
-    },
-  },
-  {
-    symbol: 'JEPQ',
-    name: 'JPMorgan Nasdaq Equity Premium Income ETF',
-    current_price: 57.20,
-    previous_close: 57.51,
-    change: -0.31,
-    change_percent: -0.54,
-    open_price: 57.03,
-    high_price: 57.49,
-    low_price: 56.74,
-    volume: 4800000,
-    dividend_yield: 11.2,
-    volatility: 18.5,
-    total_return: 15.8,
-    max_drawdown: -12.1,
-    sharpe_ratio: 1.1,
-    expense_ratio: 0.35,
-    info: {
-      focus: '纳斯达克备兑',
-      strategy: '期权收益增强',
-    },
-  },
-  {
-    symbol: 'JEPI',
-    name: 'JPMorgan Equity Premium Income ETF',
-    current_price: 58.90,
-    previous_close: 59.31,
-    change: -0.41,
-    change_percent: -0.69,
-    open_price: 58.72,
-    high_price: 59.19,
-    low_price: 58.43,
-    volume: 9200000,
-    dividend_yield: 9.8,
-    volatility: 14.2,
-    total_return: 11.2,
-    max_drawdown: -7.5,
-    sharpe_ratio: 1.3,
-    expense_ratio: 0.35,
-    info: {
-      focus: '美股备兑',
-      strategy: '期权收益增强',
-    },
-  },
-  {
-    symbol: 'VYM',
-    name: 'Vanguard High Dividend Yield ETF',
-    current_price: 154.50,
-    previous_close: 155.37,
-    change: -0.87,
-    change_percent: -0.56,
-    open_price: 154.04,
-    high_price: 155.27,
-    low_price: 153.26,
-    volume: 3800000,
-    dividend_yield: 2.95,
-    volatility: 13.8,
-    total_return: 9.6,
-    max_drawdown: -9.2,
-    sharpe_ratio: 1.0,
-    expense_ratio: 0.06,
-    info: {
-      focus: '美股高股息',
-      strategy: '股息率筛选',
-    },
-  },
-];
+interface ETFApiItem {
+  symbol: string;
+  name: string;
+  current_price?: number;
+  previous_close?: number;
+  change?: number;
+  change_percent?: number;
+  open_price?: number;
+  high_price?: number;
+  low_price?: number;
+  volume?: number;
+  dividend_yield?: number;
+  volatility?: number;
+  total_return?: number;
+  max_drawdown?: number;
+  sharpe_ratio?: number;
+  expense_ratio?: number;
+  focus?: string;
+  strategy?: string;
+}
 
 const ETFDashboard: React.FC = () => {
-  const [etfs] = useState<ETFData[]>(mockETFData);
+  const { message } = App.useApp();
+  const [etfs, setEtfs] = useState<ETFData[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchETFData();
+  }, []);
+
+  const fetchETFData = async () => {
+    setLoading(true);
+    try {
+      const response = await etfAPI.getList();
+      if (response.success && response.data) {
+        // 转换后端数据为前端格式
+        const formattedData: ETFData[] = response.data.map((item: ETFApiItem) => ({
+          symbol: item.symbol,
+          name: item.name,
+          current_price: item.current_price || 0,
+          previous_close: item.previous_close || 0,
+          change: item.change || 0,
+          change_percent: item.change_percent || 0,
+          open_price: item.open_price || 0,
+          high_price: item.high_price || 0,
+          low_price: item.low_price || 0,
+          volume: item.volume || 0,
+          dividend_yield: item.dividend_yield || 0,
+          volatility: item.volatility || 0,
+          total_return: item.total_return || 0,
+          max_drawdown: item.max_drawdown || 0,
+          sharpe_ratio: item.sharpe_ratio || 0,
+          expense_ratio: item.expense_ratio || 0,
+          info: {
+            focus: item.focus || '',
+            strategy: item.strategy || '',
+          },
+        }));
+        setEtfs(formattedData);
+      } else {
+        message.error('获取ETF数据失败');
+      }
+    } catch (error) {
+      message.error('获取ETF数据失败: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const comparisonColumns = [
     { title: '指标', dataIndex: 'indicator', key: 'indicator', fixed: 'left' as const },
@@ -350,7 +303,8 @@ const ETFDashboard: React.FC = () => {
 
       {/* ETF卡片列表 */}
       <ETFGrid>
-        {etfs.map(etf => (
+        {loading && <Card loading style={{ gridColumn: '1 / -1' }} />}
+        {!loading && etfs.map(etf => (
           <ETFCard
             key={etf.symbol}
             title={
