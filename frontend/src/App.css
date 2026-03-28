@@ -1,0 +1,324 @@
+/* 全局样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* 数字字体 */
+.font-mono {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+}
+
+/* 涨跌颜色 */
+.text-up {
+  color: #f5222d !important;
+}
+
+.text-down {
+  color: #52c41a !important;
+}
+
+.bg-up {
+  background-color: #fff1f0 !important;
+}
+
+.bg-down {
+  background-color: #f6ffed !important;
+}
+
+/* 卡片悬停效果 */
+.card-hover {
+  transition: all 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* 按钮动画 */
+.btn-animate {
+  transition: all 0.15s ease;
+}
+
+.btn-animate:active {
+  transform: scale(0.98);
+}
+
+/* 表格行悬停 */
+.table-row-hover:hover {
+  background-color: #e6f4ff !important;
+}
+
+/* 加载动画 */
+.loading-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 响应式隐藏 */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .show-mobile {
+    display: none !important;
+  }
+}
+
+/* Ant Design 覆盖样式 */
+.ant-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.ant-table-thead > tr > th {
+  font-weight: 600;
+  background-color: #f5f5f5;
+}
+
+.ant-btn {
+  border-radius: 8px;
+}
+
+.ant-input-number {
+  border-radius: 8px;
+}
+
+.ant-slider-track {
+  background-color: #1677ff;
+}
+
+.ant-slider-handle {
+  border-color: #1677ff;
+}
+
+/* 富途风格的市场状态指示器 */
+.market-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.market-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.market-status.open {
+  background-color: #f6ffed;
+  color: #52c41a;
+}
+
+.market-status.open::before {
+  background-color: #52c41a;
+}
+
+.market-status.closed {
+  background-color: #f5f5f5;
+  color: #8c8c8c;
+}
+
+.market-status.closed::before {
+  background-color: #8c8c8c;
+  animation: none;
+}
+
+/* 价格闪烁动画 */
+@keyframes priceFlash {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(22, 119, 255, 0.1);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.price-update {
+  animation: priceFlash 0.5s ease-out;
+}
+
+/* 图表容器 */
+.chart-container {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* 统计卡片 */
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid #1677ff;
+  transition: all 0.25s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 侧边栏菜单 */
+.sidebar-menu .ant-menu-item {
+  border-radius: 8px;
+  margin: 4px 12px;
+}
+
+.sidebar-menu .ant-menu-item:hover {
+  background-color: #e6f4ff;
+}
+
+.sidebar-menu .ant-menu-item-selected {
+  background-color: #e6f4ff;
+  color: #1677ff;
+}
+
+/* 面包屑导航 */
+.breadcrumb-nav {
+  padding: 12px 0;
+  margin-bottom: 16px;
+}
+
+/* 标签页 */
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #1677ff;
+  font-weight: 500;
+}
+
+.ant-tabs-ink-bar {
+  background-color: #1677ff;
+}
+
+/* 进度条 */
+.ant-progress-bg {
+  background-color: #1677ff;
+}
+
+/* 徽章 */
+.ant-badge-count {
+  background-color: #f5222d;
+}
+
+/* 提示框 */
+.ant-tooltip-inner {
+  border-radius: 8px;
+}
+
+/* 下拉菜单 */
+.ant-dropdown-menu {
+  border-radius: 8px;
+}
+
+/* 模态框 */
+.ant-modal-content {
+  border-radius: 12px;
+}
+
+/* 消息通知 */
+.ant-message-notice-content {
+  border-radius: 8px;
+}
+
+/* 加载状态 */
+.ant-spin-dot-item {
+  background-color: #1677ff;
+}
