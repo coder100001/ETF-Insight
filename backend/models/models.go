@@ -8,22 +8,25 @@ import (
 
 // ETFConfig ETF配置
 type ETFConfig struct {
-	ID           uint            `json:"id" yaml:"id"`
-	Symbol       string          `json:"symbol" yaml:"symbol" gorm:"uniqueIndex"`
-	Name         string          `json:"name" yaml:"name"`
-	Description  string          `json:"description" yaml:"description"`
-	Strategy     string          `json:"strategy" yaml:"strategy"`
-	Focus        string          `json:"focus" yaml:"focus"`
-	ExpenseRatio decimal.Decimal `json:"expense_ratio" yaml:"expense_ratio" gorm:"type:decimal(10,4)"`
-	Currency     string          `json:"currency" yaml:"currency"`
-	Exchange     string          `json:"exchange" yaml:"exchange"`
-	Category     string          `json:"category" yaml:"category"`
-	Provider     string          `json:"provider" yaml:"provider"`
-	Inception    string          `json:"inception" yaml:"inception"`
-	AUM          decimal.Decimal `json:"aum" yaml:"aum" gorm:"type:decimal(20,2)"`
-	Status       int             `json:"status" yaml:"status" gorm:"default:1"`
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	ID             uint            `json:"id" yaml:"id"`
+	Symbol         string          `json:"symbol" yaml:"symbol" gorm:"uniqueIndex"`
+	Name           string          `json:"name" yaml:"name"`
+	Description    string          `json:"description" yaml:"description"`
+	Strategy       string          `json:"strategy" yaml:"strategy"`
+	Focus          string          `json:"focus" yaml:"focus"`
+	ExpenseRatio   decimal.Decimal `json:"expense_ratio" yaml:"expense_ratio" gorm:"type:decimal(10,4)"`
+	Currency       string          `json:"currency" yaml:"currency"`
+	Exchange       string          `json:"exchange" yaml:"exchange"`
+	Category       string          `json:"category" yaml:"category"`
+	Provider       string          `json:"provider" yaml:"provider"`
+	Inception      string          `json:"inception" yaml:"inception"`
+	AUM            decimal.Decimal `json:"aum" yaml:"aum" gorm:"type:decimal(20,2)"`
+	Status         int             `json:"status" yaml:"status" gorm:"default:1"`
+	AutoUpdate     bool            `json:"auto_update" yaml:"auto_update" gorm:"default:true"`
+	UpdateFrequency string         `json:"update_frequency" yaml:"update_frequency" gorm:"default:'每日'"`
+	DataSource     string          `json:"data_source" yaml:"data_source" gorm:"default:'Yahoo Finance'"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }
 
 // ETFData ETF数据
