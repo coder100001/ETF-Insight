@@ -66,6 +66,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "科技股",
 			"strategy":            "纳斯达克100指数ETF",
+			"volatility":          18.5,
+			"sharpe_ratio":        1.25,
+			"max_drawdown":        -15.2,
+			"expense_ratio":       0.20,
 		},
 		"SCHD": {
 			"symbol":              "SCHD",
@@ -87,6 +91,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "高股息",
 			"strategy":            "高股息股票ETF",
+			"volatility":          12.8,
+			"sharpe_ratio":        0.95,
+			"max_drawdown":        -8.5,
+			"expense_ratio":       0.06,
 		},
 		"VNQ": {
 			"symbol":              "VNQ",
@@ -108,6 +116,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "房地产",
 			"strategy":            "房地产投资信托ETF",
+			"volatility":          15.2,
+			"sharpe_ratio":        0.72,
+			"max_drawdown":        -18.5,
+			"expense_ratio":       0.12,
 		},
 		"VYM": {
 			"symbol":              "VYM",
@@ -129,6 +141,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "高股息",
 			"strategy":            "高股息收益率ETF",
+			"volatility":          13.5,
+			"sharpe_ratio":        0.88,
+			"max_drawdown":        -10.2,
+			"expense_ratio":       0.06,
 		},
 		"SPYD": {
 			"symbol":              "SPYD",
@@ -150,6 +166,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "高股息",
 			"strategy":            "标普500高股息ETF",
+			"volatility":          14.2,
+			"sharpe_ratio":        0.82,
+			"max_drawdown":        -12.8,
+			"expense_ratio":       0.07,
 		},
 		"JEPQ": {
 			"symbol":              "JEPQ",
@@ -171,6 +191,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "科技股",
 			"strategy":            "纳斯达克 premium收入ETF",
+			"volatility":          16.8,
+			"sharpe_ratio":        1.05,
+			"max_drawdown":        -14.5,
+			"expense_ratio":       0.35,
 		},
 		"JEPI": {
 			"symbol":              "JEPI",
@@ -192,6 +216,10 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"currency":            "USD",
 			"focus":               "大盘股",
 			"strategy":            "标普500 premium收入ETF",
+			"volatility":          14.5,
+			"sharpe_ratio":        0.98,
+			"max_drawdown":        -11.2,
+			"expense_ratio":       0.35,
 		},
 	}
 
