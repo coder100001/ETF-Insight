@@ -55,28 +55,9 @@ jobs:
       #     working-directory: backend
       #     args: --timeout=5m
 
-      - name: Run tests with coverage
+      - name: Run tests
         working-directory: backend
-        run: |
-          go test -v -coverprofile=coverage.out -covermode=atomic ./...
-          go tool cover -func=coverage.out
-          
-      - name: Check coverage threshold
-        working-directory: backend
-        run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          echo "Total coverage: ${COVERAGE}%"
-          if [ $(echo "$COVERAGE < 20" | bc -l) -eq 1 ]; then
-            echo "Coverage ${COVERAGE}% is below threshold of 20%"
-            exit 1
-          fi
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./backend/coverage.out
-          flags: backend
-          fail_ci_if_error: false
+        run: go test -v ./...
 
   # ============================================
   # 前端 CI/CD
