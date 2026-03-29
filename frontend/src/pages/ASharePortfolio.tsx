@@ -100,7 +100,7 @@ const StyledTable = styled(Table)`
     background: ${theme.colors.background};
     font-weight: ${theme.fonts.weight.semibold};
   }
-  
+
   .ant-table-tbody > tr:hover > td {
     background: ${theme.colors.background};
   }
@@ -147,8 +147,10 @@ const formatMoney = (value: number) => {
 };
 
 // 格式化百分比
-const formatPercent = (value: number) => {
-  return `${value.toFixed(2)}%`;
+const formatPercent = (value: number | string | undefined) => {
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+  if (isNaN(num)) return '0.00%';
+  return `${num.toFixed(2)}%`;
 };
 
 // 默认投资金额（万元）
@@ -224,7 +226,7 @@ export default function ASharePortfolioPage() {
   };
 
   // 表格列定义
-  const columns: import('antd').TableColumnsType<AShareHoldingDetail> = [
+  const columns: any[] = [
     {
       title: 'ETF代码',
       dataIndex: 'symbol',
