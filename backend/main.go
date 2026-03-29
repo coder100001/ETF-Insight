@@ -96,6 +96,14 @@ func main() {
 	router.POST("/api/etf-configs/:id/toggle-status", etfConfigHandler.ToggleETFConfigStatus)
 	router.POST("/api/etf-configs/:id/auto-update", etfConfigHandler.ToggleETFConfigAutoUpdate)
 
+	// A股红利ETF组合路由
+	aShareHandler := handlers.NewASharePortfolioHandler()
+	router.GET("/api/a-share/etfs", aShareHandler.GetDefaultETFs)
+	router.GET("/api/a-share/portfolio/default", aShareHandler.GetDefaultPortfolio)
+	router.POST("/api/a-share/portfolio/analyze", aShareHandler.AnalyzePortfolio)
+	router.POST("/api/a-share/portfolio/holding/:symbol", aShareHandler.UpdateHolding)
+	router.GET("/api/a-share/dividend/:frequency", aShareHandler.CalculateDividendByFrequency)
+
 	router.GET("/api/exchange-rates", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,

@@ -437,3 +437,51 @@ export const adminAPI = {
 export const healthCheck = () => {
   return request<{ status: string; message: string }>(`/health`);
 };
+
+// A股红利ETF组合API
+import type { AShareDividendETF, AShareDividendCalculation } from '../types';
+
+export const aSharePortfolioAPI = {
+  // 获取A股红利ETF列表
+  getETFs: () => {
+    return request<ApiResponse<AShareDividendETF[]>>(`/a-share/etfs`);
+  },
+
+  // 获取默认组合
+  getDefaultPortfolio: () => {
+    return request<ApiResponse<AShareDividendCalculation>>(`/a-share/portfolio/default`);
+  },
+
+  // 分析组合
+  analyzePortfolio: (investments: Record<string, number>) => {
+    return request<ApiResponse<AShareDividendCalculation>>(`/a-share/portfolio/analyze`, {
+      method: 'POST',
+      body: JSON.stringify({ investments }),
+    });
+  },
+
+  // 更新持仓
+  updateHolding: (symbol: string, investment: number) => {
+    return request<ApiResponse<{
+      symbol: string;
+      name: string;
+      investment: number;
+      dividend_yield: number;
+      expected_dividend: number;
+    }>>(`/a-share/portfolio/holding/${symbol}`, {
+      method: 'POST',
+      body: JSON.stringify({ investment }),
+    });
+  },
+
+  // 按频率计算分红
+  getDividendByFrequency: (frequency: 'monthly' | 'quarterly' | 'yearly') => {
+    return request<ApiResponse<{
+      symbol: string;
+      name: string;
+      investment: number;
+      period_dividend: number;
+      annual_dividend: number;
+    }[]>>(`/a-share/dividend/${frequency}`);
+  },
+};
