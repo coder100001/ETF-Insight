@@ -39,28 +39,20 @@ COPY frontend/ .
 RUN npm run build
 
 # ============================================
-# 阶段 3: 最终运行镜像
+# 阶段 3: 最终运行镜像 (使用 distroless 镜像)
 # ============================================
-FROM alpine:3.19
-
-# 安装运行时依赖（sqlite 和 CA 证书）
-RUN apk --no-cache add ca-certificates sqlite-libs tzdata
+FROM gcr.io/distroless/base:nonroot
 
 # 创建非 root 用户（安全最佳实践）
-RUN addgroup -g 1000 appgroup && \
-    adduser -u 1000 -G appgroup -D appuser
+USER nonroot
 
-WORKDIR /root/
+WORKDIR /app
 
 # 从后端构建阶段复制二进制文件
 COPY --from=backend-builder /app/main .
 
 # 从前端构建阶段复制构建产物
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-
-# 设置正确的权限
-RUN chown -R appuser:appgroup /root/
-USER appuser
 
 # 暴露端口
 EXPOSE 8080
