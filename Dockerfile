@@ -32,7 +32,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # 安装依赖（使用 npm ci 确保一致性）
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # 复制源代码并构建
 COPY frontend/ .
