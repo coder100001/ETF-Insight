@@ -213,3 +213,28 @@ export interface DailyStatItem {
 export interface DailyStat {
   [date: string]: DailyStatItem;
 }
+
+// ETF配置
+export interface ETFConfig {
+  id: number;
+  symbol: string;
+  name: string;
+  description?: string;
+  strategy?: string;
+  focus?: string;
+  expense_ratio?: number;
+  currency?: string;
+  exchange?: string;
+  category?: string;
+  provider?: string;
+  inception?: string;
+  aum?: number;
+  status: number;  // 1: 启用, 0: 禁用
+  is_active?: boolean;  // 前端使用的字段
+  auto_update?: boolean;  // 是否自动更新
+  update_frequency?: string;  // 更新频率
+  last_updated?: string;  // 最后更新时间
+  data_source?: string;  // 数据源
+  created_at?: string;
+  updated_at?: string;
+}

@@ -86,6 +86,16 @@ func main() {
 	router.POST("/api/portfolio-configs/:id/toggle-status", portfolioHandler.TogglePortfolioConfigStatus)
 	router.POST("/api/portfolio-configs/:id/analyze", portfolioHandler.AnalyzePortfolioConfig)
 
+	// ETF配置路由
+	etfConfigHandler := handlers.NewETFConfigHandler()
+	router.GET("/api/etf-configs/", etfConfigHandler.GetETFConfigs)
+	router.POST("/api/etf-configs/", etfConfigHandler.CreateETFConfig)
+	router.GET("/api/etf-configs/:id", etfConfigHandler.GetETFConfig)
+	router.PUT("/api/etf-configs/:id", etfConfigHandler.UpdateETFConfig)
+	router.DELETE("/api/etf-configs/:id", etfConfigHandler.DeleteETFConfig)
+	router.POST("/api/etf-configs/:id/toggle-status", etfConfigHandler.ToggleETFConfigStatus)
+	router.POST("/api/etf-configs/:id/auto-update", etfConfigHandler.ToggleETFConfigAutoUpdate)
+
 	router.GET("/api/exchange-rates", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,

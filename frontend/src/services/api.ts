@@ -1,5 +1,5 @@
 // API服务 - 连接Go后端
-import type { ETFData, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig } from '../types';
+import type { ETFData, ETFConfig, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -146,6 +146,58 @@ export const etfAPI = {
   updateRealtimeData: () => {
     return request<ApiResponse<{ message: string; count: number }>>(`/etf/update-realtime`, {
       method: 'POST',
+    });
+  },
+};
+
+// ETF配置API
+export const etfConfigAPI = {
+  // 获取ETF配置列表
+  getConfigs: () => {
+    return request<ApiResponse<ETFConfig[]>>(`/etf-configs/`);
+  },
+
+  // 创建ETF配置
+  createConfig: (data: Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 获取ETF配置详情
+  getConfigDetail: (id: number) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`);
+  },
+
+  // 更新ETF配置
+  updateConfig: (id: number, data: Partial<Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>>) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 删除ETF配置
+  deleteConfig: (id: number) => {
+    return request<ApiResponse<{ message: string }>>(`/etf-configs/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // 切换状态
+  toggleStatus: (id: number, status: number) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/toggle-status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // 切换自动更新
+  toggleAutoUpdate: (id: number, autoUpdate: boolean) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/auto-update`, {
+      method: 'POST',
+      body: JSON.stringify({ auto_update: autoUpdate }),
     });
   },
 };

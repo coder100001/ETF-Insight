@@ -94,6 +94,22 @@ func (db *MockDB) Updates(values interface{}) *MockDB {
 
 // Save 保存记录
 func (db *MockDB) Save(value interface{}) *MockDB {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	switch v := value.(type) {
+	case *ETFConfig:
+		db.etfConfigs[v.Symbol] = *v
+	}
+	return db
+}
+
+// Delete 删除记录
+func (db *MockDB) Delete(value interface{}, conds ...interface{}) *MockDB {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// 简化处理，实际应该根据 conds 删除
 	return db
 }
 
