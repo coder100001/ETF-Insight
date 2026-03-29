@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -41,6 +40,157 @@ type RealtimeData struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
+// MockRealtimeData 模拟实时数据
+var MockRealtimeData = map[string]*RealtimeData{
+	"QQQ": {
+		Symbol:           "QQQ",
+		Name:             "Invesco QQQ Trust",
+		CurrentPrice:     485.23,
+		PreviousClose:    482.15,
+		OpenPrice:        483.50,
+		DayHigh:          486.95,
+		DayLow:           482.10,
+		Volume:           25000000,
+		Change:           3.08,
+		ChangePercent:    0.64,
+		MarketCap:        1850000000000,
+		DividendYield:    0.55,
+		FiftyTwoWeekHigh: 500.12,
+		FiftyTwoWeekLow:  360.15,
+		AverageVolume:    35000000,
+		Beta:             1.05,
+		PERatio:          32.5,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+	"SCHD": {
+		Symbol:           "SCHD",
+		Name:             "Schwab US Dividend Equity ETF",
+		CurrentPrice:     85.45,
+		PreviousClose:    85.20,
+		OpenPrice:        85.10,
+		DayHigh:          85.60,
+		DayLow:           84.95,
+		Volume:           3500000,
+		Change:           0.25,
+		ChangePercent:    0.29,
+		MarketCap:        32000000000,
+		DividendYield:    3.45,
+		FiftyTwoWeekHigh: 88.25,
+		FiftyTwoWeekLow:  75.30,
+		AverageVolume:    4000000,
+		Beta:             0.85,
+		PERatio:          28.3,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+	"VNQ": {
+		Symbol:           "VNQ",
+		Name:             "Vanguard Real Estate ETF",
+		CurrentPrice:     115.80,
+		PreviousClose:    115.50,
+		OpenPrice:        115.30,
+		DayHigh:          116.10,
+		DayLow:           115.10,
+		Volume:           2800000,
+		Change:           0.30,
+		ChangePercent:    0.26,
+		MarketCap:        58000000000,
+		DividendYield:    3.85,
+		FiftyTwoWeekHigh: 122.40,
+		FiftyTwoWeekLow:  105.20,
+		AverageVolume:    3200000,
+		Beta:             0.75,
+		PERatio:          22.1,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+	"VYM": {
+		Symbol:           "VYM",
+		Name:             "Vanguard High Dividend Yield ETF",
+		CurrentPrice:     82.30,
+		PreviousClose:    82.00,
+		OpenPrice:        82.10,
+		DayHigh:          82.50,
+		DayLow:           81.80,
+		Volume:           2200000,
+		Change:           0.30,
+		ChangePercent:    0.37,
+		MarketCap:        45000000000,
+		DividendYield:    3.65,
+		FiftyTwoWeekHigh: 86.50,
+		FiftyTwoWeekLow:  74.20,
+		AverageVolume:    2800000,
+		Beta:             0.80,
+		PERatio:          24.5,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+	"SPYD": {
+		Symbol:           "SPYD",
+		Name:             "SPDR S&P 500 High Dividend ETF",
+		CurrentPrice:     52.60,
+		PreviousClose:    52.40,
+		OpenPrice:        52.30,
+		DayHigh:          52.80,
+		DayLow:           52.10,
+		Volume:           1800000,
+		Change:           0.20,
+		ChangePercent:    0.38,
+		MarketCap:        12000000000,
+		DividendYield:    3.75,
+		FiftyTwoWeekHigh: 55.20,
+		FiftyTwoWeekLow:  48.50,
+		AverageVolume:    2000000,
+		Beta:             0.70,
+		PERatio:          18.9,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+	"JEPQ": {
+		Symbol:           "JEPQ",
+		Name:             "JPMorgan Nasdaq Equity Premium Income ETF",
+		CurrentPrice:     58.40,
+		PreviousClose:    58.10,
+		OpenPrice:        58.20,
+		DayHigh:          58.60,
+		DayLow:           57.90,
+		Volume:           1200000,
+		Change:           0.30,
+		ChangePercent:    0.52,
+		MarketCap:        3500000000,
+		DividendYield:    6.25,
+		FiftyTwoWeekHigh: 62.80,
+		FiftyTwoWeekLow:  52.10,
+		AverageVolume:    1500000,
+		Beta:             0.90,
+		PERatio:          15.2,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+	"JEPI": {
+		Symbol:           "JEPI",
+		Name:             "JPMorgan Equity Premium Income ETF",
+		CurrentPrice:     42.50,
+		PreviousClose:    42.30,
+		OpenPrice:        42.40,
+		DayHigh:          42.70,
+		DayLow:           42.10,
+		Volume:           950000,
+		Change:           0.20,
+		ChangePercent:    0.47,
+		MarketCap:        3200000000,
+		DividendYield:    6.85,
+		FiftyTwoWeekHigh: 45.80,
+		FiftyTwoWeekLow:  39.20,
+		AverageVolume:    1100000,
+		Beta:             0.85,
+		PERatio:          14.8,
+		Currency:         "USD",
+		DataSource:       "mock",
+	},
+}
+
 // NewCacheService 创建新的缓存服务
 func NewCacheService(cacheCfg *config.CacheConfig) *CacheService {
 	s := &CacheService{
@@ -60,6 +210,11 @@ func (s *CacheService) GetRealtimeData(symbol string) (*RealtimeData, error) {
 		if realtimeData, ok := data.(*RealtimeData); ok {
 			return realtimeData, nil
 		}
+	}
+
+	// 如果缓存中没有，使用模拟数据
+	if mockData, ok := MockRealtimeData[symbol]; ok {
+		return mockData, nil
 	}
 
 	return nil, fmt.Errorf("realtime data not found for %s", symbol)
@@ -107,7 +262,7 @@ func (s *CacheService) GetMetrics(symbol string, period string) ([]byte, error) 
 		}
 	}
 
-	return nil, fmt.Errorf("metrics not found for %s", symbol)
+	return nil, fmt.Errorf("metrics data not found for %s", symbol)
 }
 
 // SetMetrics 设置指标数据
@@ -120,7 +275,7 @@ func (s *CacheService) SetMetrics(symbol string, period string, data []byte) {
 
 // GetComparison 获取对比数据
 func (s *CacheService) GetComparison(symbols []string, period string) ([]byte, error) {
-	key := fmt.Sprintf("comparison:%v:%s", symbols, period)
+	key := fmt.Sprintf("comparison:%s:%s", symbols[0], period)
 
 	// 从内存缓存获取
 	if data, found := s.memory.Get(key); found {
@@ -129,36 +284,26 @@ func (s *CacheService) GetComparison(symbols []string, period string) ([]byte, e
 		}
 	}
 
-	return nil, fmt.Errorf("comparison data not found")
+	return nil, fmt.Errorf("comparison data not found for %s", symbols[0])
 }
 
 // SetComparison 设置对比数据
 func (s *CacheService) SetComparison(symbols []string, period string, data []byte) {
-	key := fmt.Sprintf("comparison:%v:%s", symbols, period)
+	key := fmt.Sprintf("comparison:%s:%s", symbols[0], period)
 
 	// 写入内存缓存
 	s.memory.Set(key, data, s.cfg.ComparisonTTL)
 }
 
-// GetCacheStats 获取缓存统计
+// GetCacheStats 获取缓存统计信息
 func (s *CacheService) GetCacheStats() map[string]interface{} {
+	stats := s.memory.Items()
 	return map[string]interface{}{
-		"items": s.memory.ItemCount(),
+		"cache_size": len(stats),
 	}
 }
 
-// Close 关闭缓存服务
-func (s *CacheService) Close() {
+// ClearCache 清除缓存
+func (s *CacheService) ClearCache() {
 	s.memory.Flush()
-	utils.Info("Cache service closed")
-}
-
-// GetRealtimeDataJSON 获取实时数据JSON
-func (s *CacheService) GetRealtimeDataJSON(symbol string) ([]byte, error) {
-	data, err := s.GetRealtimeData(symbol)
-	if err != nil {
-		return nil, err
-	}
-
-	return json.Marshal(data)
 }
