@@ -64,11 +64,42 @@ func (db *MockDB) Where(query string, args ...interface{}) *MockDB {
 
 // First 获取第一条记录
 func (db *MockDB) First(dest interface{}, conds ...interface{}) *MockDB {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	switch v := dest.(type) {
+	case *ETFConfig:
+		if len(conds) > 0 {
+			// 简化处理，根据ID查找
+			if id, ok := conds[0].(uint); ok {
+				for _, config := range db.etfConfigs {
+					if config.ID == id {
+						*v = config
+						return db
+					}
+				}
+			}
+		}
+		// 默认返回第一个
+		for _, config := range db.etfConfigs {
+			*v = config
+			return db
+		}
+	}
 	return db
 }
 
 // Find 查询多条记录
 func (db *MockDB) Find(dest interface{}, conds ...interface{}) *MockDB {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	switch v := dest.(type) {
+	case *[]ETFConfig:
+		for _, config := range db.etfConfigs {
+			*v = append(*v, config)
+		}
+	}
 	return db
 }
 
