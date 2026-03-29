@@ -22,9 +22,13 @@ func (h *ETFConfigHandler) GetETFConfigs(c *gin.Context) {
 	var configs []models.ETFConfig
 	models.DB.Find(&configs)
 
-	// 如果没有配置，返回默认配置
+	// 如果没有配置，初始化默认配置
 	if len(configs) == 0 {
 		configs = getDefaultETFConfigs()
+		// 保存到数据库
+		for i := range configs {
+			models.DB.Create(&configs[i])
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
