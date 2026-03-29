@@ -42,13 +42,14 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: backend
-        run: go test -v -coverprofile=coverage.out ./...
+        run: go test -v -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./backend/coverage.out
           flags: backend
+          fail_ci_if_error: false
 
   # ============================================
   # 前端 CI/CD
