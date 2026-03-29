@@ -386,10 +386,79 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 
 // UpdateRealtimeData 更新实时数据
 func (h *ETFHandler) UpdateRealtimeData(c *gin.Context) {
-	// TODO: 触发实时数据更新任务
+	// 获取所有启用的ETF
+	var etfConfigs []models.ETFConfig
+	if err := models.DB.Where("status = ?", 1).Find(&etfConfigs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get ETF configs",
+		})
+		return
+	}
+
+	// 如果没有配置，使用默认列表
+	if len(etfConfigs) == 0 {
+		etfConfigs = []models.ETFConfig{
+			{Symbol: "QQQ", Currency: "USD"},
+			{Symbol: "SCHD", Currency: "USD"},
+			{Symbol: "VNQ", Currency: "USD"},
+			{Symbol: "VYM", Currency: "USD"},
+			{Symbol: "SPYD", Currency: "USD"},
+			{Symbol: "JEPQ", Currency: "USD"},
+			{Symbol: "JEPI", Currency: "USD"},
+		}
+	}
+
+	// 创建Yahoo Finance客户端
+	yahooClient := services.NewYahooFinanceClient()
+
+	// 获取所有symbol
+	var symbols []string
+	for _, cfg := range etfConfigs {
+		symbols = append(symbols, cfg.Symbol)
+	}
+
+	// 从Yahoo Finance获取实时数据
+	quotes, err := yahooClient.GetQuotes(symbols)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to fetch data from Yahoo Finance: " + err.Error(),
+		})
+		return
+	}
+
+	// 更新缓存
+	successCount := 0
+	for _, quote := range quotes {
+		realtimeData := &services.RealtimeData{
+			Symbol:           quote.Symbol,
+			Name:             quote.Name,
+			CurrentPrice:     quote.CurrentPrice,
+			PreviousClose:    quote.PreviousClose,
+			OpenPrice:        quote.OpenPrice,
+			DayHigh:          quote.DayHigh,
+			DayLow:           quote.DayLow,
+			Volume:           quote.Volume,
+			Change:           quote.Change,
+			ChangePercent:    quote.ChangePercent,
+			MarketCap:        quote.MarketCap,
+			DividendYield:    quote.DividendYield,
+			FiftyTwoWeekHigh: quote.FiftyTwoWeekHigh,
+			FiftyTwoWeekLow:  quote.FiftyTwoWeekLow,
+			AverageVolume:    quote.AverageVolume,
+			Beta:             quote.Beta,
+			PERatio:          quote.PERatio,
+			Currency:         quote.Currency,
+			DataSource:       "yahoo_finance",
+		}
+		h.cacheService.SetRealtimeData(quote.Symbol, realtimeData)
+		successCount++
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Update task triggered",
-		"count":   7,
+		"message": "Realtime data updated successfully",
+		"count":   successCount,
 	})
 }
