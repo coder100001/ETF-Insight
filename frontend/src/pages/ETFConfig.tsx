@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Space, Switch, Tag, type TableColumnsType } from 'antd';
+import { Card, Table, Button, Space, Switch, Tag, type TableColumnsType, message } from 'antd';
 import { SettingOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { etfConfigAPI } from '../services/api';
+import type { ETFConfig } from '../types';
 
 const PageHeader = styled.div`
   display: flex;
@@ -32,87 +34,169 @@ const StyledTable = styled(Table)`
   }
 ` as typeof Table;
 
-interface ETFConfig {
-  id: number;
-  symbol: string;
-  name: string;
-  is_active: boolean;
-  auto_update: boolean;
-  update_frequency: string;
-  last_updated: string;
-  data_source: string;
-}
-
-const mockConfigs: ETFConfig[] = [
-  {
-    id: 1,
-    symbol: 'SCHD',
-    name: 'Schwab US Dividend Equity ETF',
-    is_active: true,
-    auto_update: true,
-    update_frequency: '每日',
-    last_updated: '2024-03-28 09:00:00',
-    data_source: 'Yahoo Finance',
-  },
-  {
-    id: 2,
-    symbol: 'SPYD',
-    name: 'SPDR S&P 500 High Dividend ETF',
-    is_active: true,
-    auto_update: true,
-    update_frequency: '每日',
-    last_updated: '2024-03-28 09:00:00',
-    data_source: 'Yahoo Finance',
-  },
-  {
-    id: 3,
-    symbol: 'JEPQ',
-    name: 'JPMorgan Nasdaq Equity Premium Income ETF',
-    is_active: true,
-    auto_update: true,
-    update_frequency: '每日',
-    last_updated: '2024-03-28 09:00:00',
-    data_source: 'Yahoo Finance',
-  },
-  {
-    id: 4,
-    symbol: 'JEPI',
-    name: 'JPMorgan Equity Premium Income ETF',
-    is_active: true,
-    auto_update: true,
-    update_frequency: '每日',
-    last_updated: '2024-03-28 09:00:00',
-    data_source: 'Yahoo Finance',
-  },
-  {
-    id: 5,
-    symbol: 'VYM',
-    name: 'Vanguard High Dividend Yield ETF',
-    is_active: true,
-    auto_update: true,
-    update_frequency: '每日',
-    last_updated: '2024-03-28 09:00:00',
-    data_source: 'Yahoo Finance',
-  },
-];
-
 const ETFConfigPage: React.FC = () => {
-  const [configs, setConfigs] = useState<ETFConfig[]>(mockConfigs);
+  const [configs, setConfigs] = useState<ETFConfig[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleToggleActive = (id: number, checked: boolean) => {
-    setConfigs(prev =>
-      prev.map(config =>
-        config.id === id ? { ...config, is_active: checked } : config
-      )
-    );
+  // 加载ETF配置列表
+  const loadConfigs = async () => {
+    setLoading(true);
+    try {
+      const response = await etfConfigAPI.getConfigs();
+      if (response.success && response.data) {
+        // 将后端数据转换为前端格式
+        const formattedConfigs = response.data.map(config => ({
+          ...config,
+          is_active: config.status === 1,
+          auto_update: config.auto_update ?? true,
+          update_frequency: config.update_frequency ?? '每日',
+          last_updated: config.last_updated ?? config.updated_at ?? '-',
+          data_source: config.data_source ?? 'Yahoo Finance',
+        }));
+        setConfigs(formattedConfigs);
+      } else {
+        // 如果API失败，使用默认数据
+        setConfigs(getDefaultConfigs());
+      }
+    } catch (error) {
+      console.error('Failed to load ETF configs:', error);
+      message.error('加载ETF配置失败');
+      // 使用默认数据
+      setConfigs(getDefaultConfigs());
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleToggleAutoUpdate = (id: number, checked: boolean) => {
+  // 默认配置数据
+  const getDefaultConfigs = (): ETFConfig[] => [
+    {
+      id: 1,
+      symbol: 'SCHD',
+      name: 'Schwab US Dividend Equity ETF',
+      status: 1,
+      is_active: true,
+      auto_update: true,
+      update_frequency: '每日',
+      last_updated: '2024-03-28 09:00:00',
+      data_source: 'Yahoo Finance',
+    },
+    {
+      id: 2,
+      symbol: 'SPYD',
+      name: 'SPDR S&P 500 High Dividend ETF',
+      status: 1,
+      is_active: true,
+      auto_update: true,
+      update_frequency: '每日',
+      last_updated: '2024-03-28 09:00:00',
+      data_source: 'Yahoo Finance',
+    },
+    {
+      id: 3,
+      symbol: 'JEPQ',
+      name: 'JPMorgan Nasdaq Equity Premium Income ETF',
+      status: 1,
+      is_active: true,
+      auto_update: true,
+      update_frequency: '每日',
+      last_updated: '2024-03-28 09:00:00',
+      data_source: 'Yahoo Finance',
+    },
+    {
+      id: 4,
+      symbol: 'JEPI',
+      name: 'JPMorgan Equity Premium Income ETF',
+      status: 1,
+      is_active: true,
+      auto_update: true,
+      update_frequency: '每日',
+      last_updated: '2024-03-28 09:00:00',
+      data_source: 'Yahoo Finance',
+    },
+    {
+      id: 5,
+      symbol: 'VYM',
+      name: 'Vanguard High Dividend Yield ETF',
+      status: 1,
+      is_active: true,
+      auto_update: true,
+      update_frequency: '每日',
+      last_updated: '2024-03-28 09:00:00',
+      data_source: 'Yahoo Finance',
+    },
+  ];
+
+  useEffect(() => {
+    loadConfigs();
+  }, []);
+
+  // 切换状态
+  const handleToggleActive = async (id: number, checked: boolean) => {
+    // 先更新本地状态
+    setConfigs(prev =>
+      prev.map(config =>
+        config.id === id ? { ...config, is_active: checked, status: checked ? 1 : 0 } : config
+      )
+    );
+
+    try {
+      const response = await etfConfigAPI.toggleStatus(id, checked ? 1 : 0);
+      if (response.success) {
+        message.success(`已${checked ? '启用' : '禁用'}ETF`);
+      } else {
+        // 失败时恢复状态
+        setConfigs(prev =>
+          prev.map(config =>
+            config.id === id ? { ...config, is_active: !checked, status: !checked ? 1 : 0 } : config
+          )
+        );
+        message.error('更新状态失败');
+      }
+    } catch (error) {
+      console.error('Failed to toggle status:', error);
+      // 失败时恢复状态
+      setConfigs(prev =>
+        prev.map(config =>
+          config.id === id ? { ...config, is_active: !checked, status: !checked ? 1 : 0 } : config
+        )
+      );
+      message.error('更新状态失败');
+    }
+  };
+
+  // 切换自动更新
+  const handleToggleAutoUpdate = async (id: number, checked: boolean) => {
+    // 先更新本地状态
     setConfigs(prev =>
       prev.map(config =>
         config.id === id ? { ...config, auto_update: checked } : config
       )
     );
+
+    try {
+      const response = await etfConfigAPI.toggleAutoUpdate(id, checked);
+      if (response.success) {
+        message.success(`已${checked ? '开启' : '关闭'}自动更新`);
+      } else {
+        // 失败时恢复状态
+        setConfigs(prev =>
+          prev.map(config =>
+            config.id === id ? { ...config, auto_update: !checked } : config
+          )
+        );
+        message.error('更新自动更新设置失败');
+      }
+    } catch (error) {
+      console.error('Failed to toggle auto update:', error);
+      // 失败时恢复状态
+      setConfigs(prev =>
+        prev.map(config =>
+          config.id === id ? { ...config, auto_update: !checked } : config
+        )
+      );
+      message.error('更新自动更新设置失败');
+    }
   };
 
   const columns: TableColumnsType<ETFConfig> = [
@@ -199,6 +283,7 @@ const ETFConfigPage: React.FC = () => {
           columns={columns}
           rowKey="id"
           pagination={false}
+          loading={loading}
         />
       </Card>
     </Layout>
