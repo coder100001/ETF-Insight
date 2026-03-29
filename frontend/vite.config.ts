@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
@@ -20,9 +20,37 @@ export default defineConfig(({ command }) => ({
     assetsDir: 'assets',
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks: (id: string) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react-vendor'
+            }
+            if (id.includes('antd') || id.includes('@ant-design')) {
+              return 'ant-design'
+            }
+            if (id.includes('echarts')) {
+              return 'echarts'
+            }
+            if (id.includes('styled-components')) {
+              return 'utils'
+            }
+          }
+        },
       },
     },
+    minify: 'terser' as any,
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    } as any,
   },
-  base: command === 'build' ? '/static/' : '/',
-}))
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
+    alias: {
+      '@': '/src',
+    },
+  },
+  base: '/static/',
+})

@@ -11,22 +11,94 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-// 通用请求函数
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
+// 请求重试配置
+interface RetryConfig {
+  maxRetries?: number;
+  baseDelay?: number;
+  maxDelay?: number;
+}
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+// 请求合并器 - 避免重复请求
+class RequestCoalescer {
+  private pendingRequests = new Map<string, Promise<any>>();
+
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number = 30000): Promise<T> {
+    // 检查是否有正在进行的请求
+    if (this.pendingRequests.has(key)) {
+      return this.pendingRequests.get(key)!;
+    }
+
+    // 创建新的请求
+    const promise = fetcher().finally(() => {
+      // TTL 后清理缓存
+      setTimeout(() => {
+        this.pendingRequests.delete(key);
+      }, ttl);
+    });
+
+    this.pendingRequests.set(key, promise);
+    return promise;
   }
 
-  return response.json();
+  clear(key?: string) {
+    if (key) {
+      this.pendingRequests.delete(key);
+    } else {
+      this.pendingRequests.clear();
+    }
+  }
+}
+
+// 全局请求合并器
+const requestCoalescer = new RequestCoalescer();
+
+// 重试请求函数
+async function requestWithRetry<T>(
+  url: string, 
+  options?: RequestInit,
+  config: RetryConfig = {}
+): Promise<T> {
+  const { maxRetries = 3, baseDelay = 1000, maxDelay = 10000 } = config;
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      lastError = error as Error;
+      
+      // 如果不是最后一次尝试，等待后重试（指数退避）
+      if (attempt < maxRetries) {
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw new Error(`Request failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
+}
+
+// 通用请求函数（带合并和重试）
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const cacheKey = `${url}-${JSON.stringify(options)}`;
+  
+  return requestCoalescer.getOrSet(cacheKey, () => 
+    requestWithRetry<T>(url, options)
+  );
 }
 
 // ETF相关API
