@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Card, Table, Badge, Button, App } from 'antd';
+import { Card, Table, Badge, Button, App, Row, Col } from 'antd';
 import { BarChartOutlined, WalletOutlined } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
 import type { ETFData } from '../types';
+import HoldingPieChart from '../components/HoldingPieChart';
+import SectorBarChart from '../components/SectorBarChart';
 
 const PageHeader = styled.div`
   display: flex;
@@ -371,6 +373,37 @@ const ETFDashboard: React.FC = () => {
           </ETFCard>
         ))}
       </ETFGrid>
+
+      {/* 数据可视化区域 */}
+      {etfs.length > 0 && (
+        <>
+          <Row gutter={16} style={{ marginBottom: 20 }}>
+            <Col xs={24} lg={12}>
+              <HoldingPieChart
+                data={etfs.map(etf => ({
+                  symbol: etf.symbol,
+                  name: etf.name,
+                  weight: 100 / etfs.length, // 平均权重
+                  value: etf.current_price * 100, // 示例值
+                }))}
+                title="ETF 持仓分布"
+              />
+            </Col>
+            <Col xs={24} lg={12}>
+              <SectorBarChart
+                data={[
+                  { name: '科技', weight: 35, value: 35000 },
+                  { name: '金融', weight: 25, value: 25000 },
+                  { name: '医疗', weight: 15, value: 15000 },
+                  { name: '消费', weight: 15, value: 15000 },
+                  { name: '能源', weight: 10, value: 10000 },
+                ]}
+                title="行业分布"
+              />
+            </Col>
+          </Row>
+        </>
+      )}
 
       {/* 快速对比表格 */}
       <Card
