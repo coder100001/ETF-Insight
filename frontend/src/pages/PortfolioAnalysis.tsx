@@ -240,10 +240,10 @@ const PortfolioAnalysis: React.FC = () => {
       if (response.success && response.data) {
         // 转换后端数据为前端格式
         const backendData = response.data;
-        const annualDividendBeforeTax = backendData.annual_dividend || 0;
-        const taxRate = backendData.tax_rate || (config.tax_rate / 100);
-        const dividendTax = annualDividendBeforeTax * taxRate;
-        const annualDividendAfterTax = annualDividendBeforeTax - dividendTax;
+        const annualDividendBeforeTax = backendData.annual_dividend_before_tax || 0;
+        const taxRate = backendData.tax_rate / 100 || (config.tax_rate / 100);
+        const dividendTax = backendData.dividend_tax || (annualDividendBeforeTax * taxRate);
+        const annualDividendAfterTax = backendData.annual_dividend || (annualDividendBeforeTax - dividendTax);
         
         setPortfolio({
           total_investment: config.total_investment,
