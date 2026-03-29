@@ -23,6 +23,8 @@ type ServerConfig struct {
 	Port         int           `yaml:"port"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+	CertFile     string        `yaml:"cert_file"`
+	KeyFile      string        `yaml:"key_file"`
 }
 
 // DatabaseConfig 数据库配置
@@ -76,6 +78,8 @@ func DefaultConfig() *Config {
 			Port:         getEnvAsInt("SERVER_PORT", 8080),
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
+			CertFile:     getEnv("TLS_CERT_FILE", ""),
+			KeyFile:      getEnv("TLS_KEY_FILE", ""),
 		},
 		Database: DatabaseConfig{
 			DSN: getEnv("DB_DSN", "etf_insight.db"),

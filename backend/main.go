@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"etf-insight/config"
 	"etf-insight/handlers"
+	"etf-insight/middleware"
 	"etf-insight/models"
 	"etf-insight/services"
 	"etf-insight/tasks"
@@ -59,6 +61,8 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(handlers.LoggerMiddleware())
 	router.Use(handlers.CORSMiddleware())
+	router.Use(middleware.SecurityHeaders())
+	router.Use(middleware.RateLimiter())
 
 	etfHandler := handlers.NewETFHandler(cacheService, analysisService)
 	portfolioHandler := handlers.NewPortfolioHandler(analysisService)
@@ -98,13 +102,34 @@ func main() {
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: router,
+		TLSConfig: &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.X25519, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+		},
 	}
 
 	utils.Info("Starting server", "addr", addr)
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			utils.Fatal("Failed to start server", err)
+		if cfg.Server.CertFile != "" && cfg.Server.KeyFile != "" {
+			utils.Info("HTTPS enabled", "cert", cfg.Server.CertFile)
+			if err := srv.ListenAndServeTLS(cfg.Server.CertFile, cfg.Server.KeyFile); err != nil && err != http.ErrServerClosed {
+				utils.Fatal("Failed to start HTTPS server", err)
+			}
+		} else {
+			utils.Warn("Running in HTTP mode (no TLS certificates provided)")
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				utils.Fatal("Failed to start HTTP server", err)
+			}
 		}
 	}()
 
