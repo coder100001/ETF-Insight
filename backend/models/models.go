@@ -21,12 +21,12 @@ type ETFConfig struct {
 	Provider       string          `json:"provider" yaml:"provider"`
 	Inception      string          `json:"inception" yaml:"inception"`
 	AUM            decimal.Decimal `json:"aum" yaml:"aum" gorm:"type:decimal(20,2)"`
-	Status         int             `json:"status" yaml:"status" gorm:"default:1"`
-	AutoUpdate     bool            `json:"auto_update" yaml:"auto_update" gorm:"default:true"`
-	UpdateFrequency string         `json:"update_frequency" yaml:"update_frequency" gorm:"default:'每日'"`
-	DataSource     string          `json:"data_source" yaml:"data_source" gorm:"default:'Yahoo Finance'"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
+	Status          int             `json:"status" yaml:"status" gorm:"default:1"`
+	AutoUpdate      bool            `json:"auto_update" yaml:"auto_update" gorm:"default:true"`
+	UpdateFrequency string          `json:"update_frequency" yaml:"update_frequency" gorm:"default:'每日'"`
+	DataSource      string          `json:"data_source" yaml:"data_source" gorm:"default:'Yahoo Finance'"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 // ETFData ETF数据
