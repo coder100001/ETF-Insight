@@ -224,8 +224,10 @@ func (h *ETFConfigHandler) ToggleETFConfigAutoUpdate(c *gin.Context) {
 		return
 	}
 
-	// 注意：ETFConfig模型中没有auto_update字段，这里只返回成功
-	// 实际项目中需要在模型中添加这个字段
+	// 更新自动更新设置
+	config.AutoUpdate = req.AutoUpdate
+	models.DB.Save(&config)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    config,
@@ -237,44 +239,59 @@ func (h *ETFConfigHandler) ToggleETFConfigAutoUpdate(c *gin.Context) {
 func getDefaultETFConfigs() []models.ETFConfig {
 	return []models.ETFConfig{
 		{
-			ID:       1,
-			Symbol:   "SCHD",
-			Name:     "Schwab US Dividend Equity ETF",
-			Status:   1,
-			Currency: "USD",
-			Category: "ETF",
+			ID:              1,
+			Symbol:          "SCHD",
+			Name:            "Schwab US Dividend Equity ETF",
+			Status:          1,
+			AutoUpdate:      true,
+			UpdateFrequency: "每日",
+			DataSource:      "Yahoo Finance",
+			Currency:        "USD",
+			Category:        "ETF",
 		},
 		{
-			ID:       2,
-			Symbol:   "SPYD",
-			Name:     "SPDR S&P 500 High Dividend ETF",
-			Status:   1,
-			Currency: "USD",
-			Category: "ETF",
+			ID:              2,
+			Symbol:          "SPYD",
+			Name:            "SPDR S&P 500 High Dividend ETF",
+			Status:          1,
+			AutoUpdate:      true,
+			UpdateFrequency: "每日",
+			DataSource:      "Yahoo Finance",
+			Currency:        "USD",
+			Category:        "ETF",
 		},
 		{
-			ID:       3,
-			Symbol:   "JEPQ",
-			Name:     "JPMorgan Nasdaq Equity Premium Income ETF",
-			Status:   1,
-			Currency: "USD",
-			Category: "ETF",
+			ID:              3,
+			Symbol:          "JEPQ",
+			Name:            "JPMorgan Nasdaq Equity Premium Income ETF",
+			Status:          1,
+			AutoUpdate:      true,
+			UpdateFrequency: "每日",
+			DataSource:      "Yahoo Finance",
+			Currency:        "USD",
+			Category:        "ETF",
 		},
 		{
-			ID:       4,
-			Symbol:   "JEPI",
-			Name:     "JPMorgan Equity Premium Income ETF",
-			Status:   1,
-			Currency: "USD",
-			Category: "ETF",
+			ID:              4,
+			Symbol:          "JEPI",
+			Name:            "JPMorgan Equity Premium Income ETF",
+			Status:          1,
+			AutoUpdate:      true,
+			UpdateFrequency: "每日",
+			DataSource:      "Yahoo Finance",
+			Currency:        "USD",
+			Category:        "ETF",
 		},
 		{
-			ID:       5,
-			Symbol:   "VYM",
-			Name:     "Vanguard High Dividend Yield ETF",
-			Status:   1,
-			Currency: "USD",
-			Category: "ETF",
+			ID:              5,
+			Symbol:          "VYM",
+			Name:            "Vanguard High Dividend Yield ETF",
+			Status:          1,
+			AutoUpdate:      true,
+			UpdateFrequency: "每日",
+			DataSource:      "Yahoo Finance",
+			Currency:        "USD",
+			Category:        "ETF",
 		},
 	}
 }
