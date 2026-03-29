@@ -307,3 +307,8 @@ func (s *CacheService) GetCacheStats() map[string]interface{} {
 func (s *CacheService) ClearCache() {
 	s.memory.Flush()
 }
+
+// Close 关闭缓存服务
+func (s *CacheService) Close() {
+	s.memory.Flush()
+}
