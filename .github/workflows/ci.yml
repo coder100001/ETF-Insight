@@ -27,6 +27,10 @@ jobs:
         working-directory: backend
         run: go mod tidy
 
+      - name: Download dependencies
+        working-directory: backend
+        run: go mod download
+
       - name: Go fmt check
         working-directory: backend
         run: |
