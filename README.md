@@ -124,6 +124,24 @@ npm run dev
 # 访问 http://localhost:5173
 ```
 
+### 方式三：使用模拟数据（快速测试）
+
+如果无法访问 Yahoo Finance API 或遇到速率限制，项目会自动使用模拟数据：
+
+```bash
+# 后端服务会自动使用内置的模拟数据
+# 无需额外配置即可查看完整功能
+```
+
+模拟数据包含以下 ETF：
+- QQQ - Invesco QQQ Trust
+- SCHD - Schwab US Dividend Equity ETF
+- VNQ - Vanguard Real Estate ETF
+- VYM - Vanguard High Dividend Yield ETF
+- SPYD - SPDR S&P 500 High Dividend ETF
+- JEPQ - JPMorgan Nasdaq Equity Premium Income ETF
+- JEPI - JPMorgan Equity Premium Income ETF
+
 ## 📁 项目结构
 
 ```
@@ -407,7 +425,7 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
 - [ ] K线图表组件优化
 - [ ] 技术指标计算优化
 
-### 待开发 📋
+### 进行中 🚧
 - [ ] ETF 持仓数据可视化
 - [ ] 行业分布图表
 - [ ] 地区分布图表
@@ -415,6 +433,13 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
 - [ ] 数据导出功能
 - [ ] 用户权限控制
 - [ ] 邮件通知功能
+
+### 最新更新 🆕 (2026-03-29)
+- ✅ **修复数据计算问题** - 添加模拟数据后备方案，解决 Yahoo Finance API 速率限制问题
+- ✅ **支持模拟数据** - 当无法获取实时数据时自动使用内置模拟数据
+- ✅ **投资组合分析** - 修复投资组合分析功能，正确计算收益和股息
+- ✅ **代码格式化** - 使用 gofmt 格式化所有 Go 代码
+- ✅ **go vet 检查** - 修复所有静态分析错误
 
 ## 🤝 贡献
 
