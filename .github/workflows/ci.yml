@@ -40,10 +40,14 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
+      - name: Build
+        working-directory: backend
+        run: go build -v ./...
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.26.1
+          version: v1.55.2
           working-directory: backend
           args: --timeout=5m
 
