@@ -253,15 +253,26 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			shares = investmentUSD.Div(currentPrice)
 		}
 
-		// 计算当前价值 (假设等于初始投资)
-		currentValueUSD := investmentUSD
-		capitalGain := decimal.Zero
+		// 计算当前价值 = 股数 × 当前价格
+		currentValueUSD := shares.Mul(currentPrice)
+		if currentValueUSD.IsZero() {
+			currentValueUSD = investmentUSD
+		}
+
+		// 计算资本利得 = 当前价值 - 初始投资
+		capitalGain := currentValueUSD.Sub(investmentUSD)
 		capitalGainPercent := decimal.Zero
+		if investmentUSD.IsPositive() {
+			capitalGainPercent = capitalGain.Div(investmentUSD).Mul(decimal.NewFromInt(100))
+		}
 
 		// 计算股息
 		dividendYield := decimal.NewFromFloat(realtimeData.DividendYield)
 		annualDividendBeforeTax := investmentUSD.Mul(dividendYield).Div(decimal.NewFromInt(100))
 		annualDividendAfterTax := annualDividendBeforeTax.Mul(decimal.NewFromInt(1).Sub(taxRate))
+
+		// 计算总收益 = 资本利得 + 税后股息
+		totalReturn := capitalGain.Add(annualDividendAfterTax)
 
 		holding := PortfolioHolding{
 			Symbol:                  symbol,
@@ -279,7 +290,7 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			AnnualDividendAfterTax:  annualDividendAfterTax.InexactFloat64(),
 			CapitalGain:             capitalGain.InexactFloat64(),
 			CapitalGainPercent:      capitalGainPercent.InexactFloat64(),
-			TotalReturn:             decimal.Zero.InexactFloat64(),
+			TotalReturn:             totalReturn.InexactFloat64(),
 			Volatility:              decimal.Zero.InexactFloat64(),
 		}
 
