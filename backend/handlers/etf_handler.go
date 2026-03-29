@@ -245,8 +245,8 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 				})
 			}
 		} else {
-			// 有缓存数据，使用实时数据
-			etfList = append(etfList, map[string]interface{}{
+			// 有缓存数据，使用实时数据，并合并mock数据中的风险指标
+			result := map[string]interface{}{
 				"symbol":              realtimeData.Symbol,
 				"name":                realtimeData.Name,
 				"market":              "US",
@@ -264,7 +264,16 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 				"fifty_two_week_high": realtimeData.FiftyTwoWeekHigh,
 				"fifty_two_week_low":  realtimeData.FiftyTwoWeekLow,
 				"currency":            realtimeData.Currency,
-			})
+			}
+			// 合并mock数据中的额外字段（如风险指标）
+			if mock, ok := mockData[cfg.Symbol]; ok {
+				for key, value := range mock {
+					if _, exists := result[key]; !exists {
+						result[key] = value
+					}
+				}
+			}
+			etfList = append(etfList, result)
 		}
 	}
 
