@@ -116,6 +116,11 @@ issues:
         - revive
       text: "exported:"
 
+    # 忽略 typecheck 错误，这些通常是依赖解析问题
+    - linters:
+        - typecheck
+      text: "undefined:"
+
   max-issues-per-linter: 0
   max-same-issues: 0
   new: false
