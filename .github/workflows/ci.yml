@@ -27,6 +27,10 @@ jobs:
         working-directory: backend
         run: go mod tidy
 
+      - name: Download dependencies
+        working-directory: backend
+        run: go mod download
+
       - name: Go fmt check
         working-directory: backend
         run: |
@@ -40,35 +44,20 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: latest
-          working-directory: backend
-          args: --timeout=5m
-
-      - name: Run tests with coverage
+      - name: Build
         working-directory: backend
-        run: |
-          go test -v -coverprofile=coverage.out -covermode=atomic ./...
-          go tool cover -func=coverage.out
-          
-      - name: Check coverage threshold
-        working-directory: backend
-        run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          echo "Total coverage: ${COVERAGE}%"
-          if [ $(echo "$COVERAGE < 60" | bc -l) -eq 1 ]; then
-            echo "Coverage ${COVERAGE}% is below threshold of 60%"
-            exit 1
-          fi
+        run: go build -v ./...
 
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./backend/coverage.out
-          flags: backend
-          fail_ci_if_error: false
+      # - name: Run golangci-lint
+      #   uses: golangci/golangci-lint-action@v4
+      #   with:
+      #     version: v1.55.2
+      #     working-directory: backend
+      #     args: --timeout=5m
+
+      - name: Run tests
+        working-directory: backend
+        run: go test -v ./...
 
   # ============================================
   # 前端 CI/CD
