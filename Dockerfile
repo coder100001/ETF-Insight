@@ -31,8 +31,8 @@ WORKDIR /app/frontend
 # 复制 package 文件（利用 Docker 缓存层）
 COPY frontend/package*.json ./
 
-# 安装依赖（包括 dev 依赖，因为构建需要）
-RUN npm ci
+# 安装依赖（使用 npm install 代替 npm ci，避免 lock 文件同步问题）
+RUN npm install
 
 # 复制源代码并构建
 COPY frontend/ .
