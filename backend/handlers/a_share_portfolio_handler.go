@@ -42,15 +42,16 @@ func (h *ASharePortfolioHandler) GetDefaultPortfolio(c *gin.Context) {
 	etfs := getDefaultAShareETFs()
 
 	// 默认投资金额配置（单位：万元）
+	// 515080:12.5w, 515180:5w, 515300:7.5w, 510720:10w, 520900:7.5w, 159545:2.5w, 520550:2.5w, 513820:2.5w
 	defaultInvestments := map[string]float64{
-		"515080": 12.5, // 中证红利ETF
-		"515180": 10.0, // 红利ETF
-		"515300": 15.0, // 中证红利低波动
-		"510720": 8.0,  // 红利国企ETF
-		"520900": 10.0, // 红利低波ETF
-		"159545": 7.5,  // 红利ETF易方达
-		"520550": 5.0,  // 红利质量ETF
-		"513820": 5.0,  // 港股红利ETF
+		"515080": 12.5, // 中证红利ETF - 季分 股息4.8-5.1
+		"515180": 5.0,  // 红利ETF - 年分 股息4.4-4.5
+		"515300": 7.5,  // 红利低波ETF - 季分 股息4.4-4.5
+		"510720": 10.0, // 红利国企ETF - 月分 股息3.5-4
+		"520900": 7.5,  // 港股红利ETF - 季分 股息5.7
+		"159545": 2.5,  // 港股低波ETF - 月分 股息4
+		"520550": 2.5,  // 恒生红利ETF - 月分 股息4
+		"513820": 2.5,  // 港股通红利ETF - 月分 股息5
 	}
 
 	// 计算总投资
@@ -275,9 +276,9 @@ func getDefaultAShareETFs() []models.AShareDividendETF {
 		{
 			Symbol:            "515180",
 			Name:              "红利ETF",
-			DividendYieldMin:  decimal.NewFromFloat(4.5),
-			DividendYieldMax:  decimal.NewFromFloat(5.0),
-			DividendFrequency: models.FrequencyQuarterly,
+			DividendYieldMin:  decimal.NewFromFloat(4.4),
+			DividendYieldMax:  decimal.NewFromFloat(4.5),
+			DividendFrequency: models.FrequencyYearly,
 			Benchmark:         "上证红利指数",
 			Exchange:          "SSE",
 			ManagementFee:     decimal.NewFromFloat(0.006),
@@ -285,9 +286,9 @@ func getDefaultAShareETFs() []models.AShareDividendETF {
 		},
 		{
 			Symbol:            "515300",
-			Name:              "中证红利低波动",
-			DividendYieldMin:  decimal.NewFromFloat(4.2),
-			DividendYieldMax:  decimal.NewFromFloat(4.8),
+			Name:              "红利低波ETF",
+			DividendYieldMin:  decimal.NewFromFloat(4.4),
+			DividendYieldMax:  decimal.NewFromFloat(4.5),
 			DividendFrequency: models.FrequencyQuarterly,
 			Benchmark:         "中证红利低波动指数",
 			Exchange:          "SSE",
@@ -297,9 +298,9 @@ func getDefaultAShareETFs() []models.AShareDividendETF {
 		{
 			Symbol:            "510720",
 			Name:              "红利国企ETF",
-			DividendYieldMin:  decimal.NewFromFloat(4.0),
-			DividendYieldMax:  decimal.NewFromFloat(4.6),
-			DividendFrequency: models.FrequencyQuarterly,
+			DividendYieldMin:  decimal.NewFromFloat(3.5),
+			DividendYieldMax:  decimal.NewFromFloat(4.0),
+			DividendFrequency: models.FrequencyMonthly,
 			Benchmark:         "中证国企红利指数",
 			Exchange:          "SSE",
 			ManagementFee:     decimal.NewFromFloat(0.005),
@@ -307,47 +308,47 @@ func getDefaultAShareETFs() []models.AShareDividendETF {
 		},
 		{
 			Symbol:            "520900",
-			Name:              "红利低波ETF",
-			DividendYieldMin:  decimal.NewFromFloat(4.3),
-			DividendYieldMax:  decimal.NewFromFloat(4.9),
+			Name:              "港股红利ETF",
+			DividendYieldMin:  decimal.NewFromFloat(5.7),
+			DividendYieldMax:  decimal.NewFromFloat(5.7),
 			DividendFrequency: models.FrequencyQuarterly,
-			Benchmark:         "中证红利低波动指数",
+			Benchmark:         "中证港股通高股息指数",
 			Exchange:          "SHZ",
 			ManagementFee:     decimal.NewFromFloat(0.005),
-			Description:       "红利低波动策略，适合稳健型投资者",
+			Description:       "投资港股高股息标的，分散A股单一市场风险",
 		},
 		{
 			Symbol:            "159545",
-			Name:              "红利ETF易方达",
-			DividendYieldMin:  decimal.NewFromFloat(4.4),
-			DividendYieldMax:  decimal.NewFromFloat(5.0),
-			DividendFrequency: models.FrequencyQuarterly,
-			Benchmark:         "中证红利指数",
+			Name:              "港股低波ETF",
+			DividendYieldMin:  decimal.NewFromFloat(4.0),
+			DividendYieldMax:  decimal.NewFromFloat(4.0),
+			DividendFrequency: models.FrequencyMonthly,
+			Benchmark:         "中证港股通低波动指数",
 			Exchange:          "SHZ",
 			ManagementFee:     decimal.NewFromFloat(0.0015),
-			Description:       "低费率红利ETF，跟踪中证红利指数",
+			Description:       "港股低波动策略，选取波动率较低的港股",
 		},
 		{
 			Symbol:            "520550",
-			Name:              "红利质量ETF",
-			DividendYieldMin:  decimal.NewFromFloat(3.8),
-			DividendYieldMax:  decimal.NewFromFloat(4.5),
-			DividendFrequency: models.FrequencyQuarterly,
-			Benchmark:         "中证红利质量指数",
+			Name:              "恒生红利ETF",
+			DividendYieldMin:  decimal.NewFromFloat(4.0),
+			DividendYieldMax:  decimal.NewFromFloat(4.0),
+			DividendFrequency: models.FrequencyMonthly,
+			Benchmark:         "恒生高股息率指数",
 			Exchange:          "SHZ",
 			ManagementFee:     decimal.NewFromFloat(0.005),
-			Description:       "结合红利和质量因子，选取优质高分红股票",
+			Description:       "跟踪恒生高股息率指数，投资港股高分红股票",
 		},
 		{
 			Symbol:            "513820",
-			Name:              "港股红利ETF",
-			DividendYieldMin:  decimal.NewFromFloat(5.5),
-			DividendYieldMax:  decimal.NewFromFloat(6.5),
-			DividendFrequency: models.FrequencyQuarterly,
+			Name:              "港股通红利ETF",
+			DividendYieldMin:  decimal.NewFromFloat(5.0),
+			DividendYieldMax:  decimal.NewFromFloat(5.0),
+			DividendFrequency: models.FrequencyMonthly,
 			Benchmark:         "中证港股通高股息指数",
 			Exchange:          "SSE",
 			ManagementFee:     decimal.NewFromFloat(0.006),
-			Description:       "投资港股高股息标的，分散A股单一市场风险",
+			Description:       "通过港股通投资港股高股息标的",
 		},
 	}
 }
