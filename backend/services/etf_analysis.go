@@ -64,23 +64,23 @@ type PortfolioAnalysis struct {
 
 // PortfolioHolding 投资组合持仓
 type PortfolioHolding struct {
-	Symbol                  string          `json:"symbol"`
-	Name                    string          `json:"name"`
-	Currency                string          `json:"currency"`
-	Weight                  decimal.Decimal `json:"weight"`
-	Investment              decimal.Decimal `json:"investment"`
-	InvestmentUSD           decimal.Decimal `json:"investment_usd"`
-	Shares                  decimal.Decimal `json:"shares"`
-	CurrentPrice            decimal.Decimal `json:"current_price"`
-	CurrentValue            decimal.Decimal `json:"current_value"`
-	CurrentValueUSD         decimal.Decimal `json:"current_value_usd"`
-	DividendYield           decimal.Decimal `json:"dividend_yield"`
-	AnnualDividendBeforeTax decimal.Decimal `json:"annual_dividend_before_tax"`
-	AnnualDividendAfterTax  decimal.Decimal `json:"annual_dividend_after_tax"`
-	CapitalGain             decimal.Decimal `json:"capital_gain"`
-	CapitalGainPercent      decimal.Decimal `json:"capital_gain_percent"`
-	TotalReturn             decimal.Decimal `json:"total_return"`
-	Volatility              decimal.Decimal `json:"volatility"`
+	Symbol                  string  `json:"symbol"`
+	Name                    string  `json:"name"`
+	Currency                string  `json:"currency"`
+	Weight                  float64 `json:"weight"`
+	Investment              float64 `json:"investment"`
+	InvestmentUSD           float64 `json:"investment_usd"`
+	Shares                  float64 `json:"shares"`
+	CurrentPrice            float64 `json:"current_price"`
+	CurrentValue            float64 `json:"current_value"`
+	CurrentValueUSD         float64 `json:"current_value_usd"`
+	DividendYield           float64 `json:"dividend_yield"`
+	AnnualDividendBeforeTax float64 `json:"annual_dividend_before_tax"`
+	AnnualDividendAfterTax  float64 `json:"annual_dividend_after_tax"`
+	CapitalGain             float64 `json:"capital_gain"`
+	CapitalGainPercent      float64 `json:"capital_gain_percent"`
+	TotalReturn             float64 `json:"total_return"`
+	Volatility              float64 `json:"volatility"`
 }
 
 // ForecastResult 预测结果
@@ -267,20 +267,20 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			Symbol:                  symbol,
 			Name:                    realtimeData.Name,
 			Currency:                "USD",
-			Weight:                  weightDecimal.Mul(decimal.NewFromInt(100)),
-			Investment:              investmentUSD,
-			InvestmentUSD:           investmentUSD,
-			Shares:                  shares,
-			CurrentPrice:            currentPrice,
-			CurrentValue:            currentValueUSD,
-			CurrentValueUSD:         currentValueUSD,
-			DividendYield:           dividendYield,
-			AnnualDividendBeforeTax: annualDividendBeforeTax,
-			AnnualDividendAfterTax:  annualDividendAfterTax,
-			CapitalGain:             capitalGain,
-			CapitalGainPercent:      capitalGainPercent,
-			TotalReturn:             decimal.Zero,
-			Volatility:              decimal.Zero,
+			Weight:                  weightDecimal.Mul(decimal.NewFromInt(100)).InexactFloat64(),
+			Investment:              investmentUSD.InexactFloat64(),
+			InvestmentUSD:           investmentUSD.InexactFloat64(),
+			Shares:                  shares.InexactFloat64(),
+			CurrentPrice:            currentPrice.InexactFloat64(),
+			CurrentValue:            currentValueUSD.InexactFloat64(),
+			CurrentValueUSD:         currentValueUSD.InexactFloat64(),
+			DividendYield:           dividendYield.InexactFloat64(),
+			AnnualDividendBeforeTax: annualDividendBeforeTax.InexactFloat64(),
+			AnnualDividendAfterTax:  annualDividendAfterTax.InexactFloat64(),
+			CapitalGain:             capitalGain.InexactFloat64(),
+			CapitalGainPercent:      capitalGainPercent.InexactFloat64(),
+			TotalReturn:             decimal.Zero.InexactFloat64(),
+			Volatility:              decimal.Zero.InexactFloat64(),
 		}
 
 		result.Holdings = append(result.Holdings, holding)

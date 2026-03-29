@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Badge, Space, Modal, Form, Input, InputNumber } from 'antd';
+import { Card, Table, Button, Badge, Space, Modal, Form, Input, InputNumber, Select, message, Popconfirm } from 'antd';
 import { PieChartOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { etfAPI } from '../services/api';
 
 const PageHeader = styled.div`
   display: flex;
@@ -37,6 +38,7 @@ interface PortfolioConfig {
   name: string;
   description: string;
   etfs: string[];
+  allocation: Record<string, number>;
   total_investment: number;
   created_at: string;
   updated_at: string;
@@ -49,6 +51,7 @@ const mockConfigs: PortfolioConfig[] = [
     name: '稳健型组合',
     description: '适合保守投资者，注重稳定收益',
     etfs: ['SCHD', 'VYM', 'JEPI'],
+    allocation: { SCHD: 40, VYM: 40, JEPI: 20 },
     total_investment: 100000,
     created_at: '2024-03-01',
     updated_at: '2024-03-28',
@@ -59,6 +62,7 @@ const mockConfigs: PortfolioConfig[] = [
     name: '进取型组合',
     description: '适合激进投资者，追求高收益',
     etfs: ['JEPQ', 'SPYD', 'JEPI'],
+    allocation: { JEPQ: 40, SPYD: 30, JEPI: 30 },
     total_investment: 50000,
     created_at: '2024-03-15',
     updated_at: '2024-03-28',
@@ -69,6 +73,7 @@ const mockConfigs: PortfolioConfig[] = [
     name: '平衡型组合',
     description: '平衡风险与收益',
     etfs: ['SCHD', 'SPYD', 'JEPQ', 'JEPI', 'VYM'],
+    allocation: { SCHD: 30, SPYD: 20, JEPQ: 20, JEPI: 15, VYM: 15 },
     total_investment: 200000,
     created_at: '2024-03-20',
     updated_at: '2024-03-28',
@@ -76,10 +81,37 @@ const mockConfigs: PortfolioConfig[] = [
   },
 ];
 
+interface ETFOption {
+  value: string;
+  label: string;
+}
+
 const PortfolioConfigPage: React.FC = () => {
-  const [configs] = useState<PortfolioConfig[]>(mockConfigs);
+  const [configs, setConfigs] = useState<PortfolioConfig[]>(mockConfigs);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<PortfolioConfig | null>(null);
   const [form] = Form.useForm();
+  const [etfOptions, setEtfOptions] = useState<ETFOption[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // 加载 ETF 选项
+  const loadEtfOptions = async () => {
+    setLoading(true);
+    try {
+      const response = await etfAPI.getList();
+      if (response.success && response.data) {
+        const options = response.data.map((etf: any) => ({
+          value: etf.symbol,
+          label: `${etf.symbol} - ${etf.name}`,
+        }));
+        setEtfOptions(options);
+      }
+    } catch (error) {
+      console.error('Failed to load ETF options:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const columns = [
     {
@@ -129,26 +161,101 @@ const PortfolioConfigPage: React.FC = () => {
       title: '操作',
       key: 'action',
       align: 'center' as const,
-      render: () => (
+      render: (_: any, record: PortfolioConfig) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />}>编辑</Button>
-          <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          <Button 
+            size="small" 
+            icon={<EditOutlined />} 
+            onClick={() => handleEdit(record)}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="确定要删除这个配置吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
         </Space>
       ),
     },
   ];
 
   const handleCreate = () => {
+    setEditingConfig(null);
+    form.resetFields();
     setIsModalVisible(true);
   };
 
-  const handleModalOk = () => {
-    form.validateFields().then(values => {
-      console.log('Form values:', values);
+  const handleEdit = (config: PortfolioConfig) => {
+    setEditingConfig(config);
+    form.setFieldsValue({
+      name: config.name,
+      description: config.description,
+      etfs: config.etfs,
+      allocation: config.allocation,
+      total_investment: config.total_investment,
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleDelete = (id: number) => {
+    setConfigs(prev => prev.filter(config => config.id !== id));
+    message.success('配置已删除');
+  };
+
+  const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+      
+      // 计算 ETF 权重
+      const allocation: Record<string, number> = {};
+      if (values.etfs && values.etfs.length > 0) {
+        const weight = 100 / values.etfs.length;
+        values.etfs.forEach(etf => {
+          allocation[etf] = weight;
+        });
+      }
+
+      const configData = {
+        ...values,
+        allocation,
+        etfs: values.etfs || [],
+      };
+
+      if (editingConfig) {
+        // 编辑模式
+        setConfigs(prev => prev.map(config => 
+          config.id === editingConfig.id 
+            ? { ...config, ...configData, updated_at: new Date().toISOString().split('T')[0] }
+            : config
+        ));
+        message.success('配置已更新');
+      } else {
+        // 新建模式
+        const newConfig: PortfolioConfig = {
+          id: Date.now(),
+          ...configData,
+          created_at: new Date().toISOString().split('T')[0],
+          updated_at: new Date().toISOString().split('T')[0],
+          is_default: false,
+        };
+        setConfigs(prev => [...prev, newConfig]);
+        message.success('配置已创建');
+      }
+
       setIsModalVisible(false);
       form.resetFields();
-    });
+    } catch (error) {
+      console.error('Validation failed:', error);
+    }
   };
+  
+  useEffect(() => {
+    loadEtfOptions();
+  }, []);
 
   return (
     <Layout>
@@ -172,11 +279,12 @@ const PortfolioConfigPage: React.FC = () => {
       </Card>
 
       <Modal
-        title="新建组合配置"
+        title={editingConfig ? '编辑组合配置' : '新建组合配置'}
         open={isModalVisible}
         onOk={handleModalOk}
         onCancel={() => setIsModalVisible(false)}
-        width={600}
+        width={700}
+        okText={editingConfig ? '保存' : '创建'}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -191,6 +299,19 @@ const PortfolioConfigPage: React.FC = () => {
             label="描述"
           >
             <Input.TextArea placeholder="描述这个组合的特点" rows={3} />
+          </Form.Item>
+          <Form.Item
+            name="etfs"
+            label="选择ETF"
+            rules={[{ required: true, message: '请至少选择一个ETF' }]}
+          >
+            <Select
+              mode="multiple"
+              placeholder="选择组合中的ETF"
+              options={etfOptions}
+              loading={loading}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           <Form.Item
             name="total_investment"

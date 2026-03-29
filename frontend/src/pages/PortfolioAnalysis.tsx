@@ -240,10 +240,10 @@ const PortfolioAnalysis: React.FC = () => {
       if (response.success && response.data) {
         // 转换后端数据为前端格式
         const backendData = response.data;
-        const annualDividendBeforeTax = backendData.annual_dividend || 0;
-        const taxRate = backendData.tax_rate || (config.tax_rate / 100);
-        const dividendTax = annualDividendBeforeTax * taxRate;
-        const annualDividendAfterTax = annualDividendBeforeTax - dividendTax;
+        const annualDividendBeforeTax = backendData.annual_dividend_before_tax || 0;
+        const taxRate = backendData.tax_rate / 100 || (config.tax_rate / 100);
+        const dividendTax = backendData.dividend_tax || (annualDividendBeforeTax * taxRate);
+        const annualDividendAfterTax = backendData.annual_dividend || (annualDividendBeforeTax - dividendTax);
         
         setPortfolio({
           total_investment: config.total_investment,
@@ -517,48 +517,54 @@ const PortfolioAnalysis: React.FC = () => {
             dataIndex="current_price"
             key="current_price"
             align="right"
-            render={(value: number) => `$${value.toFixed(2)}`}
+            render={(value: number) => `$${(value as number).toFixed(2)}`}
           />
           <Table.Column
             title="持有份数"
             dataIndex="shares"
             key="shares"
             align="right"
-            render={(value: number) => value.toFixed(2)}
+            render={(value: number) => (value as number).toFixed(2)}
           />
           <Table.Column
             title="当前价值"
             dataIndex="current_value"
             key="current_value"
             align="right"
-            render={(value: number) => `$${value.toLocaleString()}`}
+            render={(value: number) => `$${(value as number).toLocaleString()}`}
           />
           <Table.Column
             title="资本利得"
             dataIndex="capital_gain"
             key="capital_gain"
             align="right"
-            render={(value: number) => (
-              <span style={{ color: value >= 0 ? theme.colors.success : theme.colors.danger }}>
-                ${value.toLocaleString()}
-              </span>
-            )}
+            render={(value: number) => {
+              const numValue = value as number;
+              return (
+                <span style={{ color: numValue >= 0 ? theme.colors.success : theme.colors.danger }}>
+                  ${numValue.toLocaleString()}
+                </span>
+              );
+            }}
           />
           <Table.Column
             title="股息率"
             dataIndex="dividend_yield"
             key="dividend_yield"
             align="right"
-            render={(value?: number) => value ? `${value.toFixed(2)}%` : '-'}
+            render={(value?: number) => value ? `${(value as number).toFixed(2)}%` : '-'}
           />
           <Table.Column
             title="税后年股息"
             dataIndex="annual_dividend_after_tax"
             key="annual_dividend_after_tax"
             align="right"
-            render={(value: number) => (
-              <span style={{ color: theme.colors.success }}>${value.toLocaleString()}</span>
-            )}
+            render={(value: number) => {
+              const numValue = value as number;
+              return (
+                <span style={{ color: theme.colors.success }}>${numValue.toLocaleString()}</span>
+              );
+            }}
           />
         </StyledTable>
       </Card>

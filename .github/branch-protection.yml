@@ -1,0 +1,28 @@
+# 分支保护规则
+# 此文件定义了 feat-version-2 分支的合并保护规则
+
+rules:
+  - name: feat-version-2
+    # 必须通过所有 CI/CD 检查才能合并
+    required_status_checks:
+      strict: true
+      contexts:
+        - "Backend (Go)"
+        - "Frontend (React/TypeScript)"
+        - "Docker Build"
+        - "Code Quality"
+    
+    # 必须有至少 1 个批准
+    required_pull_request_reviews:
+      required_approving_review_count: 1
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: true
+    
+    # 禁止强制推送
+    restrictions:
+      type: restricted
+      apps: []
+    
+    # 禁止删除分支
+    allow_deletions: false
+    allow_force_pushes: false
