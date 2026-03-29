@@ -98,6 +98,14 @@ func main() {
 		})
 	})
 
+	router.Static("/assets", "./frontend/dist/assets")
+	router.StaticFile("/favicon.ico", "./frontend/dist/favicon.ico")
+	router.StaticFile("/vite.svg", "./frontend/dist/vite.svg")
+
+	router.NoRoute(func(c *gin.Context) {
+		c.File("./frontend/dist/index.html")
+	})
+
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{
 		Addr:    addr,
