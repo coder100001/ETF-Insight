@@ -34,6 +34,8 @@
 
 ## 📊 支持的 ETF 策略
 
+### 美股 ETF
+
 | 策略类型 | 示例 ETF | 描述 |
 |---------|---------|------|
 | **质量股息** | SCHD | Schwab US Dividend Equity ETF |
@@ -42,7 +44,20 @@
 | **股息增强** | JEPI | JPMorgan Equity Premium Income ETF |
 | **高股息宽基** | VYM | Vanguard High Dividend Yield ETF |
 | **科技成长** | QQQ | Invesco QQQ Trust |
-| **标普500** | SPY | SPDR S&P 500 ETF Trust |
+| **房地产** | VNQ | Vanguard Real Estate ETF |
+
+### A股红利 ETF
+
+| 代码 | 名称 | 股息率 | 分红频率 | 特点 |
+|------|------|--------|---------|------|
+| 515080 | 中证红利ETF | 4.8-5.1% | 季分 | 沪深两市高股息100只 |
+| 515180 | 红利ETF | 4.4-4.5% | 年分 | 上证红利指数50只 |
+| 515300 | 红利低波ETF | 4.4-4.5% | 季分 | 红利+低波动双因子 |
+| 510720 | 红利国企ETF | 3.5-4.0% | 月分 | 国企高分红 |
+| 520900 | 港股红利ETF | 5.7% | 季分 | 港股高股息标的 |
+| 159545 | 港股低波ETF | 4.0% | 月分 | 港股低波动策略 |
+| 520550 | 恒生红利ETF | 4.0% | 月分 | 恒生高股息率指数 |
+| 513820 | 港股通红利ETF | 5.0% | 月分 | 港股通高股息 |
 
 ## 🛠️ 技术栈
 
@@ -149,8 +164,15 @@ ETF-Insight/
 ├── backend/                 # Go 后端服务
 │   ├── config/             # 配置管理
 │   │   └── config.go
+│   ├── handlers/           # HTTP 请求处理器
+│   │   ├── etf_handler.go
+│   │   ├── etf_config_handler.go
+│   │   ├── portfolio_handler.go
+│   │   ├── a_share_portfolio_handler.go  # A股红利ETF组合
+│   │   └── exchange_rate_handler.go
 │   ├── models/             # 数据模型
 │   │   ├── models.go
+│   │   ├── a_share_dividend_etf.go       # A股红利ETF模型
 │   │   └── db.go
 │   ├── services/           # 业务逻辑
 │   │   ├── cache.go
@@ -174,6 +196,7 @@ ETF-Insight/
 │   │   │   ├── ETFDetail.tsx
 │   │   │   ├── ETFComparison.tsx
 │   │   │   ├── PortfolioAnalysis.tsx
+│   │   │   ├── ASharePortfolio.tsx    # A股红利ETF组合分析
 │   │   │   ├── ExchangeRate.tsx
 │   │   │   └── ETFConfig.tsx
 │   │   ├── services/       # API 服务
@@ -214,6 +237,17 @@ GET /api/etf/:symbol/forecast    # 获取 ETF 增长预测
 
 ```http
 POST /api/etf/portfolio    # 分析投资组合（计算收益、股息、税后收益）
+```
+
+### A股红利ETF组合 API
+
+```http
+GET /api/a-share/portfolio/default           # 获取默认A股红利ETF组合
+GET /api/a-share/portfolio/analysis          # 分析A股红利ETF组合
+POST /api/a-share/portfolio/adjust           # 调整组合配置
+GET /api/a-share/portfolio/dividend/monthly  # 按月分红预测
+GET /api/a-share/portfolio/dividend/quarterly # 按季分红预测
+GET /api/a-share/portfolio/dividend/yearly   # 按年分红预测
 ```
 
 ### ETF 配置 API
@@ -321,7 +355,9 @@ scheduler:
 
 ## 💼 投资组合分析
 
-### 功能特性
+### 美股ETF组合分析
+
+#### 功能特性
 - ✅ 自定义 ETF 配比（SCHD、SPYD、JEPQ、JEPI、VYM、QQQ）
 - ✅ 实时计算总投资额、当前价值
 - ✅ 计算资本利得、股息收益
@@ -329,7 +365,7 @@ scheduler:
 - ✅ 综合收益分析（资本利得 + 税后股息）
 - ✅ 持仓明细展示（价格、份数、当前价值、股息率）
 
-### 使用示例
+#### 使用示例
 
 ```bash
 # 计算投资组合
@@ -344,6 +380,57 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
     "total_investment": 100000,
     "tax_rate": 10
   }'
+```
+
+### A股红利ETF组合分析
+
+#### 功能特性
+- ✅ 8只A股/港股红利ETF默认组合配置
+- ✅ 实时计算总投资金额、预期年化分红
+- ✅ 平均股息率计算
+- ✅ 按月/季/年分红预测
+- ✅ 各ETF分红贡献占比分析
+- ✅ 投资占比饼图可视化
+- ✅ 分红贡献柱状图可视化
+- ✅ 支持自定义调整投资金额
+
+#### 默认组合配置
+
+| 代码 | 名称 | 投资金额 | 占比 | 股息率 | 分红频率 |
+|------|------|---------|------|--------|---------|
+| 515080 | 中证红利ETF | 12.5万 | 25% | 4.95% | 季分 |
+| 515180 | 红利ETF | 5万 | 10% | 4.45% | 年分 |
+| 515300 | 红利低波ETF | 7.5万 | 15% | 4.45% | 季分 |
+| 510720 | 红利国企ETF | 10万 | 20% | 3.75% | 月分 |
+| 520900 | 港股红利ETF | 7.5万 | 15% | 5.7% | 季分 |
+| 159545 | 港股低波ETF | 2.5万 | 5% | 4% | 月分 |
+| 520550 | 恒生红利ETF | 2.5万 | 5% | 4% | 月分 |
+| 513820 | 港股通红利ETF | 2.5万 | 5% | 5% | 月分 |
+
+**组合统计：**
+- 💰 总投资：**50万元**
+- 📈 平均股息率：**4.61%**
+- 💵 预期年分红：**约¥23,025**
+- 🗓️ 月均分红：**约¥1,919**
+
+#### 使用示例
+
+```bash
+# 获取默认A股红利ETF组合
+curl http://localhost:8080/api/a-share/portfolio/default
+
+# 调整组合配置
+curl -X POST http://localhost:8080/api/a-share/portfolio/adjust \
+  -H "Content-Type: application/json" \
+  -d '{
+    "holdings": [
+      {"symbol": "515080", "investment": 150000},
+      {"symbol": "515180", "investment": 50000}
+    ]
+  }'
+
+# 获取按月分红预测
+curl http://localhost:8080/api/a-share/portfolio/dividend/monthly
 ```
 
 响应示例：
@@ -427,8 +514,17 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
 - [ ] 数据导出功能
 - [ ] 用户权限控制
 - [ ] 邮件通知功能
+- [ ] A股ETF实时行情接入
+- [ ] 分红历史记录追踪
 
 ### 最新更新 🆕 (2026-03-29)
+- ✅ **A股红利ETF组合分析系统** - 新增完整的A股红利ETF组合分析功能
+  - 8只红利ETF默认组合（515080、515180、515300、510720、520900、159545、520550、513820）
+  - 实时计算总投资、预期分红、平均股息率
+  - 按月/季/年分红预测
+  - 投资占比饼图和分红贡献柱状图可视化
+  - 支持自定义调整投资金额
+- ✅ **实时数据更新** - 添加Yahoo Finance实时数据获取（含模拟数据备选方案）
 - ✅ **组合配置页面完善** - 添加编辑、删除和ETF选择功能
 - ✅ **股息税计算修复** - 使用正确的字段名修复股息税计算问题
 - ✅ **JSON 序列化修复** - 将 PortfolioHolding 中的 decimal.Decimal 字段改为 float64
