@@ -36,15 +36,13 @@
 
 ### 美股 ETF
 
-| 策略类型 | 示例 ETF | 描述 |
-|---------|---------|------|
-| **质量股息** | SCHD | Schwab US Dividend Equity ETF |
-| **高股息收益** | SPYD | SPDR S&P 500 High Dividend ETF |
-| **期权增强收益** | JEPQ | JPMorgan Nasdaq Equity Premium Income ETF |
-| **股息增强** | JEPI | JPMorgan Equity Premium Income ETF |
-| **高股息宽基** | VYM | Vanguard High Dividend Yield ETF |
-| **科技成长** | QQQ | Invesco QQQ Trust |
-| **房地产** | VNQ | Vanguard Real Estate ETF |
+系统支持自定义配置美股ETF组合，可灵活调整以下参数：
+
+- **ETF产品配置** - 代码、名称、策略类型、费率、货币
+- **投资组合配置** - 各ETF投资金额、权重调整
+- **收益计算模型** - 自动计算资本利得、股息收益、税后收益
+
+示例支持的策略类型：质量股息、高股息收益、期权增强收益、股息增强、高股息宽基、科技成长、房地产等
 
 ### A股红利 ETF
 
