@@ -40,9 +40,28 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          working-directory: backend
+          args: --timeout=5m
+
       - name: Run tests with coverage
         working-directory: backend
-        run: go test -v -coverprofile=coverage.out -covermode=atomic ./...
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+          
+      - name: Check coverage threshold
+        working-directory: backend
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          if [ $(echo "$COVERAGE < 60" | bc -l) -eq 1 ]; then
+            echo "Coverage ${COVERAGE}% is below threshold of 60%"
+            exit 1
+          fi
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
