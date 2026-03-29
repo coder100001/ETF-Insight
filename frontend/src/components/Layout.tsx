@@ -12,6 +12,7 @@ import {
   FileTextOutlined,
   SettingOutlined,
   SwapOutlined,
+  FundOutlined,
 } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 
@@ -135,6 +136,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <NavLink to="/portfolio-config" $active={isActive('/portfolio-config')}>
             <PieChartOutlined />
             组合配置
+          </NavLink>
+          <NavLink to="/a-share-portfolio" $active={isActive('/a-share-portfolio')}>
+            <FundOutlined />
+            A股红利组合
           </NavLink>
           <Divider />
           <NavLink to="/operation-logs" $active={isActive('/operation-logs')}>

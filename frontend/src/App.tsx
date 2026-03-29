@@ -13,6 +13,7 @@ import PortfolioConfig from './pages/PortfolioConfig';
 import OperationLogs from './pages/OperationLogs';
 import ETFConfig from './pages/ETFConfig';
 import ExchangeRate from './pages/ExchangeRate';
+import ASharePortfolio from './pages/ASharePortfolio';
 import './App.css';
 
 // 配置Ant Design主题 - 匹配Django模板风格
@@ -58,6 +59,7 @@ const App: FC = () => {
             {/* 投资组合路由 */}
             <Route path="/portfolio-analysis" element={<PortfolioAnalysis />} />
             <Route path="/portfolio-config" element={<PortfolioConfig />} />
+            <Route path="/a-share-portfolio" element={<ASharePortfolio />} />
             
             {/* 工作流路由 */}
             <Route path="/workflows" element={<WorkflowList />} />

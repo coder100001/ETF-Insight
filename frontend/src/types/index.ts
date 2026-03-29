@@ -238,3 +238,40 @@ export interface ETFConfig {
   created_at?: string;
   updated_at?: string;
 }
+
+// A股红利ETF
+export interface AShareDividendETF {
+  id: number;
+  symbol: string;
+  name: string;
+  dividend_yield_min: number;
+  dividend_yield_max: number;
+  dividend_frequency: '月分' | '季分' | '年分';
+  benchmark: string;
+  exchange: string;
+  management_fee: number;
+  description: string;
+  status: number;
+}
+
+// A股组合持仓明细
+export interface AShareHoldingDetail {
+  symbol: string;
+  name: string;
+  investment: number;
+  weight: number;
+  dividend_yield: number;
+  dividend_frequency: string;
+  expected_dividend: number;
+  dividend_contribution: number;
+}
+
+// A股分红计算结果
+export interface AShareDividendCalculation {
+  total_investment: number;
+  expected_annual_dividend: number;
+  average_dividend_yield: number;
+  monthly_dividend: number;
+  quarterly_dividend: number;
+  holdings: AShareHoldingDetail[];
+}
