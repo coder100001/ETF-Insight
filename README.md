@@ -34,15 +34,25 @@
 
 ## 📊 支持的 ETF 策略
 
-| 策略类型 | 示例 ETF | 描述 |
-|---------|---------|------|
-| **质量股息** | SCHD | Schwab US Dividend Equity ETF |
-| **高股息收益** | SPYD | SPDR S&P 500 High Dividend ETF |
-| **期权增强收益** | JEPQ | JPMorgan Nasdaq Equity Premium Income ETF |
-| **股息增强** | JEPI | JPMorgan Equity Premium Income ETF |
-| **高股息宽基** | VYM | Vanguard High Dividend Yield ETF |
-| **科技成长** | QQQ | Invesco QQQ Trust |
-| **标普500** | SPY | SPDR S&P 500 ETF Trust |
+### 美股 ETF
+
+系统支持自定义配置美股ETF组合，可灵活调整以下参数：
+
+- **ETF产品配置** - 代码、名称、策略类型、费率、货币
+- **投资组合配置** - 各ETF投资金额、权重调整
+- **收益计算模型** - 自动计算资本利得、股息收益、税后收益
+
+示例支持的策略类型：质量股息、高股息收益、期权增强收益、股息增强、高股息宽基、科技成长、房地产等
+
+### A股红利 ETF
+
+系统支持自定义配置A股/港股红利ETF组合，可灵活调整以下参数：
+
+- **ETF产品配置** - 代码、名称、股息率范围、分红频率、管理费率
+- **投资组合配置** - 各ETF投资金额、权重调整
+- **分红计算模型** - 基于投资金额和股息率自动计算预期收益
+
+示例支持的ETF类型：中证红利ETF、红利低波ETF、港股红利ETF、恒生红利ETF等
 
 ## 🛠️ 技术栈
 
@@ -149,8 +159,15 @@ ETF-Insight/
 ├── backend/                 # Go 后端服务
 │   ├── config/             # 配置管理
 │   │   └── config.go
+│   ├── handlers/           # HTTP 请求处理器
+│   │   ├── etf_handler.go
+│   │   ├── etf_config_handler.go
+│   │   ├── portfolio_handler.go
+│   │   ├── a_share_portfolio_handler.go  # A股红利ETF组合
+│   │   └── exchange_rate_handler.go
 │   ├── models/             # 数据模型
 │   │   ├── models.go
+│   │   ├── a_share_dividend_etf.go       # A股红利ETF模型
 │   │   └── db.go
 │   ├── services/           # 业务逻辑
 │   │   ├── cache.go
@@ -174,6 +191,7 @@ ETF-Insight/
 │   │   │   ├── ETFDetail.tsx
 │   │   │   ├── ETFComparison.tsx
 │   │   │   ├── PortfolioAnalysis.tsx
+│   │   │   ├── ASharePortfolio.tsx    # A股红利ETF组合分析
 │   │   │   ├── ExchangeRate.tsx
 │   │   │   └── ETFConfig.tsx
 │   │   ├── services/       # API 服务
@@ -214,6 +232,17 @@ GET /api/etf/:symbol/forecast    # 获取 ETF 增长预测
 
 ```http
 POST /api/etf/portfolio    # 分析投资组合（计算收益、股息、税后收益）
+```
+
+### A股红利ETF组合 API
+
+```http
+GET /api/a-share/portfolio/default           # 获取默认A股红利ETF组合
+GET /api/a-share/portfolio/analysis          # 分析A股红利ETF组合
+POST /api/a-share/portfolio/adjust           # 调整组合配置
+GET /api/a-share/portfolio/dividend/monthly  # 按月分红预测
+GET /api/a-share/portfolio/dividend/quarterly # 按季分红预测
+GET /api/a-share/portfolio/dividend/yearly   # 按年分红预测
 ```
 
 ### ETF 配置 API
@@ -321,7 +350,9 @@ scheduler:
 
 ## 💼 投资组合分析
 
-### 功能特性
+### 美股ETF组合分析
+
+#### 功能特性
 - ✅ 自定义 ETF 配比（SCHD、SPYD、JEPQ、JEPI、VYM、QQQ）
 - ✅ 实时计算总投资额、当前价值
 - ✅ 计算资本利得、股息收益
@@ -329,7 +360,7 @@ scheduler:
 - ✅ 综合收益分析（资本利得 + 税后股息）
 - ✅ 持仓明细展示（价格、份数、当前价值、股息率）
 
-### 使用示例
+#### 使用示例
 
 ```bash
 # 计算投资组合
@@ -344,6 +375,46 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
     "total_investment": 100000,
     "tax_rate": 10
   }'
+```
+
+### A股红利ETF组合分析
+
+#### 功能特性
+- ✅ 8只A股/港股红利ETF默认组合配置
+- ✅ 实时计算总投资金额、预期年化分红
+- ✅ 平均股息率计算
+- ✅ 按月/季/年分红预测
+- ✅ 各ETF分红贡献占比分析
+- ✅ 投资占比饼图可视化
+- ✅ 分红贡献柱状图可视化
+- ✅ 支持自定义调整投资金额
+
+#### 可配置的组合参数
+
+- **ETF产品库** - 支持添加、编辑、删除A股/港股红利ETF产品
+- **投资金额配置** - 灵活调整每只ETF的投资金额
+- **实时计算** - 自动计算总投资、预期分红、平均股息率
+- **分红预测** - 按月/季/年维度预测分红收益
+- **可视化分析** - 投资占比饼图、分红贡献柱状图
+
+#### 使用示例
+
+```bash
+# 获取默认A股红利ETF组合
+curl http://localhost:8080/api/a-share/portfolio/default
+
+# 调整组合配置
+curl -X POST http://localhost:8080/api/a-share/portfolio/adjust \
+  -H "Content-Type: application/json" \
+  -d '{
+    "holdings": [
+      {"symbol": "515080", "investment": 150000},
+      {"symbol": "515180", "investment": 50000}
+    ]
+  }'
+
+# 获取按月分红预测
+curl http://localhost:8080/api/a-share/portfolio/dividend/monthly
 ```
 
 响应示例：
@@ -427,8 +498,17 @@ curl -X POST http://localhost:8080/api/etf/portfolio \
 - [ ] 数据导出功能
 - [ ] 用户权限控制
 - [ ] 邮件通知功能
+- [ ] A股ETF实时行情接入
+- [ ] 分红历史记录追踪
 
 ### 最新更新 🆕 (2026-03-29)
+- ✅ **A股红利ETF组合分析系统** - 新增可配置的A股红利ETF组合分析功能
+  - 支持自定义ETF产品库（代码、股息率、分红频率等）
+  - 灵活配置各ETF投资金额和权重
+  - 实时计算总投资、预期分红、平均股息率
+  - 按月/季/年分红预测
+  - 投资占比饼图和分红贡献柱状图可视化
+- ✅ **实时数据更新** - 添加Yahoo Finance实时数据获取（含模拟数据备选方案）
 - ✅ **组合配置页面完善** - 添加编辑、删除和ETF选择功能
 - ✅ **股息税计算修复** - 使用正确的字段名修复股息税计算问题
 - ✅ **JSON 序列化修复** - 将 PortfolioHolding 中的 decimal.Decimal 字段改为 float64
