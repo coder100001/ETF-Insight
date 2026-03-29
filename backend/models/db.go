@@ -70,13 +70,25 @@ func (db *MockDB) First(dest interface{}, conds ...interface{}) *MockDB {
 	switch v := dest.(type) {
 	case *ETFConfig:
 		if len(conds) > 0 {
-			// 简化处理，根据ID查找
-			if id, ok := conds[0].(uint); ok {
+			// 简化处理，根据ID查找（支持int和uint）
+			var id uint
+			switch val := conds[0].(type) {
+			case uint:
+				id = val
+			case int:
+				id = uint(val)
+			default:
+				// 默认返回第一个
 				for _, config := range db.etfConfigs {
-					if config.ID == id {
-						*v = config
-						return db
-					}
+					*v = config
+					return db
+				}
+				return db
+			}
+			for _, config := range db.etfConfigs {
+				if config.ID == id {
+					*v = config
+					return db
 				}
 			}
 		}
