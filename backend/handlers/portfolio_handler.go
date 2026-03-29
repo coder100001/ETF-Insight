@@ -58,18 +58,18 @@ func (h *PortfolioHandler) AnalyzePortfolio(c *gin.Context) {
 	}
 
 	response := map[string]interface{}{
-		"total_value":              result.TotalValue.InexactFloat64(),
-		"total_return":             result.TotalReturn.InexactFloat64(),
-		"total_return_pct":         result.TotalReturnPercent.InexactFloat64(),
-		"annual_dividend":          result.AnnualDividendAfterTax.InexactFloat64(),
-		"dividend_yield":           result.WeightedDividendYield.InexactFloat64(),
-		"tax_rate":                 result.TaxRate.InexactFloat64() * 100,
-		"after_tax_return":         result.TotalReturnWithDividend.InexactFloat64(),
-		"holdings":                 result.Holdings,
-		"total_investment":         result.TotalInvestment.InexactFloat64(),
-		"annual_dividend_before_tax": result.AnnualDividendBeforeTax.InexactFloat64(),
-		"dividend_tax":             result.DividendTax.InexactFloat64(),
-		"total_return_with_dividend": result.TotalReturnWithDividend.InexactFloat64(),
+		"total_value":                        result.TotalValue.InexactFloat64(),
+		"total_return":                       result.TotalReturn.InexactFloat64(),
+		"total_return_pct":                   result.TotalReturnPercent.InexactFloat64(),
+		"annual_dividend":                    result.AnnualDividendAfterTax.InexactFloat64(),
+		"dividend_yield":                     result.WeightedDividendYield.InexactFloat64(),
+		"tax_rate":                           result.TaxRate.InexactFloat64() * 100,
+		"after_tax_return":                   result.TotalReturnWithDividend.InexactFloat64(),
+		"holdings":                           result.Holdings,
+		"total_investment":                   result.TotalInvestment.InexactFloat64(),
+		"annual_dividend_before_tax":         result.AnnualDividendBeforeTax.InexactFloat64(),
+		"dividend_tax":                       result.DividendTax.InexactFloat64(),
+		"total_return_with_dividend":         result.TotalReturnWithDividend.InexactFloat64(),
 		"total_return_with_dividend_percent": result.TotalReturnWithDividendPercent.InexactFloat64(),
 	}
 
@@ -105,7 +105,7 @@ func (h *PortfolioHandler) GetPortfolioConfigs(c *gin.Context) {
 
 func (h *PortfolioHandler) GetPortfolioConfig(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": map[string]interface{}{
@@ -138,7 +138,7 @@ func (h *PortfolioHandler) CreatePortfolioConfig(c *gin.Context) {
 
 func (h *PortfolioHandler) UpdatePortfolioConfig(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	var config map[string]interface{}
 	if err := c.ShouldBindJSON(&config); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -158,7 +158,7 @@ func (h *PortfolioHandler) UpdatePortfolioConfig(c *gin.Context) {
 func (h *PortfolioHandler) DeletePortfolioConfig(c *gin.Context) {
 	id := c.Param("id")
 	_ = id
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Config deleted",
@@ -168,7 +168,7 @@ func (h *PortfolioHandler) DeletePortfolioConfig(c *gin.Context) {
 func (h *PortfolioHandler) TogglePortfolioConfigStatus(c *gin.Context) {
 	id := c.Param("id")
 	idInt, _ := strconv.Atoi(id)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": map[string]interface{}{
@@ -181,7 +181,7 @@ func (h *PortfolioHandler) TogglePortfolioConfigStatus(c *gin.Context) {
 func (h *PortfolioHandler) AnalyzePortfolioConfig(c *gin.Context) {
 	id := c.Param("id")
 	_ = id
-	
+
 	var req struct {
 		TaxRate float64 `json:"tax_rate"`
 	}
