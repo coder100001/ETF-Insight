@@ -20,13 +20,7 @@ func NewETFConfigHandler() *ETFConfigHandler {
 // GetETFConfigs 获取ETF配置列表
 func (h *ETFConfigHandler) GetETFConfigs(c *gin.Context) {
 	var configs []models.ETFConfig
-	if err := models.DB.Find(&configs).Error; err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"error":   "获取ETF配置失败",
-		})
-		return
-	}
+	models.DB.Find(&configs)
 
 	// 如果没有配置，返回默认配置
 	if len(configs) == 0 {
@@ -51,7 +45,10 @@ func (h *ETFConfigHandler) GetETFConfig(c *gin.Context) {
 	}
 
 	var config models.ETFConfig
-	if err := models.DB.First(&config, id).Error; err != nil {
+	models.DB.First(&config, id)
+
+	// 检查是否找到
+	if config.ID == 0 {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   "ETF配置不存在",
@@ -76,13 +73,7 @@ func (h *ETFConfigHandler) CreateETFConfig(c *gin.Context) {
 		return
 	}
 
-	if err := models.DB.Create(&config).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "创建ETF配置失败",
-		})
-		return
-	}
+	models.DB.Create(&config)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -103,7 +94,10 @@ func (h *ETFConfigHandler) UpdateETFConfig(c *gin.Context) {
 	}
 
 	var config models.ETFConfig
-	if err := models.DB.First(&config, id).Error; err != nil {
+	models.DB.First(&config, id)
+
+	// 检查是否找到
+	if config.ID == 0 {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   "ETF配置不存在",
@@ -120,13 +114,7 @@ func (h *ETFConfigHandler) UpdateETFConfig(c *gin.Context) {
 		return
 	}
 
-	if err := models.DB.Model(&config).Updates(updateData).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "更新ETF配置失败",
-		})
-		return
-	}
+	models.DB.Model(&config).Updates(updateData)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -146,13 +134,7 @@ func (h *ETFConfigHandler) DeleteETFConfig(c *gin.Context) {
 		return
 	}
 
-	if err := models.DB.Delete(&models.ETFConfig{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "删除ETF配置失败",
-		})
-		return
-	}
+	models.DB.Delete(&models.ETFConfig{}, id)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -183,7 +165,10 @@ func (h *ETFConfigHandler) ToggleETFConfigStatus(c *gin.Context) {
 	}
 
 	var config models.ETFConfig
-	if err := models.DB.First(&config, id).Error; err != nil {
+	models.DB.First(&config, id)
+
+	// 检查是否找到
+	if config.ID == 0 {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   "ETF配置不存在",
@@ -192,13 +177,7 @@ func (h *ETFConfigHandler) ToggleETFConfigStatus(c *gin.Context) {
 	}
 
 	config.Status = req.Status
-	if err := models.DB.Save(&config).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "更新状态失败",
-		})
-		return
-	}
+	models.DB.Save(&config)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -230,7 +209,10 @@ func (h *ETFConfigHandler) ToggleETFConfigAutoUpdate(c *gin.Context) {
 	}
 
 	var config models.ETFConfig
-	if err := models.DB.First(&config, id).Error; err != nil {
+	models.DB.First(&config, id)
+
+	// 检查是否找到
+	if config.ID == 0 {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   "ETF配置不存在",
