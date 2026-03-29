@@ -178,11 +178,10 @@ func (h *ETFHandler) GetETFMetrics(c *gin.Context) {
 
 // GetETFForecast 获取 ETF 收益预测
 func (h *ETFHandler) GetETFForecast(c *gin.Context) {
-	symbol := c.Param("symbol")
-	initialInvestment := c.DefaultQuery("initial_investment", "10000")
-	taxRate := c.DefaultQuery("tax_rate", "0.10")
+	_ = c.Param("symbol")
+	_ = c.DefaultQuery("initial_investment", "10000")
+	_ = c.DefaultQuery("tax_rate", "0.10")
 
-	// TODO: 实现收益预测逻辑
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": []map[string]interface{}{
