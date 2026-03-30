@@ -1,521 +1,182 @@
 # ETF-Insight
 
-一个专业的 ETF 数据管理与分析平台，基于 Go + React 技术栈，提供完整的 ETF 基础信息、持仓数据、行情数据、技术指标、投资组合分析等一站式解决方案。
+一个专业的 ETF 分析与对比平台，对标 Trackinsight、ETF Insider 等国际知名 ETF 分析工具。基于 Go + React 技术栈，提供深度的 ETF 数据洞察、多维度对比分析、持仓解构、风险评估和投资组合优化等一站式解决方案。
+
+## � 产品定位
+
+ETF-Insight 致力于成为专业投资者和机构用户的 ETF 分析利器：
+
+- **ETF 对比分析** - 多维度并排对比，发现最优投资标的
+- **持仓深度解构** - 穿透底层资产，了解真实风险敞口
+- **风险指标评估** - 波动率、夏普比率、最大回撤、Beta 等专业指标
+- **投资组合优化** - 基于现代投资组合理论，构建最优资产配置
 
 ## 🌟 核心特性
 
-### 基础数据层（Data Layer）
-- **ETF基础信息** - 发行方、费率、AUM、成立时间、跟踪指数
-- **实时 & 历史行情** - K线数据（1分钟至月线）、成交量、换手率、买卖盘
-- **持仓数据（核心）** - 前10大持仓、行业分布、地区分布、季度调仓
-- **净值数据** - NAV、市价、溢价率
-- **分红数据** - 分红金额、除息日、股息率
-- **技术指标** - MA、RSI、MACD、夏普比率、最大回撤
+### 📊 ETF 对比分析（ETF Comparison）
+- **并排对比** - 最多支持 5 只 ETF 同时对比
+- **多维度指标** - 费率、AUM、股息率、业绩表现、风险指标
+- **持仓重叠分析** - 识别 ETF 间的持仓重合度，避免过度集中
+- **业绩回测对比** - 不同时间周期的收益表现对比
 
-### 智能数据管理
-- 🔄 **自动定时更新** - 美股开盘前和收盘后自动更新数据
-- ⚡ **并发获取** - 多线程并发拉取，提升效率
-- 🛡️ **智能重试** - 指数退避重试机制，应对 API 限制
-- 💾 **内存缓存** - 高性能实时数据缓存
+### 🔍 持仓深度解构（Holdings Analysis）
+- **前十大持仓** - 穿透底层资产，了解核心持仓
+- **行业分布** -  sector 权重分布及变化趋势
+- **地区分布** - 国家/地区配置比例
+- **市值分布** - 大/中/小盘股配置比例
+- **风格分析** - 价值/成长风格暴露度
 
-### 动态配置管理
-- 📋 **ETF动态配置** - 支持美股/A股/港股，灵活增删改查
-- 📊 **策略管理** - 支持质量股息、高股息收益、期权增强等多种策略
-- 🌐 **汇率管理** - 自动更新人民币、港币、美元汇率
-- 📝 **操作日志** - 完整记录所有系统操作
+### 📈 风险指标评估（Risk Metrics）
+- **波动率分析** - 年化波动率、日波动分布
+- **风险调整收益** - 夏普比率、索提诺比率、卡玛比率
+- **回撤分析** - 最大回撤、回撤持续时间、恢复周期
+- **Beta 系数** - 相对于基准指数的系统风险暴露
+- **相关性矩阵** - ETF 间的相关性分析
 
-### Web 可视化
-- 📈 **仪表盘** - 实时数据概览、关键指标展示
-- 📊 **K线图表** - 交互式价格图表，支持多周期切换
-- 🔄 **持仓分析** - 持仓明细、行业分布、地区分布可视化
-- 📉 **技术指标** - MA、RSI、MACD 等技术指标展示
-- 📊 **对比分析** - 多 ETF 对比分析
-- 💼 **投资组合分析** - 自定义配置组合，实时计算收益、股息、税后收益
+### 💼 投资组合优化（Portfolio Optimization）
+- **组合构建** - 自定义 ETF 配比，实时计算组合指标
+- **有效前沿** - 基于现代投资组合理论的有效前沿分析
+- **风险预算** - 风险平价、风险预算配置策略
+- **情景分析** - 不同市场环境下的组合表现模拟
+- **再平衡建议** - 基于目标权重的再平衡提醒
 
-## 📊 支持的 ETF 策略
+### 📉 技术分析与估值
+- **技术指标** - MA、RSI、MACD、布林带等
+- **估值分析** - PE、PB、PS 等估值指标
+- **资金流向** - 资金净流入/流出分析
+- **溢价/折价** - 市价与 NAV 的偏离度分析
 
-### 美股 ETF
-
-系统支持自定义配置美股ETF组合，可灵活调整以下参数：
-
-- **ETF产品配置** - 代码、名称、策略类型、费率、货币
-- **投资组合配置** - 各ETF投资金额、权重调整
-- **收益计算模型** - 自动计算资本利得、股息收益、税后收益
-
-示例支持的策略类型：质量股息、高股息收益、期权增强收益、股息增强、高股息宽基、科技成长、房地产等
-
-### A股红利 ETF
-
-系统支持自定义配置A股/港股红利ETF组合，可灵活调整以下参数：
-
-- **ETF产品配置** - 代码、名称、股息率范围、分红频率、管理费率
-- **投资组合配置** - 各ETF投资金额、权重调整
-- **分红计算模型** - 基于投资金额和股息率自动计算预期收益
-
-示例支持的ETF类型：中证红利ETF、红利低波ETF、港股红利ETF、恒生红利ETF等
+### 🔄 智能数据管理
+- **自动更新** - 定时拉取最新市场数据
+- **多数据源** - 支持 Yahoo Finance、Bloomberg 等数据源
+- **数据质量** - 异常数据检测与修复
+- **历史回测** - 完整的历史数据支持
 
 ## 🛠️ 技术栈
 
 ### 后端 (Go)
-- **Go 1.24.3** - 核心语言，使用最新稳定版本
-- **标准库 HTTP** - 轻量级 Web 框架，无外部依赖
-- **GORM** - ORM 框架，支持 MySQL/SQLite
-- **cron** - 定时任务调度
-- **slog (Go 1.21+ 标准库)** - 现代化日志框架
-- **go-cache** - 内存缓存
-- **decimal** - 精确金融计算
-
-### 数据库
-- **MySQL** - 主数据库，存储所有历史数据
-- **SQLite** - 开发环境轻量级数据库
-- **内存缓存** - 高性能实时数据缓存
+- **Go 1.24.3** - 高性能核心语言
+- **Gin** - Web 框架
+- **GORM** - ORM 框架，支持 MySQL/PostgreSQL
+- **Redis** - 高性能缓存
+- **gRPC** - 微服务通信
+- **slog** - 结构化日志
 
 ### 前端 (React)
-- **React 18** - 前端框架
-- **TypeScript** - 类型安全
+- **React 18** + **TypeScript**
 - **Vite** - 构建工具
 - **Ant Design** - UI 组件库
-- **ECharts** - 数据可视化
-- **styled-components** - CSS-in-JS 样式方案
+- **ECharts/D3.js** - 数据可视化
+- **React Query** - 数据获取与缓存
+
+### 数据存储
+- **PostgreSQL** - 主数据库
+- **Redis** - 缓存与会话
+- **ClickHouse** - 时序数据分析
+- **Elasticsearch** - 全文搜索
 
 ## 🚀 快速开始
 
-### 方式一：使用 Docker（推荐）
+### Docker 部署
 
 ```bash
-# 克隆项目
 git clone git@github.com:coder100001/ETF-Insight.git
 cd ETF-Insight
-
-# 启动所有服务
 docker-compose up -d
-
-# 访问 http://localhost:8080
 ```
 
-### 方式二：本地开发
+访问 http://localhost:8080
 
-#### 1. 启动后端服务
+### 本地开发
 
 ```bash
+# 后端
 cd backend
-
-# 配置 Go 代理（国内用户）
-go env -w GOPROXY=https://goproxy.cn
-go env -w GOSUMDB=sum.golang.google.cn
-go env -w GOPRIVATE=
-
-# 下载依赖
 go mod tidy
-
-# 初始化数据库
-go run main.go -init-db
-
-# 启动服务
 go run main.go
 
-# 或带配置文件启动
-go run main.go -config=config.yaml
-```
-
-后端服务默认运行在 http://localhost:8080
-
-#### 2. 启动前端服务
-
-```bash
+# 前端
 cd frontend
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run dev
-
-# 访问 http://localhost:5173
 ```
-
-### 方式三：使用模拟数据（快速测试）
-
-如果无法访问 Yahoo Finance API 或遇到速率限制，项目会自动使用模拟数据：
-
-```bash
-# 后端服务会自动使用内置的模拟数据
-# 无需额外配置即可查看完整功能
-```
-
-模拟数据包含以下 ETF：
-- QQQ - Invesco QQQ Trust
-- SCHD - Schwab US Dividend Equity ETF
-- VNQ - Vanguard Real Estate ETF
-- VYM - Vanguard High Dividend Yield ETF
-- SPYD - SPDR S&P 500 High Dividend ETF
-- JEPQ - JPMorgan Nasdaq Equity Premium Income ETF
-- JEPI - JPMorgan Equity Premium Income ETF
 
 ## 📁 项目结构
 
 ```
 ETF-Insight/
-├── backend/                 # Go 后端服务
-│   ├── config/             # 配置管理
-│   │   └── config.go
-│   ├── handlers/           # HTTP 请求处理器
-│   │   ├── etf_handler.go
-│   │   ├── etf_config_handler.go
-│   │   ├── portfolio_handler.go
-│   │   ├── a_share_portfolio_handler.go  # A股红利ETF组合
-│   │   └── exchange_rate_handler.go
-│   ├── models/             # 数据模型
-│   │   ├── models.go
-│   │   ├── a_share_dividend_etf.go       # A股红利ETF模型
-│   │   └── db.go
-│   ├── services/           # 业务逻辑
-│   │   ├── cache.go
-│   │   ├── etf_analysis.go
-│   │   ├── exchange_rate.go
-│   │   └── yahoo_finance.go
-│   ├── tasks/              # 定时任务
-│   │   └── scheduler.go
-│   ├── utils/              # 工具函数
-│   │   └── logger.go
-│   ├── main.go
-│   ├── go.mod
-│   ├── go.sum
-│   └── config.yaml
-├── frontend/               # React 前端
+├── backend/
+│   ├── api/                # API 定义 (Protobuf)
+│   ├── cmd/                # 入口程序
+│   ├── internal/
+│   │   ├── domain/         # 领域模型
+│   │   ├── application/    # 应用服务
+│   │   ├── infrastructure/ # 基础设施
+│   │   └── interfaces/     # 接口适配器
+│   ├── pkg/                # 公共库
+│   └── configs/            # 配置文件
+├── frontend/
 │   ├── src/
-│   │   ├── components/     # UI 组件
+│   │   ├── components/     # 组件
 │   │   ├── pages/          # 页面
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── ETFDashboard.tsx
-│   │   │   ├── ETFDetail.tsx
-│   │   │   ├── ETFComparison.tsx
-│   │   │   ├── PortfolioAnalysis.tsx
-│   │   │   ├── ASharePortfolio.tsx    # A股红利ETF组合分析
-│   │   │   ├── ExchangeRate.tsx
-│   │   │   └── ETFConfig.tsx
+│   │   ├── hooks/          # 自定义 Hooks
 │   │   ├── services/       # API 服务
-│   │   │   └── api.ts
-│   │   ├── styles/         # 样式
-│   │   │   └── theme.ts
-│   │   ├── types/          # TypeScript 类型
-│   │   │   └── index.ts
 │   │   └── utils/          # 工具函数
-│   │       └── format.ts
-│   ├── public/             # 静态资源
-│   ├── package.json
-│   └── vite.config.ts
-├── Dockerfile              # Docker 构建文件
-├── docker-compose.yml      # Docker Compose 配置
-└── README.md
+│   └── public/
+└── docker-compose.yml
 ```
 
-## 📖 API 接口
+## 📖 核心功能详解
 
-### ETF 列表 API
+### ETF 对比分析
 
-```http
-GET /api/etf/list          # 获取所有 ETF 列表（包含实时数据）
-GET /api/etf/comparison    # 获取 ETF 对比数据
-```
+支持多维度并排对比：
+- 基础信息（费率、规模、成立时间）
+- 业绩表现（1月/3月/1年/3年/5年/成立以来）
+- 风险指标（波动率、夏普比率、最大回撤）
+- 持仓特征（集中度、行业分布、地区分布）
+- 股息特征（股息率、分红频率、分红历史）
 
-### ETF 数据 API
+### 持仓重叠分析
 
-```http
-GET /api/etf/:symbol/realtime    # 获取 ETF 实时行情
-GET /api/etf/:symbol/history     # 获取 ETF 历史数据
-GET /api/etf/:symbol/metrics     # 获取 ETF 技术指标
-GET /api/etf/:symbol/forecast    # 获取 ETF 增长预测
-```
+识别多只 ETF 间的持仓重合：
+- 重叠持仓列表及权重
+- 重叠度评分
+- 集中度风险提示
 
-### 投资组合 API
+### 投资组合优化
 
-```http
-POST /api/etf/portfolio    # 分析投资组合（计算收益、股息、税后收益）
-```
+基于现代投资组合理论：
+- 有效前沿计算
+- 最优权重推荐
+- 风险预算配置
+- 再平衡策略
 
-### A股红利ETF组合 API
+## 🗺️ 路线图
 
-```http
-GET /api/a-share/portfolio/default           # 获取默认A股红利ETF组合
-GET /api/a-share/portfolio/analysis          # 分析A股红利ETF组合
-POST /api/a-share/portfolio/adjust           # 调整组合配置
-GET /api/a-share/portfolio/dividend/monthly  # 按月分红预测
-GET /api/a-share/portfolio/dividend/quarterly # 按季分红预测
-GET /api/a-share/portfolio/dividend/yearly   # 按年分红预测
-```
+### Phase 1: 基础分析功能 ✅
+- [x] ETF 基础信息管理
+- [x] 实时行情数据
+- [x] 基础对比分析
+- [x] 持仓数据展示
 
-### ETF 配置 API
+### Phase 2: 深度分析功能 🚧
+- [ ] 持仓重叠分析
+- [ ] 行业/地区分布可视化
+- [ ] 风险指标计算
+- [ ] 相关性矩阵
 
-```http
-GET    /api/etf-configs          # 获取所有 ETF 配置
-POST   /api/etf-configs          # 添加 ETF 配置
-GET    /api/etf-configs/:id      # 获取 ETF 详情
-PUT    /api/etf-configs/:id      # 更新 ETF
-DELETE /api/etf-configs/:id      # 删除 ETF
-PATCH  /api/etf-configs/:id      # 切换启用/禁用状态
-```
+### Phase 3: 组合优化功能 📋
+- [ ] 投资组合构建
+- [ ] 有效前沿分析
+- [ ] 风险预算配置
+- [ ] 情景分析
 
-### 汇率 API
-
-```http
-GET    /api/exchange-rates           # 获取所有汇率
-POST   /api/exchange-rates           # 添加汇率
-GET    /api/exchange-rates/latest    # 获取最新汇率
-PUT    /api/exchange-rates/:id       # 更新汇率
-```
-
-## 🗄️ 数据模型
-
-### ETF 基础信息 (ETFConfig)
-- ETF代码、名称、英文名称
-- 市场（US/CN/HK）、资产类别
-- 发行方、费率、AUM
-- 跟踪指数、成立日期
-- 启用/禁用状态
-
-### ETF 价格数据 (ETFData)
-- 开高低收、昨收价
-- 成交量、成交额
-- 涨跌额、涨跌幅、换手率
-- 时间周期（1分钟至月线）
-
-### ETF 指标数据 (ETFMetrics)
-- 总收益率、平均日收益率
-- 年化波动率、夏普比率
-- 最大回撤、交易日数
-
-### ETF 持仓数据 (ETFHolding)
-- 持仓代码、名称、资产类型
-- 持仓数量、市值、权重
-- 报告日期
-
-### ETF 行业分布 (ETFHoldingSector)
-- 行业名称、权重
-- 市值、股票数量
-
-### ETF 地区分布 (ETFHoldingRegion)
-- 地区名称、国家、权重
-- 市值、股票数量
-
-## ⏰ 定时任务
-
-| 任务 | 时间 | 说明 |
-|------|------|------|
-| 汇率更新 | 每天 10:30 | 更新人民币、港币、美元汇率 |
-| ETF 盘前更新 | 每天 9:30 ET | 美股开盘前更新数据 |
-| ETF 收盘更新 | 每天 16:30 ET | 美股收盘后更新数据 |
-| 持仓同步 | 每周日 20:00 | 同步最新持仓数据 |
-| 技术指标计算 | 每日 22:00 | 计算技术指标 |
-
-## 🔧 配置管理
-
-### 后端配置 (config.yaml)
-
-```yaml
-server:
-  port: 8080
-  mode: debug  # debug/release
-
-database:
-  driver: mysql  # mysql/sqlite
-  host: localhost
-  port: 3306
-  user: root
-  password: password
-  name: etf_insight
-  charset: utf8mb4
-
-cache:
-  realtime_ttl: 5m
-  historical_ttl: 168h
-  metrics_ttl: 24h
-  comparison_ttl: 1h
-
-scheduler:
-  enabled: true
-  timezone: "America/New_York"
-```
-
-### ETF 动态配置
-
-访问 http://localhost:8080/api/etf-configs 管理 ETF
-
-功能：
-- ✅ 美股/A股/港股分 Tab 展示
-- ✅ 添加/编辑/删除 ETF
-- ✅ 启用/禁用 ETF
-- ✅ 统计信息（总数、美股数、A股数、启用数）
-- ✅ 排序显示
-
-## 💼 投资组合分析
-
-### 美股ETF组合分析
-
-#### 功能特性
-- ✅ 自定义 ETF 配比（SCHD、SPYD、JEPQ、JEPI、VYM、QQQ）
-- ✅ 实时计算总投资额、当前价值
-- ✅ 计算资本利得、股息收益
-- ✅ 税前/税后股息计算
-- ✅ 综合收益分析（资本利得 + 税后股息）
-- ✅ 持仓明细展示（价格、份数、当前价值、股息率）
-
-#### 使用示例
-
-```bash
-# 计算投资组合
-curl -X POST http://localhost:8080/api/etf/portfolio \
-  -H "Content-Type: application/json" \
-  -d '{
-    "allocation": {
-      "SCHD": 40,
-      "SPYD": 30,
-      "JEPQ": 30
-    },
-    "total_investment": 100000,
-    "tax_rate": 10
-  }'
-```
-
-### A股红利ETF组合分析
-
-#### 功能特性
-- ✅ 8只A股/港股红利ETF默认组合配置
-- ✅ 实时计算总投资金额、预期年化分红
-- ✅ 平均股息率计算
-- ✅ 按月/季/年分红预测
-- ✅ 各ETF分红贡献占比分析
-- ✅ 投资占比饼图可视化
-- ✅ 分红贡献柱状图可视化
-- ✅ 支持自定义调整投资金额
-
-#### 可配置的组合参数
-
-- **ETF产品库** - 支持添加、编辑、删除A股/港股红利ETF产品
-- **投资金额配置** - 灵活调整每只ETF的投资金额
-- **实时计算** - 自动计算总投资、预期分红、平均股息率
-- **分红预测** - 按月/季/年维度预测分红收益
-- **可视化分析** - 投资占比饼图、分红贡献柱状图
-
-#### 使用示例
-
-```bash
-# 获取默认A股红利ETF组合
-curl http://localhost:8080/api/a-share/portfolio/default
-
-# 调整组合配置
-curl -X POST http://localhost:8080/api/a-share/portfolio/adjust \
-  -H "Content-Type: application/json" \
-  -d '{
-    "holdings": [
-      {"symbol": "515080", "investment": 150000},
-      {"symbol": "515180", "investment": 50000}
-    ]
-  }'
-
-# 获取按月分红预测
-curl http://localhost:8080/api/a-share/portfolio/dividend/monthly
-```
-
-响应示例：
-
-```json
-{
-  "success": true,
-  "data": {
-    "total_value": 108450.50,
-    "total_return": 8450.50,
-    "total_return_pct": 8.45,
-    "annual_dividend": 4850.25,
-    "dividend_yield": 4.85,
-    "tax_rate": 10,
-    "after_tax_return": 12815.73,
-    "holdings": [
-      {
-        "symbol": "SCHD",
-        "weight": 40,
-        "value": 40000,
-        "name": "Schwab US Dividend Equity ETF",
-        "current_price": 30.44,
-        "shares": 1314.06,
-        "current_value": 40000,
-        "capital_gain": 0,
-        "capital_gain_percent": 0,
-        "total_return": 12.5,
-        "volatility": 15.2,
-        "dividend_yield": 3.45,
-        "annual_dividend_before_tax": 1380,
-        "annual_dividend_after_tax": 1242
-      }
-    ]
-  }
-}
-```
-
-## 📝 开发计划
-
-### 已完成 ✅
-- [x] Go 后端框架搭建
-- [x] ETF 基础数据模型
-- [x] ETF 配置管理 API
-- [x] 汇率管理功能
-- [x] 定时任务调度
-- [x] React 前端框架
-- [x] ETF 配置管理页面
-- [x] ETF 实时数据 API
-- [x] 投资组合分析功能
-- [x] Docker 容器化
-- [x] 标准库 slog 替代 logrus
-- [x] 移除 Gin 依赖，使用标准库 HTTP
-- [x] 前端 API 集成（替换 mock 数据）
-
-### 第一阶段优化 ✅ (2026-03-29)
-- [x] GitHub Actions CI/CD 工作流
-- [x] 后端单元测试（5 个测试用例）
-- [x] 代码质量工具（Go lint、ESLint）
-- [x] Swagger API 文档（OpenAPI 3.0.3）
-- [x] 代码格式自动修复
-- [x] Go vet 静态分析
-
-### 第二阶段优化 ✅ (2026-03-29)
-- [x] 数据可视化增强
-  - [x] 持仓分布饼图（HoldingPieChart）
-  - [x] 行业分布柱状图（SectorBarChart）
-  - [x] ETF 对比雷达图（ComparisonRadarChart）
-- [x] 高级搜索和筛选功能（ETFFilter）
-  - [x] 关键词搜索
-  - [x] 策略筛选
-  - [x] 股息率范围筛选
-  - [x] 风险等级筛选
-  - [x] 多维度排序
-- [x] 响应式设计优化
-
-### 进行中 🚧
-- [ ] ETF 持仓数据可视化
-- [ ] 行业分布图表
-- [ ] 地区分布图表
-- [ ] ETF 对比分析页面
-- [ ] 数据导出功能
-- [ ] 用户权限控制
-- [ ] 邮件通知功能
-- [ ] A股ETF实时行情接入
-- [ ] 分红历史记录追踪
-
-### 最新更新 🆕 (2026-03-29)
-- ✅ **A股红利ETF组合分析系统** - 新增可配置的A股红利ETF组合分析功能
-  - 支持自定义ETF产品库（代码、股息率、分红频率等）
-  - 灵活配置各ETF投资金额和权重
-  - 实时计算总投资、预期分红、平均股息率
-  - 按月/季/年分红预测
-  - 投资占比饼图和分红贡献柱状图可视化
-- ✅ **实时数据更新** - 添加Yahoo Finance实时数据获取（含模拟数据备选方案）
-- ✅ **组合配置页面完善** - 添加编辑、删除和ETF选择功能
-- ✅ **股息税计算修复** - 使用正确的字段名修复股息税计算问题
-- ✅ **JSON 序列化修复** - 将 PortfolioHolding 中的 decimal.Decimal 字段改为 float64
-- ✅ **模拟数据支持** - 添加模拟数据后备方案，解决 Yahoo Finance API 速率限制问题
-- ✅ **投资组合分析** - 修复投资组合分析功能，正确计算收益和股息
-- ✅ **代码格式化** - 使用 gofmt 格式化所有 Go 代码
-- ✅ **go vet 检查** - 修复所有静态分析错误
+### Phase 4: 高级功能 📋
+- [ ] 智能推荐
+- [ ] 回测系统
+- [ ] 报告导出
+- [ ] API 开放平台
 
 ## 🤝 贡献
 
@@ -524,9 +185,3 @@ curl http://localhost:8080/api/a-share/portfolio/dividend/monthly
 ## 📄 License
 
 MIT License
-
-## 📧 联系
-
-如有问题或建议，请通过以下方式联系：
-- 提交 Issue
-- 发送邮件至：coder100001@gmail.com
