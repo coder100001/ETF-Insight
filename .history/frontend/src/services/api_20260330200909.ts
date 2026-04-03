@@ -1,0 +1,590 @@
+// API服务 - 连接Go后端
+import type { ETFData, ETFConfig, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig } from '../types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+
+// API响应类型
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
+// 请求重试配置
+interface RetryConfig {
+  maxRetries?: number;
+  baseDelay?: number;
+  maxDelay?: number;
+}
+
+// 请求合并器 - 避免重复请求
+class RequestCoalescer {
+  private pendingRequests = new Map<string, Promise<any>>();
+
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number = 30000): Promise<T> {
+    // 检查是否有正在进行的请求
+    if (this.pendingRequests.has(key)) {
+      return this.pendingRequests.get(key)!;
+    }
+
+    // 创建新的请求
+    const promise = fetcher().finally(() => {
+      // TTL 后清理缓存
+      setTimeout(() => {
+        this.pendingRequests.delete(key);
+      }, ttl);
+    });
+
+    this.pendingRequests.set(key, promise);
+    return promise;
+  }
+
+  clear(key?: string) {
+    if (key) {
+      this.pendingRequests.delete(key);
+    } else {
+      this.pendingRequests.clear();
+    }
+  }
+}
+
+// 全局请求合并器
+const requestCoalescer = new RequestCoalescer();
+
+// 重试请求函数
+async function requestWithRetry<T>(
+  url: string, 
+  options?: RequestInit,
+  config: RetryConfig = {}
+): Promise<T> {
+  const { maxRetries = 3, baseDelay = 1000, maxDelay = 10000 } = config;
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      lastError = error as Error;
+      
+      // 如果不是最后一次尝试，等待后重试（指数退避）
+      if (attempt < maxRetries) {
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw new Error(`Request failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
+}
+
+// 通用请求函数（带合并和重试）
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const cacheKey = `${url}-${JSON.stringify(options)}`;
+  
+  return requestCoalescer.getOrSet(cacheKey, () => 
+    requestWithRetry<T>(url, options)
+  );
+}
+
+// ETF相关API
+export const etfAPI = {
+  // 获取ETF列表
+  getList: (market?: string) => {
+    const params = market ? `?market=${market}` : '';
+    return request<ApiResponse<ETFData[]>>(`/etf/list${params}`);
+  },
+
+  // 获取ETF对比数据
+  getComparison: (period: string = '1y') => {
+    return request<ApiResponse<ETFData[]>>(`/etf/comparison?period=${period}`);
+  },
+
+  // 获取投资组合分析
+  getPortfolioAnalysis: (allocation: Record<string, number>, totalInvestment: number = 10000, taxRate: number = 0.10) => {
+    return request<ApiResponse<PortfolioAnalysisResult>>(`/etf/portfolio`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation, total_investment: totalInvestment, tax_rate: taxRate }),
+    });
+  },
+
+  // 获取实时数据
+  getRealtimeData: (symbol: string) => {
+    return request<ApiResponse<ETFData>>(`/etf/${symbol}/realtime`);
+  },
+
+  // 获取指标数据
+  getMetrics: (symbol: string, period: string = '1y') => {
+    return request<ApiResponse<Record<string, number>>>(`/etf/${symbol}/metrics?period=${period}`);
+  },
+
+  // 获取历史数据
+  getHistory: (symbol: string, period: string = '1y') => {
+    return request<ApiResponse<{ date: string; price: number }[]>>(`/etf/${symbol}/history?period=${period}`);
+  },
+
+  // 获取收益预测
+  getForecast: (symbol: string, initialInvestment: number = 10000, taxRate: number = 0.10) => {
+    return request<ApiResponse<{ years: number; value: number }[]>>(`/etf/${symbol}/forecast?initial_investment=${initialInvestment}&tax_rate=${taxRate}`);
+  },
+
+  // 更新实时数据
+  updateRealtimeData: () => {
+    return request<ApiResponse<{ message: string; count: number }>>(`/etf/update-realtime`, {
+      method: 'POST',
+    });
+  },
+};
+
+// ETF配置API
+export const etfConfigAPI = {
+  // 获取ETF配置列表
+  getConfigs: () => {
+    return request<ApiResponse<ETFConfig[]>>(`/etf-configs/`);
+  },
+
+  // 创建ETF配置
+  createConfig: (data: Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 获取ETF配置详情
+  getConfigDetail: (id: number) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`);
+  },
+
+  // 更新ETF配置
+  updateConfig: (id: number, data: Partial<Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>>) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 删除ETF配置
+  deleteConfig: (id: number) => {
+    return request<ApiResponse<{ message: string }>>(`/etf-configs/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // 切换状态
+  toggleStatus: (id: number, status: number) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/toggle-status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // 切换自动更新
+  toggleAutoUpdate: (id: number, autoUpdate: boolean) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/auto-update`, {
+      method: 'POST',
+      body: JSON.stringify({ auto_update: autoUpdate }),
+    });
+  },
+};
+
+// 投资组合配置API
+export const portfolioAPI = {
+  // 获取配置列表
+  getConfigs: () => {
+    return request<ApiResponse<PortfolioConfig[]>>(`/portfolio-configs/`);
+  },
+
+  // 创建配置
+  createConfig: (data: {
+    name: string;
+    description?: string;
+    allocation: Record<string, number>;
+    total_investment?: number;
+    status?: number;
+  }) => {
+    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 获取配置详情
+  getConfigDetail: (id: number) => {
+    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}`);
+  },
+
+  // 更新配置
+  updateConfig: (id: number, data: Partial<{
+    name: string;
+    description: string;
+    allocation: Record<string, number>;
+    total_investment: number;
+    status: number;
+  }>) => {
+    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 删除配置
+  deleteConfig: (id: number) => {
+    return request<ApiResponse<{ message: string }>>(`/portfolio-configs/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // 切换状态
+  toggleStatus: (id: number) => {
+    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}/toggle-status`, {
+      method: 'POST',
+    });
+  },
+
+  // 分析配置
+  analyzeConfig: (id: number, taxRate: number = 0.10) => {
+    return request<ApiResponse<PortfolioAnalysisResult>>(`/portfolio-configs/${id}/analyze`, {
+      method: 'POST',
+      body: JSON.stringify({ tax_rate: taxRate }),
+    });
+  },
+};
+
+// 汇率API
+export const exchangeRateAPI = {
+  // 获取汇率列表
+  getRates: () => {
+    return request<ApiResponse<ExchangeRate[]>>(`/exchange-rates/`);
+  },
+
+  // 获取汇率历史
+  getHistory: (from: string = 'USD', to: string = 'CNY', days: number = 30) => {
+    return request<ApiResponse<{ date: string; rate: number }[]>>(`/exchange-rates/history?from=${from}&to=${to}&days=${days}`);
+  },
+
+  // 货币转换
+  convert: (from: string, to: string, amount: number) => {
+    return request<ApiResponse<{ from: string; to: string; amount: number; result: number }>>(`/exchange-rates/convert?from=${from}&to=${to}&amount=${amount}`);
+  },
+
+  // 更新汇率
+  updateRates: () => {
+    return request<ApiResponse<{ message: string }>>(`/exchange-rates/update`, {
+      method: 'POST',
+    });
+  },
+};
+
+// 工作流类型
+interface Workflow {
+  id: number;
+  name: string;
+  description: string;
+  status: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 工作流API
+export const workflowAPI = {
+  // 获取工作流列表
+  getWorkflows: () => {
+    return request<ApiResponse<Workflow[]>>(`/workflows/`);
+  },
+
+  // 创建工作流
+  createWorkflow: (data: Omit<Workflow, 'id' | 'created_at' | 'updated_at'>) => {
+    return request<ApiResponse<Workflow>>(`/workflows/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 获取工作流详情
+  getWorkflow: (id: number) => {
+    return request<ApiResponse<Workflow>>(`/workflows/${id}`);
+  },
+
+  // 更新工作流
+  updateWorkflow: (id: number, data: Partial<Omit<Workflow, 'id' | 'created_at' | 'updated_at'>>) => {
+    return request<ApiResponse<Workflow>>(`/workflows/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 删除工作流
+  deleteWorkflow: (id: number) => {
+    return request<ApiResponse<{ message: string }>>(`/workflows/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // 启动工作流
+  startWorkflow: (id: number) => {
+    return request<ApiResponse<Workflow>>(`/workflows/${id}/start`, {
+      method: 'POST',
+    });
+  },
+};
+
+// 工作流实例类型
+interface WorkflowInstance {
+  id: number;
+  workflow_id: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 工作流实例API
+export const instanceAPI = {
+  // 获取实例列表
+  getInstances: () => {
+    return request<ApiResponse<WorkflowInstance[]>>(`/instances/`);
+  },
+
+  // 获取实例详情
+  getInstance: (id: number) => {
+    return request<ApiResponse<WorkflowInstance>>(`/instances/${id}`);
+  },
+
+  // 重试实例
+  retryInstance: (id: number) => {
+    return request<ApiResponse<{ message: string }>>(`/instances/${id}/retry`, {
+      method: 'POST',
+    });
+  },
+};
+
+// 调度器任务类型
+interface SchedulerJob {
+  id: string;
+  name: string;
+  schedule: string;
+  last_run?: string;
+  next_run?: string;
+}
+
+// 调度器API
+export const schedulerAPI = {
+  // 获取定时任务
+  getJobs: () => {
+    return request<ApiResponse<SchedulerJob[]>>(`/scheduler/jobs`);
+  },
+
+  // 立即执行一次
+  runOnce: () => {
+    return request<ApiResponse<{ message: string }>>(`/scheduler/run-once`, {
+      method: 'POST',
+    });
+  },
+};
+
+// ==================== 分析模型API ====================
+
+import type {
+  RiskMetrics,
+  RiskMetricsRequest,
+  OverlapResult,
+  PortfolioOverlap,
+  FactorAnalysisResult,
+  BacktestResult,
+  BacktestRequest,
+  ComparisonResult,
+} from '../types';
+
+// 风险指标分析API
+export const riskMetricsAPI = {
+  // 计算ETF风险指标
+  calculate: (params: RiskMetricsRequest) => {
+    return request<ApiResponse<RiskMetrics>>(`/analytics/risk-metrics`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  // 批量计算风险指标
+  calculateBatch: (symbols: string[], period?: string, riskFreeRate?: number) => {
+    return request<ApiResponse<Record<string, RiskMetrics>>>(`/analytics/risk-metrics/batch`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols, period, risk_free_rate: riskFreeRate }),
+    });
+  },
+};
+
+// 持仓重叠分析API
+export const overlapAPI = {
+  // 计算两只ETF的重叠度
+  calculate: (etf1: string, etf2: string) => {
+    return request<ApiResponse<OverlapResult>>(`/analytics/overlap`, {
+      method: 'POST',
+      body: JSON.stringify({ etf1, etf2 }),
+    });
+  },
+
+  // 分析投资组合重叠
+  analyzePortfolio: (symbols: string[]) => {
+    return request<ApiResponse<PortfolioOverlap>>(`/analytics/portfolio-overlap`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  },
+};
+
+// 因子分析API
+export const factorAPI = {
+  // 计算ETF因子暴露度
+  calculate: (symbol: string) => {
+    return request<ApiResponse<FactorAnalysisResult>>(`/analytics/factor-analysis`, {
+      method: 'POST',
+      body: JSON.stringify({ symbol }),
+    });
+  },
+
+  // 对比多只ETF的因子暴露
+  compare: (symbols: string[]) => {
+    return request<ApiResponse<FactorAnalysisResult[]>>(`/analytics/factor-compare`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  },
+};
+
+// 回测API
+export const backtestAPI = {
+  // 执行回测
+  run: (params: BacktestRequest) => {
+    return request<ApiResponse<BacktestResult>>(`/analytics/backtest`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  // 获取回测历史
+  getHistory: () => {
+    return request<ApiResponse<BacktestResult[]>>(`/analytics/backtest/history`);
+  },
+};
+
+// 对比分析API
+export const comparisonAPI = {
+  // 对比多只ETF
+  compare: (symbols: string[]) => {
+    return request<ApiResponse<ComparisonResult>>(`/analytics/compare`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  },
+
+  // 获取评分排名
+  getRankings: (category?: string) => {
+    const params = category ? `?category=${category}` : '';
+    return request<ApiResponse<ComparisonResult>>(`/analytics/rankings${params}`);
+  },
+};
+
+// 系统统计类型
+interface SystemStats {
+  etf_count: number;
+  workflow_count: number;
+  instance_count: number;
+  cache_size: number;
+}
+
+// 操作日志类型
+interface OperationLog {
+  id: number;
+  operation_type: string;
+  operation_name: string;
+  status: number;
+  created_at: string;
+}
+
+// 管理API
+export const adminAPI = {
+  // 获取统计信息
+  getStats: () => {
+    return request<ApiResponse<SystemStats>>(`/admin/stats`);
+  },
+
+  // 获取日志
+  getLogs: () => {
+    return request<ApiResponse<OperationLog[]>>(`/admin/logs`);
+  },
+
+  // 清除缓存
+  clearCache: () => {
+    return request<ApiResponse<{ message: string }>>(`/admin/clear-cache`, {
+      method: 'POST',
+    });
+  },
+};
+
+// 健康检查
+export const healthCheck = () => {
+  return request<{ status: string; message: string }>(`/health`);
+};
+
+// A股红利ETF组合API
+import type { AShareDividendETF, AShareDividendCalculation } from '../types';
+
+export const aSharePortfolioAPI = {
+  // 获取A股红利ETF列表
+  getETFs: () => {
+    return request<ApiResponse<AShareDividendETF[]>>(`/a-share/etfs`);
+  },
+
+  // 获取默认组合
+  getDefaultPortfolio: () => {
+    return request<ApiResponse<AShareDividendCalculation>>(`/a-share/portfolio/default`);
+  },
+
+  // 分析组合
+  analyzePortfolio: (investments: Record<string, number>) => {
+    return request<ApiResponse<AShareDividendCalculation>>(`/a-share/portfolio/analyze`, {
+      method: 'POST',
+      body: JSON.stringify({ investments }),
+    });
+  },
+
+  // 更新持仓
+  updateHolding: (symbol: string, investment: number) => {
+    return request<ApiResponse<{
+      symbol: string;
+      name: string;
+      investment: number;
+      dividend_yield: number;
+      expected_dividend: number;
+    }>>(`/a-share/portfolio/holding/${symbol}`, {
+      method: 'POST',
+      body: JSON.stringify({ investment }),
+    });
+  },
+
+  // 按频率计算分红
+  getDividendByFrequency: (frequency: 'monthly' | 'quarterly' | 'yearly') => {
+    return request<ApiResponse<{
+      symbol: string;
+      name: string;
+      investment: number;
+      period_dividend: number;
+      annual_dividend: number;
+    }[]>>(`/a-share/dividend/${frequency}`);
+  },
+};

@@ -61,15 +61,3 @@ type OperationLog struct {
 type ETFDefinitions struct {
 	ETFs []ETFConfig `yaml:"etfs"`
 }
-
-// ExchangeRate 汇率
-type ExchangeRate struct {
-	ID           uint            `json:"id" gorm:"primaryKey"`
-	FromCurrency string          `json:"from_currency" gorm:"uniqueIndex:idx_from_to_date"`
-	ToCurrency   string          `json:"to_currency" gorm:"uniqueIndex:idx_from_to_date"`
-	Rate         decimal.Decimal `json:"rate" gorm:"type:decimal(20,8)"`
-	RateDate     string          `json:"rate_date" gorm:"uniqueIndex:idx_from_to_date"`
-	DataSource   string          `json:"data_source"`
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
-}
