@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$SCRIPT_DIR"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
@@ -22,15 +22,27 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
 check_port() {
-    if lsof -i :$1 > /dev/null 2>&1 || netstat -tuln 2>/dev/null | grep ":$1 " > /dev/null; then
+    if lsof -i :$1 > /dev/null 2>&1; then
         return 0
     fi
     return 1
 }
 
+kill_port_process() {
+    local port=$1
+    if lsof -i :$port > /dev/null 2>&1; then
+        local pids=$(lsof -t -i :$port 2>/dev/null)
+        if [ -n "$pids" ]; then
+            warn "正在释放端口 $port..."
+            kill -9 $pids 2>/dev/null || true
+            sleep 1
+        fi
+    fi
+}
+
 cleanup() {
     info "正在清理进程..."
-    pkill -f "go run main.go" 2>/dev/null || true
+    pkill -f "etf-insight" 2>/dev/null || true
     pkill -f "vite" 2>/dev/null || true
 }
 
@@ -43,6 +55,16 @@ echo -e "${BLUE}============================================${NC}"
 echo ""
 
 info "项目目录: $PROJECT_DIR"
+info "后端目录: $BACKEND_DIR"
+info "前端目录: $FRONTEND_DIR"
+
+if [ ! -d "$BACKEND_DIR" ]; then
+    error "后端目录不存在: $BACKEND_DIR"
+fi
+
+if [ ! -d "$FRONTEND_DIR" ]; then
+    error "前端目录不存在: $FRONTEND_DIR"
+fi
 
 info "检查环境..."
 
@@ -50,8 +72,8 @@ if ! command -v go &> /dev/null; then
     error "Go 未安装，请先安装 Go (>= 1.21)"
 fi
 
-GO_VERSION=$(go version | grep -oP '\d+\.\d+' | head -1)
-success "Go 版本: $GO_VERSION"
+GO_VERSION=$(go version | sed 's/.*go\([0-9]*\.[0-9]*\).*/\1/' | head -1)
+success "Go 版本: $(go version | awk '{print $3}')"
 
 if ! command -v node &> /dev/null; then
     error "Node.js 未安装，请先安装 Node.js (>= 18)"
@@ -63,14 +85,16 @@ success "Node.js 版本: $NODE_VERSION"
 if ! command -v npm &> /dev/null; then
     error "npm 未安装"
 fi
-success "npm 已安装"
+success "npm 已安装: $(npm --version)"
 
 if check_port $BACKEND_PORT; then
-    warn "端口 $BACKEND_PORT 已被占用，请先释放端口或停止现有服务"
+    warn "端口 $BACKEND_PORT 已被占用，正在自动释放..."
+    kill_port_process $BACKEND_PORT
 fi
 
 if check_port $FRONTEND_PORT; then
-    warn "端口 $FRONTEND_PORT 已被占用，请先释放端口或停止现有服务"
+    warn "端口 $FRONTEND_PORT 已被占用，正在自动释放..."
+    kill_port_process $FRONTEND_PORT
 fi
 
 echo ""
