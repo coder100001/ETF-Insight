@@ -78,14 +78,12 @@ func (s *ExchangeRateService) UpdateRates() error {
 	}
 
 	// 保存到数据库
-	now := time.Now()
 	for fromCurrency, toRates := range rates {
 		for toCurrency, rate := range toRates {
 			exchangeRate := models.ExchangeRate{
 				FromCurrency: fromCurrency,
 				ToCurrency:   toCurrency,
 				Rate:         decimal.NewFromFloat(rate),
-				RateDate:     now.Format("2006-01-02"),
 				DataSource:   "api",
 			}
 			models.DB.Clauses(clause.OnConflict{
