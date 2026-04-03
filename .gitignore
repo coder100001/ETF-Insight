@@ -34,6 +34,9 @@ go.work
 *.swo
 *~
 
+# IDE History
+.history/
+
 # OS
 .DS_Store
 Thumbs.db
