@@ -7,9 +7,10 @@ import (
 )
 
 func TestInitDB(t *testing.T) {
-	err := InitDB("host=localhost port=5432 user=postgres password=postgres dbname=etf_insight sslmode=disable")
+	// 使用 SQLite 内存数据库进行测试
+	err := InitDB(":memory:")
 	if err != nil {
-		t.Skip("Skipping test: PostgreSQL not available")
+		t.Skipf("Skipping test: SQLite not available: %v", err)
 	}
 
 	if DB == nil {
@@ -18,9 +19,10 @@ func TestInitDB(t *testing.T) {
 }
 
 func TestCreateETFConfig(t *testing.T) {
-	err := InitDB("host=localhost port=5432 user=postgres password=postgres dbname=etf_insight sslmode=disable")
+	// 使用 SQLite 内存数据库进行测试
+	err := InitDB(":memory:")
 	if err != nil {
-		t.Skip("Skipping test: PostgreSQL not available")
+		t.Skipf("Skipping test: SQLite not available: %v", err)
 	}
 
 	etf := &ETFConfig{
@@ -40,9 +42,10 @@ func TestCreateETFConfig(t *testing.T) {
 }
 
 func TestInitDefaultData(t *testing.T) {
-	err := InitDB("host=localhost port=5432 user=postgres password=postgres dbname=etf_insight sslmode=disable")
+	// 使用 SQLite 内存数据库进行测试
+	err := InitDB(":memory:")
 	if err != nil {
-		t.Skip("Skipping test: PostgreSQL not available")
+		t.Skipf("Skipping test: SQLite not available: %v", err)
 	}
 
 	err = InitDefaultData()
