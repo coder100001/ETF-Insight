@@ -89,6 +89,8 @@ func main() {
 	portfolioHandler := handlers.NewPortfolioHandler(analysisService)
 
 	router.GET("/health", handlers.HealthHandler)
+	router.GET("/ready", handlers.ReadyHandler)
+	router.GET("/live", handlers.LiveHandler)
 
 	router.GET("/api/etf/list", etfHandler.GetETFList)
 	router.GET("/api/etf/comparison", etfHandler.GetETFComparison)
