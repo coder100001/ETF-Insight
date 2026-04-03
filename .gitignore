@@ -36,7 +36,6 @@ go.work
 
 # IDE History
 .history/
-
 # OS
 .DS_Store
 Thumbs.db
