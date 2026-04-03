@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"math"
 	"net/http"
+	"strconv"
 
 	"etf-insight/models"
 	"etf-insight/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 // ETFHandler ETF 相关处理器
@@ -370,18 +373,175 @@ func (h *ETFHandler) GetETFMetrics(c *gin.Context) {
 
 // GetETFForecast 获取 ETF 收益预测
 func (h *ETFHandler) GetETFForecast(c *gin.Context) {
-	_ = c.Param("symbol")
-	_ = c.DefaultQuery("initial_investment", "10000")
-	_ = c.DefaultQuery("tax_rate", "0.10")
+	symbol := c.Param("symbol")
+	initialInvestmentStr := c.DefaultQuery("initial_investment", "10000")
+	taxRateStr := c.DefaultQuery("tax_rate", "0.10")
+
+	if symbol == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "symbol is required",
+		})
+		return
+	}
+
+	// 解析参数
+	initialInvestment, err := strconv.ParseFloat(initialInvestmentStr, 64)
+	if err != nil || initialInvestment <= 0 {
+		initialInvestment = 10000
+	}
+
+	taxRate, err := strconv.ParseFloat(taxRateStr, 64)
+	if err != nil || taxRate < 0 || taxRate > 1 {
+		taxRate = 0.10
+	}
+
+	// 获取ETF实时数据
+	realtimeData, err := h.cacheService.GetRealtimeData(symbol)
+	if err != nil {
+		// 使用默认数据
+		realtimeData = h.getDefaultRealtimeData(symbol)
+	}
+
+	// 获取ETF配置信息
+	var etfConfig models.ETFConfig
+	models.DB.Where("symbol = ?", symbol).First(&etfConfig)
+
+	// 计算预测参数
+	dividendYield := realtimeData.DividendYield / 100 // 转换为小数
+	expenseRatio := 0.0020                            // 默认费率0.2%
+	if etfConfig.ExpenseRatio.GreaterThan(decimal.Zero) {
+		expenseRatio = etfConfig.ExpenseRatio.InexactFloat64()
+	}
+
+	// 历史平均年化收益率(基于不同ETF类型)
+	expectedAnnualReturn := h.getExpectedAnnualReturn(symbol)
+
+	// 计算未来10年的预测
+	forecast := make([]map[string]interface{}, 10)
+	currentValue := initialInvestment
+	cumulativeDividend := 0.0
+
+	for year := 1; year <= 10; year++ {
+		// 资本增值
+		capitalGrowth := currentValue * expectedAnnualReturn
+		// 股息收入
+		dividendIncome := currentValue * dividendYield
+		// 税后股息
+		afterTaxDividend := dividendIncome * (1 - taxRate)
+		// 费用扣除
+		fees := currentValue * expenseRatio
+
+		// 年末价值 = 当前价值 + 资本增值 + 再投资股息 - 费用
+		currentValue = currentValue + capitalGrowth + afterTaxDividend - fees
+		cumulativeDividend += afterTaxDividend
+
+		forecast[year-1] = map[string]interface{}{
+			"year":                 year,
+			"value":                math.Round(currentValue*100) / 100,
+			"capital_growth":       math.Round(capitalGrowth*100) / 100,
+			"dividend_income":      math.Round(dividendIncome*100) / 100,
+			"after_tax_dividend":   math.Round(afterTaxDividend*100) / 100,
+			"fees":                 math.Round(fees*100) / 100,
+			"cumulative_dividend":  math.Round(cumulativeDividend*100) / 100,
+			"total_return":         math.Round((currentValue-initialInvestment)*100) / 100,
+			"total_return_percent": math.Round(((currentValue-initialInvestment)/initialInvestment)*10000) / 100,
+		}
+	}
+
+	// 计算汇总信息
+	totalReturn := currentValue - initialInvestment
+	totalReturnPercent := (totalReturn / initialInvestment) * 100
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": []map[string]interface{}{
-			{"year": 1, "value": 10500},
-			{"year": 2, "value": 11025},
-			{"year": 3, "value": 11576},
+		"data": map[string]interface{}{
+			"symbol":                 symbol,
+			"name":                   realtimeData.Name,
+			"initial_investment":     initialInvestment,
+			"tax_rate":               taxRate * 100,
+			"dividend_yield":         dividendYield * 100,
+			"expense_ratio":          expenseRatio * 100,
+			"expected_annual_return": expectedAnnualReturn * 100,
+			"forecast":               forecast,
+			"summary": map[string]interface{}{
+				"final_value":           math.Round(currentValue*100) / 100,
+				"total_return":          math.Round(totalReturn*100) / 100,
+				"total_return_percent":  math.Round(totalReturnPercent*100) / 100,
+				"cumulative_dividend":   math.Round(cumulativeDividend*100) / 100,
+				"dividend_contribution": math.Round((cumulativeDividend/totalReturn)*10000) / 100,
+			},
 		},
 	})
+}
+
+// getDefaultRealtimeData 获取默认实时数据
+func (h *ETFHandler) getDefaultRealtimeData(symbol string) *services.RealtimeData {
+	defaults := map[string]*services.RealtimeData{
+		"QQQ": {
+			Symbol:        "QQQ",
+			Name:          "Invesco QQQ Trust",
+			DividendYield: 0.58,
+		},
+		"SCHD": {
+			Symbol:        "SCHD",
+			Name:          "Schwab US Dividend Equity ETF",
+			DividendYield: 3.42,
+		},
+		"VNQ": {
+			Symbol:        "VNQ",
+			Name:          "Vanguard Real Estate ETF",
+			DividendYield: 3.95,
+		},
+		"VYM": {
+			Symbol:        "VYM",
+			Name:          "Vanguard High Dividend Yield ETF",
+			DividendYield: 2.95,
+		},
+		"SPYD": {
+			Symbol:        "SPYD",
+			Name:          "SPDR S&P 500 High Dividend ETF",
+			DividendYield: 4.15,
+		},
+		"JEPQ": {
+			Symbol:        "JEPQ",
+			Name:          "JPMorgan Nasdaq Equity Premium Income ETF",
+			DividendYield: 10.85,
+		},
+		"JEPI": {
+			Symbol:        "JEPI",
+			Name:          "JPMorgan Equity Premium Income ETF",
+			DividendYield: 7.25,
+		},
+	}
+
+	if data, ok := defaults[symbol]; ok {
+		return data
+	}
+	return &services.RealtimeData{
+		Symbol:        symbol,
+		Name:          symbol,
+		DividendYield: 3.0,
+	}
+}
+
+// getExpectedAnnualReturn 获取预期年化收益率
+func (h *ETFHandler) getExpectedAnnualReturn(symbol string) float64 {
+	// 基于历史数据和市场预期的年化收益率
+	returns := map[string]float64{
+		"QQQ":  0.10, // 科技股 10%
+		"SCHD": 0.08, // 高股息 8%
+		"VNQ":  0.07, // 房地产 7%
+		"VYM":  0.08, // 高股息 8%
+		"SPYD": 0.08, // 高股息 8%
+		"JEPQ": 0.09, // 科技股+期权 9%
+		"JEPI": 0.08, // 大盘股+期权 8%
+	}
+
+	if r, ok := returns[symbol]; ok {
+		return r
+	}
+	return 0.08 // 默认8%
 }
 
 // UpdateRealtimeData 更新实时数据

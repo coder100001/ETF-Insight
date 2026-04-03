@@ -61,3 +61,22 @@ type OperationLog struct {
 type ETFDefinitions struct {
 	ETFs []ETFConfig `yaml:"etfs"`
 }
+
+// PortfolioConfig 投资组合配置
+type PortfolioConfig struct {
+	ID              uint            `json:"id" gorm:"primaryKey"`
+	Name            string          `json:"name" gorm:"size:100;not null"`              // 组合名称
+	Description     string          `json:"description" gorm:"size:500"`                // 组合描述
+	Allocation      string          `json:"allocation" gorm:"type:text;not null"`       // 配置JSON: {"QQQ": 50, "SCHD": 50}
+	TotalInvestment decimal.Decimal `json:"total_investment" gorm:"type:decimal(15,2)"` // 总投资金额
+	TaxRate         decimal.Decimal `json:"tax_rate" gorm:"type:decimal(5,4)"`          // 税率(如0.10表示10%)
+	Status          int             `json:"status" gorm:"default:1"`                    // 状态: 1-启用, 0-禁用
+	IsDefault       bool            `json:"is_default" gorm:"default:false"`            // 是否为默认组合
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+}
+
+// TableName 指定表名
+func (PortfolioConfig) TableName() string {
+	return "portfolio_configs"
+}

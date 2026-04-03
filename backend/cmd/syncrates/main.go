@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"etf-insight/models"
@@ -36,16 +37,16 @@ func main() {
 		To   string
 		Rate float64
 	}{
-		{"USD", "CNY", 7.2450},  // 美元兑人民币
-		{"CNY", "USD", 0.1380},  // 人民币兑美元
-		{"USD", "HKD", 7.7980},  // 美元兑港币
-		{"HKD", "USD", 0.1282},  // 港币兑美元
-		{"USD", "EUR", 0.9230},  // 美元兑欧元
-		{"EUR", "USD", 1.0835},  // 欧元兑美元
-		{"USD", "GBP", 0.7850},  // 美元兑英镑
-		{"GBP", "USD", 1.2739},  // 英镑兑美元
+		{"USD", "CNY", 7.2450},   // 美元兑人民币
+		{"CNY", "USD", 0.1380},   // 人民币兑美元
+		{"USD", "HKD", 7.7980},   // 美元兑港币
+		{"HKD", "USD", 0.1282},   // 港币兑美元
+		{"USD", "EUR", 0.9230},   // 美元兑欧元
+		{"EUR", "USD", 1.0835},   // 欧元兑美元
+		{"USD", "GBP", 0.7850},   // 美元兑英镑
+		{"GBP", "USD", 1.2739},   // 英镑兑美元
 		{"USD", "JPY", 151.4500}, // 美元兑日元
-		{"JPY", "USD", 0.0066},  // 日元兑美元
+		{"JPY", "USD", 0.0066},   // 日元兑美元
 	}
 
 	for _, r := range rates {
@@ -84,6 +85,8 @@ func syncRate(from, to string, rate float64) {
 	}
 
 	// 保存到数据库
+	now := time.Now()
+	expiresAt := now.Add(24 * time.Hour)
 	exchangeRate := &models.ExchangeRate{
 		FromCurrency:  from,
 		ToCurrency:    to,
@@ -93,8 +96,8 @@ func syncRate(from, to string, rate float64) {
 		DataSource:    "demo",
 		SourceType:    "manual",
 		ValidStatus:   1,
-		SyncedAt:      &[]time.Time{time.Now()}[0],
-		ExpiresAt:     &[]time.Time{time.Now().Add(24 * time.Hour)}[0],
+		SyncedAt:      &now,
+		ExpiresAt:     &expiresAt,
 	}
 
 	if err := models.DB.Where("from_currency = ? AND to_currency = ?", from, to).
@@ -123,7 +126,7 @@ func calculateUSDIndex() {
 	// 获取 USD 对这些货币的汇率
 	rates := make(map[string]float64)
 	var rate models.ExchangeRate
-	
+
 	currencies := []string{"EUR", "JPY", "GBP", "CAD", "SEK", "CHF"}
 	for _, currency := range currencies {
 		if err := models.DB.Where("from_currency = ? AND to_currency = ? AND valid_status = ?",
@@ -139,11 +142,12 @@ func calculateUSDIndex() {
 		if !ok || r <= 0 {
 			continue
 		}
-		// 使用 math.Pow
-		index *= pow(r, -weight)
+		index *= math.Pow(r, -weight)
 	}
 
 	// 保存美元指数
+	now := time.Now()
+	expiresAt := now.Add(24 * time.Hour)
 	usdIndex := &models.ExchangeRate{
 		FromCurrency:  "USD",
 		ToCurrency:    "INDEX",
@@ -153,8 +157,8 @@ func calculateUSDIndex() {
 		DataSource:    "calculated",
 		SourceType:    "calculated",
 		ValidStatus:   1,
-		SyncedAt:      &[]time.Time{time.Now()}[0],
-		ExpiresAt:     &[]time.Time{time.Now().Add(24 * time.Hour)}[0],
+		SyncedAt:      &now,
+		ExpiresAt:     &expiresAt,
 	}
 
 	if err := models.DB.Where("from_currency = ? AND to_currency = ?", "USD", "INDEX").
@@ -165,22 +169,6 @@ func calculateUSDIndex() {
 	}
 
 	fmt.Printf("  USD Index: %.2f\n", index)
-}
-
-// pow 计算幂
-func pow(x, y float64) float64 {
-	if x <= 0 {
-		return 0
-	}
-	// 简单的幂计算
-	result := 1.0
-	for i := 0; i < 100; i++ {
-		result *= x
-		if i >= int(y*100) {
-			break
-		}
-	}
-	return result
 }
 
 // showRates 显示当前汇率

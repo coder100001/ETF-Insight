@@ -27,30 +27,68 @@ func NewExchangeRateHandler() *ExchangeRateHandler {
 	}
 }
 
+// ExchangeRateResponse 汇率响应结构体
+type ExchangeRateResponse struct {
+	ID            uint       `json:"id"`
+	FromCurrency  string     `json:"from_currency"`
+	ToCurrency    string     `json:"to_currency"`
+	Rate          float64    `json:"rate"`
+	PreviousRate  float64    `json:"previous_rate"`
+	ChangePercent float64    `json:"change_percent"`
+	DataSource    string     `json:"data_source"`
+	SourceType    string     `json:"source_type"`
+	ValidStatus   int        `json:"valid_status"`
+	Priority      int        `json:"priority"`
+	SyncedAt      *time.Time `json:"synced_at"`
+	ExpiresAt     *time.Time `json:"expires_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// convertToResponse 将模型转换为响应结构体
+func convertToResponse(rate *models.ExchangeRate) *ExchangeRateResponse {
+	return &ExchangeRateResponse{
+		ID:            rate.ID,
+		FromCurrency:  rate.FromCurrency,
+		ToCurrency:    rate.ToCurrency,
+		Rate:          rate.Rate.InexactFloat64(),
+		PreviousRate:  rate.PreviousRate.InexactFloat64(),
+		ChangePercent: rate.ChangePercent.InexactFloat64(),
+		DataSource:    rate.DataSource,
+		SourceType:    rate.SourceType,
+		ValidStatus:   rate.ValidStatus,
+		Priority:      rate.Priority,
+		SyncedAt:      rate.SyncedAt,
+		ExpiresAt:     rate.ExpiresAt,
+		CreatedAt:     rate.CreatedAt,
+		UpdatedAt:     rate.UpdatedAt,
+	}
+}
+
 // GetExchangeRates 获取汇率列表
 func (h *ExchangeRateHandler) GetExchangeRates(c *gin.Context) {
 	var rates []models.ExchangeRate
-	
+
 	// 只获取有效的汇率数据
 	query := models.DB.Where("valid_status = ?", 1)
-	
+
 	// 支持按货币对筛选
 	fromCurrency := c.Query("from")
 	if fromCurrency != "" {
 		query = query.Where("from_currency = ?", fromCurrency)
 	}
-	
+
 	toCurrency := c.Query("to")
 	if toCurrency != "" {
 		query = query.Where("to_currency = ?", toCurrency)
 	}
-	
+
 	// 支持按数据源筛选
 	dataSource := c.Query("source")
 	if dataSource != "" {
 		query = query.Where("data_source = ?", dataSource)
 	}
-	
+
 	// 排序和限制
 	if err := query.Order("priority desc, updated_at desc").Find(&rates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -59,11 +97,17 @@ func (h *ExchangeRateHandler) GetExchangeRates(c *gin.Context) {
 		})
 		return
 	}
-	
+
+	// 转换为响应格式
+	var responses []*ExchangeRateResponse
+	for i := range rates {
+		responses = append(responses, convertToResponse(&rates[i]))
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    rates,
-		"count":   len(rates),
+		"data":    responses,
+		"count":   len(responses),
 	})
 }
 
@@ -71,7 +115,7 @@ func (h *ExchangeRateHandler) GetExchangeRates(c *gin.Context) {
 func (h *ExchangeRateHandler) GetExchangeRate(c *gin.Context) {
 	fromCurrency := c.Param("from")
 	toCurrency := c.Param("to")
-	
+
 	if fromCurrency == "" || toCurrency == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -79,7 +123,7 @@ func (h *ExchangeRateHandler) GetExchangeRate(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var rate models.ExchangeRate
 	if err := models.DB.Where("from_currency = ? AND to_currency = ? AND valid_status = ?",
 		fromCurrency, toCurrency, 1).First(&rate).Error; err != nil {
@@ -89,7 +133,7 @@ func (h *ExchangeRateHandler) GetExchangeRate(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    rate,
@@ -103,7 +147,7 @@ func (h *ExchangeRateHandler) ConvertCurrency(c *gin.Context) {
 		To     string  `json:"to" binding:"required"`
 		Amount float64 `json:"amount" binding:"required,gt=0"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -111,7 +155,7 @@ func (h *ExchangeRateHandler) ConvertCurrency(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var rate models.ExchangeRate
 	if err := models.DB.Where("from_currency = ? AND to_currency = ? AND valid_status = ?",
 		req.From, req.To, 1).First(&rate).Error; err != nil {
@@ -121,7 +165,7 @@ func (h *ExchangeRateHandler) ConvertCurrency(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 检查数据是否过期
 	if rate.ExpiresAt != nil && rate.ExpiresAt.Before(time.Now()) {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -130,9 +174,9 @@ func (h *ExchangeRateHandler) ConvertCurrency(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	convertedAmount := rate.Rate.Mul(decimal.NewFromFloat(req.Amount))
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -151,7 +195,7 @@ func (h *ExchangeRateHandler) TriggerSync(c *gin.Context) {
 	var req struct {
 		SyncType string `json:"sync_type" binding:"required,oneof=full incremental"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -159,7 +203,7 @@ func (h *ExchangeRateHandler) TriggerSync(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 异步执行同步
 	go func() {
 		result, err := h.syncTask.TriggerManualSync(req.SyncType)
@@ -170,10 +214,10 @@ func (h *ExchangeRateHandler) TriggerSync(c *gin.Context) {
 		// 记录成功日志
 		_ = result
 	}()
-	
+
 	c.JSON(http.StatusAccepted, gin.H{
-		"success": true,
-		"message": "Sync task started",
+		"success":   true,
+		"message":   "Sync task started",
 		"sync_type": req.SyncType,
 	})
 }
@@ -188,7 +232,7 @@ func (h *ExchangeRateHandler) GetSyncLogs(c *gin.Context) {
 	if limit > 100 {
 		limit = 100
 	}
-	
+
 	logs, err := h.syncService.GetSyncLogs(limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -197,7 +241,7 @@ func (h *ExchangeRateHandler) GetSyncLogs(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    logs,
@@ -215,7 +259,7 @@ func (h *ExchangeRateHandler) GetSyncLogDetails(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var log models.ExchangeRateSyncLog
 	if err := models.DB.First(&log, logID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -224,10 +268,10 @@ func (h *ExchangeRateHandler) GetSyncLogDetails(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var details []models.ExchangeRateSyncDetail
 	models.DB.Where("sync_log_id = ?", log.ID).Find(&details)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -240,15 +284,15 @@ func (h *ExchangeRateHandler) GetSyncLogDetails(c *gin.Context) {
 // GetCurrencyPairs 获取货币对列表
 func (h *ExchangeRateHandler) GetCurrencyPairs(c *gin.Context) {
 	var pairs []models.CurrencyPair
-	
+
 	query := models.DB
-	
+
 	// 支持筛选启用状态
 	isActive := c.Query("active")
 	if isActive != "" {
 		query = query.Where("is_active = ?", isActive)
 	}
-	
+
 	if err := query.Order("priority desc").Find(&pairs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -256,7 +300,7 @@ func (h *ExchangeRateHandler) GetCurrencyPairs(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    pairs,
@@ -274,7 +318,7 @@ func (h *ExchangeRateHandler) CreateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 检查是否已存在
 	var existing models.CurrencyPair
 	if err := models.DB.Where("from_currency = ? AND to_currency = ?", pair.FromCurrency, pair.ToCurrency).First(&existing).Error; err == nil {
@@ -284,7 +328,7 @@ func (h *ExchangeRateHandler) CreateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if err := models.DB.Create(&pair).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -292,7 +336,7 @@ func (h *ExchangeRateHandler) CreateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    pair,
@@ -309,7 +353,7 @@ func (h *ExchangeRateHandler) UpdateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var pair models.CurrencyPair
 	if err := models.DB.First(&pair, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -318,7 +362,7 @@ func (h *ExchangeRateHandler) UpdateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -327,7 +371,7 @@ func (h *ExchangeRateHandler) UpdateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if err := models.DB.Model(&pair).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -335,7 +379,7 @@ func (h *ExchangeRateHandler) UpdateCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    pair,
@@ -352,7 +396,7 @@ func (h *ExchangeRateHandler) DeleteCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	var pair models.CurrencyPair
 	if err := models.DB.First(&pair, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -361,7 +405,7 @@ func (h *ExchangeRateHandler) DeleteCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if err := models.DB.Delete(&pair).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -369,7 +413,7 @@ func (h *ExchangeRateHandler) DeleteCurrencyPair(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Currency pair deleted",
@@ -390,13 +434,13 @@ func (h *ExchangeRateHandler) GetSyncStatus(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"is_syncing":   h.syncTask.IsRunning(),
-			"last_sync":    latestLog,
-			"task_status":  latestLog.Status,
+			"is_syncing":  h.syncTask.IsRunning(),
+			"last_sync":   latestLog,
+			"task_status": latestLog.Status,
 		},
 	})
 }

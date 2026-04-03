@@ -420,22 +420,29 @@ export default function ASharePortfolioPage() {
               <PieChart>
                 <Pie
                   data={pieData}
-                  cx="50%"
+                  cx="40%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
-                  outerRadius={100}
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  innerRadius={40}
                   fill="#8884d8"
                   dataKey="value"
+                  paddingAngle={2}
                 >
                   {pieData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <RechartsTooltip
-                  formatter={(value) => formatMoney(Number(value))}
+                  formatter={(value, name) => [`${formatMoney(Number(value))}`, name]}
                 />
-                <Legend />
+                <Legend 
+                  layout="vertical" 
+                  verticalAlign="middle" 
+                  align="right"
+                  wrapperStyle={{ fontSize: '12px' }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>

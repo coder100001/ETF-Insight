@@ -84,9 +84,13 @@ const ExchangeRatePage: React.FC = () => {
   const { message } = App.useApp();
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   useEffect(() => {
     fetchRates();
+    // 每5分钟自动刷新一次
+    const interval = setInterval(fetchRates, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchRates = async () => {
@@ -95,6 +99,7 @@ const ExchangeRatePage: React.FC = () => {
       const response = await axios.get('/api/exchange-rates');
       if (response.data.success && response.data.data) {
         setRates(response.data.data);
+        setLastUpdated(new Date().toLocaleString('zh-CN'));
       } else {
         message.error('获取汇率数据失败');
       }
@@ -196,7 +201,19 @@ const ExchangeRatePage: React.FC = () => {
         </StatCard>
       </StatsRow>
 
-      <Card style={{ boxShadow: theme.shadows.card }}>
+      <Card 
+        style={{ boxShadow: theme.shadows.card }}
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>汇率列表</span>
+            {lastUpdated && (
+              <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
+                最后更新: {lastUpdated}
+              </span>
+            )}
+          </div>
+        }
+      >
         <StyledTable
           dataSource={rates}
           columns={columns}

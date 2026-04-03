@@ -64,6 +64,7 @@ func AutoMigrate() error {
 		&AShareDividendETF{},
 		&AShareETFPortfolio{},
 		&ASharePortfolioHolding{},
+		&PortfolioConfig{},
 	)
 }
 

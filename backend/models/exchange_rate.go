@@ -17,9 +17,9 @@ type ExchangeRate struct {
 	ChangePercent decimal.Decimal `gorm:"type:decimal(10,4);default:0" json:"change_percent"`
 	DataSource    string          `gorm:"size:50;not null" json:"data_source"`
 	SourceType    string          `gorm:"size:20;default:'api'" json:"source_type"` // api, manual, calculated
-	ValidStatus   int             `gorm:"default:1" json:"valid_status"`             // 1:有效, 0:无效
-	Priority      int             `gorm:"default:0" json:"priority"`                 // 优先级
-	SyncBatchID   string          `gorm:"size:50;index" json:"sync_batch_id"`        // 同步批次ID
+	ValidStatus   int             `gorm:"default:1" json:"valid_status"`            // 1:有效, 0:无效
+	Priority      int             `gorm:"default:0" json:"priority"`                // 优先级
+	SyncBatchID   string          `gorm:"size:50;index" json:"sync_batch_id"`       // 同步批次ID
 	SyncedAt      *time.Time      `json:"synced_at"`
 	ExpiresAt     *time.Time      `json:"expires_at"` // 数据过期时间
 	CreatedAt     time.Time       `json:"created_at"`
@@ -36,13 +36,13 @@ func (ExchangeRate) TableName() string {
 type ExchangeRateSyncLog struct {
 	ID            uint           `gorm:"primaryKey;autoIncrement" json:"id"`
 	BatchID       string         `gorm:"size:50;not null;index" json:"batch_id"`
-	SyncType      string         `gorm:"size:20;not null" json:"sync_type"`      // full:全量, incremental:增量
+	SyncType      string         `gorm:"size:20;not null" json:"sync_type"` // full:全量, incremental:增量
 	DataSource    string         `gorm:"size:50;not null" json:"data_source"`
-	Status        string         `gorm:"size:20;not null" json:"status"`         // success:成功, failed:失败, partial:部分成功
-	TotalCount    int            `json:"total_count"`                            // 总数据量
-	SuccessCount  int            `json:"success_count"`                          // 成功数量
-	FailedCount   int            `json:"failed_count"`                           // 失败数量
-	SkippedCount  int            `json:"skipped_count"`                          // 跳过数量
+	Status        string         `gorm:"size:20;not null" json:"status"` // success:成功, failed:失败, partial:部分成功
+	TotalCount    int            `json:"total_count"`                    // 总数据量
+	SuccessCount  int            `json:"success_count"`                  // 成功数量
+	FailedCount   int            `json:"failed_count"`                   // 失败数量
+	SkippedCount  int            `json:"skipped_count"`                  // 跳过数量
 	ErrorMessage  string         `gorm:"type:text" json:"error_message"`
 	RetryCount    int            `gorm:"default:0" json:"retry_count"`
 	MaxRetryCount int            `gorm:"default:3" json:"max_retry_count"`
@@ -61,17 +61,17 @@ func (ExchangeRateSyncLog) TableName() string {
 
 // ExchangeRateSyncDetail 汇率同步明细表
 type ExchangeRateSyncDetail struct {
-	ID           uint           `gorm:"primaryKey;autoIncrement" json:"id"`
-	SyncLogID    uint           `gorm:"not null;index" json:"sync_log_id"`
-	FromCurrency string         `gorm:"size:10;not null" json:"from_currency"`
-	ToCurrency   string         `gorm:"size:10;not null" json:"to_currency"`
-	OldRate      decimal.Decimal `gorm:"type:decimal(20,8)" json:"old_rate"`
-	NewRate      decimal.Decimal `gorm:"type:decimal(20,8)" json:"new_rate"`
+	ID            uint            `gorm:"primaryKey;autoIncrement" json:"id"`
+	SyncLogID     uint            `gorm:"not null;index" json:"sync_log_id"`
+	FromCurrency  string          `gorm:"size:10;not null" json:"from_currency"`
+	ToCurrency    string          `gorm:"size:10;not null" json:"to_currency"`
+	OldRate       decimal.Decimal `gorm:"type:decimal(20,8)" json:"old_rate"`
+	NewRate       decimal.Decimal `gorm:"type:decimal(20,8)" json:"new_rate"`
 	ChangePercent decimal.Decimal `gorm:"type:decimal(10,4)" json:"change_percent"`
-	Status       string         `gorm:"size:20;not null" json:"status"` // success:成功, failed:失败, skipped:跳过
-	ErrorMessage string         `gorm:"type:text" json:"error_message"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
+	Status        string          `gorm:"size:20;not null" json:"status"` // success:成功, failed:失败, skipped:跳过
+	ErrorMessage  string          `gorm:"type:text" json:"error_message"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
 }
 
 // TableName 指定表名

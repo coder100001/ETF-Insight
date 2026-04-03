@@ -31,8 +31,17 @@ func (t *ExchangeRateTask) Start() {
 		return
 	}
 
+	// 每5分钟执行一次汇率更新
+	_, err := t.cron.AddFunc("0 */5 * * * *", func() {
+		t.runFrequentSync()
+	})
+	if err != nil {
+		utils.Error("Failed to add frequent sync cron job", err)
+		return
+	}
+
 	// 每日上午10:30执行全量同步
-	_, err := t.cron.AddFunc("0 30 10 * * *", func() {
+	_, err = t.cron.AddFunc("0 30 10 * * *", func() {
 		t.runDailySync()
 	})
 	if err != nil {
@@ -40,18 +49,12 @@ func (t *ExchangeRateTask) Start() {
 		return
 	}
 
-	// 每小时执行增量同步
-	_, err = t.cron.AddFunc("0 0 * * * *", func() {
-		t.runHourlySync()
-	})
-	if err != nil {
-		utils.Error("Failed to add hourly sync cron job", err)
-		return
-	}
-
 	t.cron.Start()
 	t.isRunning = true
-	utils.Info("Exchange rate sync task started", nil)
+	utils.Info("Exchange rate sync task started", map[string]interface{}{
+		"frequent_interval": "5m",
+		"daily_sync":        "10:30",
+	})
 }
 
 // Stop 停止定时任务
@@ -64,10 +67,33 @@ func (t *ExchangeRateTask) Stop() {
 	utils.Info("Exchange rate sync task stopped", nil)
 }
 
+// runFrequentSync 执行高频同步（每5分钟）
+func (t *ExchangeRateTask) runFrequentSync() {
+	utils.Info("Starting frequent exchange rate sync (5min interval)", nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	result, err := t.syncService.IncrementalSync(ctx)
+	if err != nil {
+		utils.Error("Frequent sync failed", err)
+		return
+	}
+
+	utils.Info("Frequent sync completed", map[string]interface{}{
+		"batch_id":    result.BatchID,
+		"total":       result.TotalCount,
+		"success":     result.SuccessCount,
+		"failed":      result.FailedCount,
+		"skipped":     result.SkippedCount,
+		"duration_ms": result.Duration.Milliseconds(),
+	})
+}
+
 // runDailySync 执行每日同步
 func (t *ExchangeRateTask) runDailySync() {
 	utils.Info("Starting daily exchange rate sync", nil)
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -78,35 +104,12 @@ func (t *ExchangeRateTask) runDailySync() {
 	}
 
 	utils.Info("Daily sync completed", map[string]interface{}{
-		"batch_id":      result.BatchID,
-		"total":         result.TotalCount,
-		"success":       result.SuccessCount,
-		"failed":        result.FailedCount,
-		"skipped":       result.SkippedCount,
-		"duration_ms":   result.Duration.Milliseconds(),
-	})
-}
-
-// runHourlySync 执行每小时同步
-func (t *ExchangeRateTask) runHourlySync() {
-	utils.Info("Starting hourly exchange rate sync", nil)
-	
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	result, err := t.syncService.IncrementalSync(ctx)
-	if err != nil {
-		utils.Error("Hourly sync failed", err)
-		return
-	}
-
-	utils.Info("Hourly sync completed", map[string]interface{}{
-		"batch_id":      result.BatchID,
-		"total":         result.TotalCount,
-		"success":       result.SuccessCount,
-		"failed":        result.FailedCount,
-		"skipped":       result.SkippedCount,
-		"duration_ms":   result.Duration.Milliseconds(),
+		"batch_id":    result.BatchID,
+		"total":       result.TotalCount,
+		"success":     result.SuccessCount,
+		"failed":      result.FailedCount,
+		"skipped":     result.SkippedCount,
+		"duration_ms": result.Duration.Milliseconds(),
 	})
 }
 

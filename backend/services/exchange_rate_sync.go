@@ -42,18 +42,18 @@ func NewExchangeRateSyncService() *ExchangeRateSyncService {
 
 // ExchangeRateAPIResponse 汇率API响应
 type ExchangeRateAPIResponse struct {
-	Result  string             `json:"result"`
-	Base    string             `json:"base_code"`
-	Rates   map[string]float64 `json:"conversion_rates"`
-	Date    string             `json:"time_last_update_utc"`
-	NextDate string            `json:"time_next_update_utc"`
+	Result   string             `json:"result"`
+	Base     string             `json:"base_code"`
+	Rates    map[string]float64 `json:"conversion_rates"`
+	Date     string             `json:"time_last_update_utc"`
+	NextDate string             `json:"time_next_update_utc"`
 }
 
 // SyncOptions 同步选项
 type SyncOptions struct {
-	SyncType     string   // full:全量, incremental:增量
+	SyncType      string // full:全量, incremental:增量
 	CurrencyPairs []models.CurrencyPair
-	ForceUpdate  bool     // 强制更新，即使数据未过期
+	ForceUpdate   bool // 强制更新，即使数据未过期
 }
 
 // SyncResult 同步结果
@@ -123,7 +123,7 @@ func (s *ExchangeRateSyncService) Sync(ctx context.Context, opts *SyncOptions) (
 	}
 
 	result := &SyncResult{
-		BatchID: batchID,
+		BatchID:    batchID,
 		TotalCount: len(currencyPairs),
 	}
 
@@ -134,7 +134,7 @@ func (s *ExchangeRateSyncService) Sync(ctx context.Context, opts *SyncOptions) (
 	}
 
 	type syncJob struct {
-		pair models.CurrencyPair
+		pair  models.CurrencyPair
 		index int
 	}
 
@@ -202,8 +202,8 @@ func (s *ExchangeRateSyncService) syncSinglePair(ctx context.Context, pair model
 		if err := models.DB.Where("from_currency = ? AND to_currency = ? AND valid_status = ?",
 			pair.FromCurrency, pair.ToCurrency, 1).
 			Order("updated_at desc").First(&existingRate).Error; err == nil {
-			// 如果数据在1小时内更新过，则跳过
-			if time.Since(existingRate.UpdatedAt) < time.Hour {
+			// 如果数据在5分钟内更新过，则跳过（与定时任务频率保持一致）
+			if time.Since(existingRate.UpdatedAt) < 5*time.Minute {
 				return false, true, nil
 			}
 		}
