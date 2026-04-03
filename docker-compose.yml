@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: etf_insight
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d etf_insight"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -8,17 +25,20 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DB_DRIVER=sqlite
-      - DB_DSN=/data/etf_insight.db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=etf_insight
+      - DB_SSLMODE=disable
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
       - LOG_LEVEL=info
     volumes:
       - ./data:/data
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   redis:
@@ -29,18 +49,6 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
-  # MySQL 服务（可选，需要时取消注释）
-  # mysql:
-  #   image: mysql:8.0
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: your_password
-  #     MYSQL_DATABASE: etf_insight
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - mysql_data:/var/lib/mysql
-  #   restart: unless-stopped
-
 volumes:
+  postgres_data:
   redis_data:
-  # mysql_data:

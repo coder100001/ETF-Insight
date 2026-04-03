@@ -32,8 +32,8 @@ type ETFConfig struct {
 // ETFData ETF数据
 type ETFData struct {
 	ID         uint            `json:"id" gorm:"primaryKey"`
-	Symbol     string          `json:"symbol" gorm:"index"`
-	Date       time.Time       `json:"date" gorm:"index"`
+	Symbol     string          `json:"symbol" gorm:"uniqueIndex:idx_symbol_date"`
+	Date       time.Time       `json:"date" gorm:"uniqueIndex:idx_symbol_date"`
 	OpenPrice  decimal.Decimal `json:"open_price" gorm:"type:decimal(20,8)"`
 	ClosePrice decimal.Decimal `json:"close_price" gorm:"type:decimal(20,8)"`
 	HighPrice  decimal.Decimal `json:"high_price" gorm:"type:decimal(20,8)"`
@@ -65,10 +65,10 @@ type ETFDefinitions struct {
 // ExchangeRate 汇率
 type ExchangeRate struct {
 	ID           uint            `json:"id" gorm:"primaryKey"`
-	FromCurrency string          `json:"from_currency" gorm:"index"`
-	ToCurrency   string          `json:"to_currency" gorm:"index"`
+	FromCurrency string          `json:"from_currency" gorm:"uniqueIndex:idx_from_to_date"`
+	ToCurrency   string          `json:"to_currency" gorm:"uniqueIndex:idx_from_to_date"`
 	Rate         decimal.Decimal `json:"rate" gorm:"type:decimal(20,8)"`
-	RateDate     string          `json:"rate_date" gorm:"index"`
+	RateDate     string          `json:"rate_date" gorm:"uniqueIndex:idx_from_to_date"`
 	DataSource   string          `json:"data_source"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`

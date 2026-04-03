@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -29,7 +30,38 @@ type ServerConfig struct {
 
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	DSN string `yaml:"dsn"` // SQLite 数据库文件路径
+	DSN      string `yaml:"dsn"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	DBName   string `yaml:"dbname"`
+	SSLMode  string `yaml:"sslmode"`
+}
+
+// GetDSN 构建 PostgreSQL DSN 连接字符串
+func (c *DatabaseConfig) GetDSN() string {
+	if c.DSN != "" && c.Host == "" {
+		return c.DSN
+	}
+	host := c.Host
+	if host == "" {
+		host = "localhost"
+	}
+	port := c.Port
+	if port == 0 {
+		port = 5432
+	}
+	user := c.User
+	if user == "" {
+		user = "postgres"
+	}
+	sslmode := c.SSLMode
+	if sslmode == "" {
+		sslmode = "disable"
+	}
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		host, port, user, c.Password, c.DBName, sslmode)
 }
 
 // ETFConfig ETF相关配置
@@ -82,7 +114,12 @@ func DefaultConfig() *Config {
 			KeyFile:      getEnv("TLS_KEY_FILE", ""),
 		},
 		Database: DatabaseConfig{
-			DSN: getEnv("DB_DSN", "etf_insight.db"),
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnvAsInt("DB_PORT", 5432),
+			User:     getEnv("DB_USER", "postgres"),
+			Password: getEnv("DB_PASSWORD", "postgres"),
+			DBName:   getEnv("DB_NAME", "etf_insight"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		ETF: ETFConfig{
 			DefaultSymbols: []string{"SCHD", "SPYD", "JEPQ", "JEPI", "VYM"},
