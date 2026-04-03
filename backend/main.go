@@ -35,10 +35,15 @@ func main() {
 	utils.InitLogger(cfg.Log.Level)
 	utils.Info("Configuration loaded", "path", *configPath)
 
-	if err := models.InitDB(); err != nil {
+	if err := models.InitDB(cfg.Database.GetDSN()); err != nil {
 		utils.Fatal("Failed to initialize database", err)
 	}
 	utils.Info("Database initialized")
+
+	if err := models.InitDefaultData(); err != nil {
+		utils.Fatal("Failed to initialize default data", err)
+	}
+	utils.Info("Default data initialized")
 
 	cacheService := services.NewCacheService(&cfg.ETF.Cache)
 	utils.Info("Cache service initialized", "type", "memory")
@@ -116,12 +121,12 @@ func main() {
 		})
 	})
 
-	router.Static("/assets", "./frontend/dist/assets")
-	router.StaticFile("/favicon.ico", "./frontend/dist/favicon.ico")
-	router.StaticFile("/vite.svg", "./frontend/dist/vite.svg")
+	router.Static("/assets", "../frontend/dist/assets")
+	router.StaticFile("/favicon.svg", "../frontend/dist/favicon.svg")
+	router.StaticFile("/icons.svg", "../frontend/dist/icons.svg")
 
 	router.NoRoute(func(c *gin.Context) {
-		c.File("./frontend/dist/index.html")
+		c.File("../frontend/dist/index.html")
 	})
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

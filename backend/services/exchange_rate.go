@@ -11,6 +11,7 @@ import (
 	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm/clause"
 )
 
 // ExchangeRateService 汇率服务
@@ -47,7 +48,7 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
 		fromCurrency, toCurrency,
 	).Order("rate_date DESC").First(&rate)
 
-	if result.Error() == nil {
+	if result.Error == nil {
 		return rate.Rate.InexactFloat64()
 	}
 
@@ -80,29 +81,17 @@ func (s *ExchangeRateService) UpdateRates() error {
 	now := time.Now()
 	for fromCurrency, toRates := range rates {
 		for toCurrency, rate := range toRates {
-			// 查找是否已存在今日汇率
-			var existing models.ExchangeRate
-			_ = models.DB.Where(
-				"from_currency = ? AND to_currency = ? AND rate_date = ?",
-				fromCurrency, toCurrency, now.Format("2006-01-02"),
-			).First(&existing)
-
-			if existing.ID > 0 {
-				// 更新现有记录
-				existing.Rate = decimal.NewFromFloat(rate)
-				existing.DataSource = "api"
-				models.DB.Save(&existing)
-			} else {
-				// 创建新记录
-				newRate := models.ExchangeRate{
-					FromCurrency: fromCurrency,
-					ToCurrency:   toCurrency,
-					Rate:         decimal.NewFromFloat(rate),
-					RateDate:     now.Format("2006-01-02"),
-					DataSource:   "api",
-				}
-				models.DB.Create(&newRate)
+			exchangeRate := models.ExchangeRate{
+				FromCurrency: fromCurrency,
+				ToCurrency:   toCurrency,
+				Rate:         decimal.NewFromFloat(rate),
+				RateDate:     now.Format("2006-01-02"),
+				DataSource:   "api",
 			}
+			models.DB.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "from_currency"}, {Name: "to_currency"}, {Name: "rate_date"}},
+				DoUpdates: clause.AssignmentColumns([]string{"rate"}),
+			}).Create(&exchangeRate)
 
 			utils.Info("Updated rate", "from", fromCurrency, "to", toCurrency, "rate", rate)
 		}

@@ -1,159 +1,70 @@
 package models
 
 import (
-	"sync"
+	"log"
+	"os"
 	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/shopspring/decimal"
 )
 
-// DB 模拟数据库
-type MockDB struct {
-	mu         sync.RWMutex
-	etfConfigs map[string]ETFConfig
-	etfData    []ETFData
-	opLogs     []OperationLog
-	err        error
-}
+// DB 全局数据库实例
+var DB *gorm.DB
 
-var DB *MockDB
+// InitDB 初始化数据库连接并自动迁移
+func InitDB(dsn string) error {
+	var err error
+	var dialector gorm.Dialector
 
-// InitDB 初始化数据库
-func InitDB() error {
-	DB = &MockDB{
-		etfConfigs: make(map[string]ETFConfig),
-		etfData:    make([]ETFData, 0),
-		opLogs:     make([]OperationLog, 0),
+	// 根据 DSN 判断使用哪种数据库
+	if dsn == "" || dsn == "etf_insight.db" || dsn == ":memory:" {
+		// 使用 SQLite
+		if dsn == "" {
+			dsn = "etf_insight.db"
+		}
+		log.Printf("Using SQLite database: %s", dsn)
+		dialector = sqlite.Open(dsn)
+	} else {
+		// 使用 PostgreSQL
+		log.Printf("Using PostgreSQL database")
+		dialector = postgres.Open(dsn)
 	}
-	return nil
+
+	DB, err = gorm.Open(dialector, &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		return err
+	}
+
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return err
+	}
+
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	return AutoMigrate()
 }
 
-// AutoMigrate 自动迁移
+// AutoMigrate 自动迁移数据库表结构
 func AutoMigrate() error {
-	return nil
-}
-
-// Create 创建记录
-func (db *MockDB) Create(value interface{}) *MockDB {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	switch v := value.(type) {
-	case *ETFConfig:
-		db.etfConfigs[v.Symbol] = *v
-	case *ETFData:
-		db.etfData = append(db.etfData, *v)
-	case *OperationLog:
-		v.ID = uint(len(db.opLogs) + 1)
-		db.opLogs = append(db.opLogs, *v)
-	case *ExchangeRate:
-		// 简化处理，不存储汇率
-	}
-	return db
-}
-
-// Error 返回错误
-func (db *MockDB) Error() error {
-	return db.err
-}
-
-// Where 查询条件
-func (db *MockDB) Where(query string, args ...interface{}) *MockDB {
-	return db
-}
-
-// First 获取第一条记录
-func (db *MockDB) First(dest interface{}, conds ...interface{}) *MockDB {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	switch v := dest.(type) {
-	case *ETFConfig:
-		if len(conds) > 0 {
-			// 简化处理，根据ID查找（支持int和uint）
-			var id uint
-			switch val := conds[0].(type) {
-			case uint:
-				id = val
-			case int:
-				id = uint(val)
-			default:
-				// 默认返回第一个
-				for _, config := range db.etfConfigs {
-					*v = config
-					return db
-				}
-				return db
-			}
-			for _, config := range db.etfConfigs {
-				if config.ID == id {
-					*v = config
-					return db
-				}
-			}
-		}
-		// 默认返回第一个
-		for _, config := range db.etfConfigs {
-			*v = config
-			return db
-		}
-	}
-	return db
-}
-
-// Find 查询多条记录
-func (db *MockDB) Find(dest interface{}, conds ...interface{}) *MockDB {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	switch v := dest.(type) {
-	case *[]ETFConfig:
-		for _, config := range db.etfConfigs {
-			*v = append(*v, config)
-		}
-	}
-	return db
-}
-
-// Order 排序
-func (db *MockDB) Order(value string) *MockDB {
-	return db
-}
-
-// Limit 限制数量
-func (db *MockDB) Limit(limit int) *MockDB {
-	return db
-}
-
-// Model 指定模型
-func (db *MockDB) Model(value interface{}) *MockDB {
-	return db
-}
-
-// Updates 更新记录
-func (db *MockDB) Updates(values interface{}) *MockDB {
-	return db
-}
-
-// Save 保存记录
-func (db *MockDB) Save(value interface{}) *MockDB {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	switch v := value.(type) {
-	case *ETFConfig:
-		db.etfConfigs[v.Symbol] = *v
-	}
-	return db
-}
-
-// Delete 删除记录
-func (db *MockDB) Delete(value interface{}, conds ...interface{}) *MockDB {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	// 简化处理，实际应该根据 conds 删除
-	return db
+	return DB.AutoMigrate(
+		&ETFConfig{},
+		&ETFData{},
+		&OperationLog{},
+		&ExchangeRate{},
+		&AShareDividendETF{},
+		&AShareETFPortfolio{},
+		&ASharePortfolioHolding{},
+	)
 }
 
 // InitDefaultData 初始化默认数据
@@ -192,8 +103,37 @@ func InitDefaultData() error {
 	}
 
 	for _, etf := range defaultETFs {
-		DB.Create(&etf)
+		result := DB.Where("symbol = ?", etf.Symbol).First(&ETFConfig{})
+		if result.Error == gorm.ErrRecordNotFound {
+			if err := DB.Create(&etf).Error; err != nil {
+				log.Printf("Failed to create default ETF %s: %v", etf.Symbol, err)
+			}
+		}
 	}
 
 	return nil
+}
+
+// CloseDB 关闭数据库连接
+func CloseDB() error {
+	if DB != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			return err
+		}
+		return sqlDB.Close()
+	}
+	return nil
+}
+
+// GetDB 获取数据库实例
+func GetDB() *gorm.DB {
+	return DB
+}
+
+// IsSQLite 检查是否使用 SQLite
+func IsSQLite() bool {
+	// 简单检查：如果环境变量 DB_DSN 包含 .db 或为空，则认为是 SQLite
+	dsn := os.Getenv("DB_DSN")
+	return dsn == "" || dsn == "etf_insight.db" || dsn == ":memory:"
 }

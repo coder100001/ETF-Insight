@@ -10,6 +10,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm/clause"
 )
 
 // Scheduler 定时任务调度器
@@ -181,7 +182,7 @@ func (s *Scheduler) updateETFData() {
 		}
 		s.cacheService.SetRealtimeData(quote.Symbol, realtimeData)
 
-		// 保存到数据库
+		// Upsert 实时数据（symbol + date 联合唯一）
 		etfData := models.ETFData{
 			Symbol:     quote.Symbol,
 			Date:       time.Now(),
@@ -192,9 +193,10 @@ func (s *Scheduler) updateETFData() {
 			Volume:     quote.Volume,
 			DataSource: "yahoo_finance",
 		}
-
-		// 简化处理，直接创建数据
-		models.DB.Create(&etfData)
+		models.DB.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "symbol"}, {Name: "date"}},
+			DoUpdates: clause.AssignmentColumns([]string{"open_price", "close_price", "high_price", "low_price", "volume"}),
+		}).Create(&etfData)
 
 		successCount++
 	}
@@ -208,7 +210,7 @@ func (s *Scheduler) updateETFData() {
 				return
 			}
 
-			// 保存历史数据
+			// Upsert 历史数据（symbol + date 联合唯一）
 			for _, price := range prices {
 				etfData := models.ETFData{
 					Symbol:     sym,
@@ -220,9 +222,10 @@ func (s *Scheduler) updateETFData() {
 					Volume:     price.Volume,
 					DataSource: "yahoo_finance",
 				}
-
-				// 简化处理，直接创建数据
-				models.DB.Create(&etfData)
+				models.DB.Clauses(clause.OnConflict{
+					Columns:   []clause.Column{{Name: "symbol"}, {Name: "date"}},
+					DoUpdates: clause.AssignmentColumns([]string{"open_price", "close_price", "high_price", "low_price", "volume"}),
+				}).Create(&etfData)
 			}
 
 			utils.Info("Updated historical data", "symbol", sym, "records", len(prices))
