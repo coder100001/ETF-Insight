@@ -11,11 +11,11 @@ import (
 
 // HealthStatus 服务健康状态
 type HealthStatus struct {
-	Status    string            `json:"status"`
-	Timestamp time.Time         `json:"timestamp"`
-	Version   string            `json:"version"`
-	Services  map[string]bool   `json:"services"`
-	Uptime    string            `json:"uptime"`
+	Status    string          `json:"status"`
+	Timestamp time.Time       `json:"timestamp"`
+	Version   string          `json:"version"`
+	Services  map[string]bool `json:"services"`
+	Uptime    string          `json:"uptime"`
 }
 
 var startTime = time.Now()
