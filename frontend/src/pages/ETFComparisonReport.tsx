@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import styled from 'styled-components';
-import { Table, App, Collapse, Row, Col } from 'antd';
+import { Table, App, Row, Col } from 'antd';
 import { ArrowLeftOutlined, StarFilled, InfoCircleOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import Layout from '../components/Layout';
@@ -185,7 +185,7 @@ const ETFComparisonReport: React.FC = () => {
       color: COLORS[idx % COLORS.length],
     }));
     if (etfConfigs.length === 0) return [];
-    const dates: Record<string, any>[] = [];
+    const dates: Array<Record<string, number | string>> = [];
     for (let i = 0; i < period.days; i++) {
       const date = new Date(); date.setDate(date.getDate() - (period.days - i));
       dates.push({ date: date.toISOString().split('T')[0] });
@@ -209,9 +209,10 @@ const ETFComparisonReport: React.FC = () => {
     <ETFNameCell><div className="symbol">{record.name}</div><div className="name">{record.symbol}</div></ETFNameCell>
   );
 
-  const marketColumns: any[] = [
-    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: any, r: ETFReportData) => renderNameCell(r) },
-    { title: '币种', dataIndex: ['priceData'], key: 'currency', width: 80, render: (_: any, r: ETFReportData) => r.currency },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const marketColumns: any = [
+    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: unknown, r: ETFReportData) => renderNameCell(r) },
+    { title: '币种', dataIndex: ['priceData'], key: 'currency', width: 80, render: (_: unknown, r: ETFReportData) => r.currency },
     { title: '昨收价', dataIndex: ['priceData', 'previousClose'], key: 'prevClose', align: 'center', render: (v: number) => v?.toFixed(3) },
     { title: '成交量', dataIndex: ['priceData', 'volume'], key: 'volume', align: 'right', render: (v: number) => formatNumber(v, 2) },
     { title: '近10日平均成交量', dataIndex: ['priceData', 'avgVolume10d'], key: 'avgVol', align: 'right', render: (v: number) => formatNumber(v, 2) },
@@ -220,8 +221,9 @@ const ETFComparisonReport: React.FC = () => {
     { title: '52周最低', dataIndex: ['priceData', 'low52w'], key: 'low52w', align: 'center', render: (v: number) => v?.toFixed(3) },
   ];
 
-  const returnColumns: any[] = [
-    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: any, r: ETFReportData) => renderSubNameCell(r) },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const returnColumns: any = [
+    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: unknown, r: ETFReportData) => renderSubNameCell(r) },
     { title: '近3年年化收益率', dataIndex: ['returns', 'return3yAnnualized'], key: 'return3yAnn', align: 'center', render: (v: number | null) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
     { title: '近10年累计收益率', dataIndex: ['returns', 'return10y'], key: 'return10y', align: 'center', render: (v: number | null) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
     { title: '近3年万元收益', dataIndex: ['returns', 'return3y'], key: 'profit3y', align: 'center', render: (v: number | null) => v !== null ? `¥${(10000 * (1 + v / 100)).toFixed(2)}` : '--' },
@@ -232,16 +234,18 @@ const ETFComparisonReport: React.FC = () => {
     { title: '近3年最长连续上涨周数', dataIndex: 'symbol', key: 'upWeeks', align: 'center', render: (s: string) => s === 'SPYD' ? 8 : s === 'SCHD' ? 8 : 13 },
   ];
 
-  const holdingColumns: any[] = [
-    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: any, r: ETFReportData) => renderSubNameCell(r) },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const holdingColumns: any = [
+    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: unknown, r: ETFReportData) => renderSubNameCell(r) },
     { title: '持股数量', dataIndex: ['holdings', 'numHoldings'], key: 'numHoldings', align: 'center' },
     { title: '股票风格箱', dataIndex: ['holdings', 'styleBox'], key: 'styleBox', align: 'center' },
     { title: '固收风格箱', key: 'fixedIncome', align: 'center', render: () => '--' },
   ];
 
-  const topHoldingColumns: any[] = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const topHoldingColumns: any = [
     { title: '', dataIndex: 'rank', key: 'rank', width: 40, align: 'center' },
-    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: any, r: ETFReportData) => renderSubNameCell(r) },
+    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: unknown, r: ETFReportData) => renderSubNameCell(r) },
     ...filteredETFs.map((etf, idx) => ({
       title: (<span><ColorDot color={COLORS[idx]} />前10大持仓</span>), key: etf.symbol, align: 'center',
       render: (_: unknown, __: ETFReportData, index: number) => {
@@ -251,8 +255,9 @@ const ETFComparisonReport: React.FC = () => {
     })),
   ];
 
-  const dividendColumns: any[] = [
-    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: any, r: ETFReportData) => renderSubNameCell(r) },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dividendColumns: any = [
+    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: unknown, r: ETFReportData) => renderSubNameCell(r) },
     { title: '股息率TTM', dataIndex: ['dividend', 'dividendYieldTTM'], key: 'yieldTTM', align: 'center', render: (v: number) => <span className="positive">{v?.toFixed(2)}%</span> },
     { title: '股息率LFY', dataIndex: ['dividend', 'dividendYieldLFY'], key: 'yieldLFY', align: 'center', render: (v: number | null) => v ? `${v.toFixed(2)}%` : '--' },
     { title: '派息频率', dataIndex: ['dividend', 'payoutFrequency'], key: 'frequency', align: 'center' },
@@ -260,8 +265,9 @@ const ETFComparisonReport: React.FC = () => {
     { title: '最近派息日', dataIndex: ['dividend', 'lastPayDate'], key: 'payDate', align: 'center' },
   ];
 
-  const riskColumns: any[] = [
-    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: any, r: ETFReportData) => renderSubNameCell(r) },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const riskColumns: any = [
+    { title: '股票名称', dataIndex: 'symbol', key: 'name', width: 200, render: (_: unknown, r: ETFReportData) => renderSubNameCell(r) },
     { title: '近3年风险能力同类排名', dataIndex: ['risk', 'riskRanking3y'], key: 'riskRank', align: 'center', render: (v: string) => <span className="positive">{v}</span> },
     { title: '近3年跟踪误差', dataIndex: ['risk', 'trackingError3y'], key: 'trackingErr', align: 'center', render: (v: number) => `${v?.toFixed(2)}%` },
     { title: '近3年α', dataIndex: ['risk', 'alpha3y'], key: 'alpha', align: 'center', render: (v: number) => <span className={getChangeClass(v)}>{v?.toFixed(3)}</span> },

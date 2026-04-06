@@ -277,7 +277,7 @@ const generateBacktestData = (allocation: Record<string, number>, months: number
     date.setMonth(date.getMonth() - (months - i));
     
     let portfolioValue = 0;
-    const etfValues: Record<string, any> = {};
+    const etfValues: Record<string, number> = {};
     
     Object.entries(allocation).forEach(([symbol, weight]) => {
       const etf = ETF_LIST.find(e => e.symbol === symbol)!;
@@ -299,7 +299,14 @@ const generateBacktestData = (allocation: Record<string, number>, months: number
   return data;
 };
 
-const calculateMetrics = (data: Array<any>, initialInvestment: number = 100000) => {
+interface BacktestDataPoint {
+  date: string;
+  portfolio: number;
+  benchmark: number;
+  [key: string]: number | string;
+}
+
+const calculateMetrics = (data: Array<BacktestDataPoint>, initialInvestment: number = 100000) => {
   if (!data || data.length === 0) return {};
   
   const finalValue = data[data.length - 1].portfolio;
@@ -524,7 +531,7 @@ const InvestmentStrategy: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={Math.ceil(backtestData.length / 12)} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `$${v}`} />
-                <RechartsTooltip contentStyle={{ borderRadius: 8 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, '']} />
+                <RechartsTooltip contentStyle={{ borderRadius: 8 }} formatter={(v: unknown) => [`$${Number(v).toFixed(2)}`, '']} />
                 <Legend />
                 <ReferenceLine y={100} stroke="#999" strokeDasharray="3 3" label="基准" />
                 <Area type="monotone" dataKey="portfolio" name="组合净值" stroke="#667eea" fill="url(#colorPortfolio)" strokeWidth={2} />
