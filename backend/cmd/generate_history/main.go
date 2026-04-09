@@ -26,21 +26,21 @@ type ETFData struct {
 
 // 基准价格映射
 var basePrices = map[string]float64{
-	"QQQ":   450.0,
-	"SCHD":  30.0,
-	"VNQ":   90.0,
-	"VYM":   110.0,
-	"SPYD":  45.0,
-	"JEPQ":  55.0,
-	"JEPI":  55.0,
-	"VTI":   280.0,
-	"VOO":   480.0,
-	"VEA":   50.0,
-	"VWO":   45.0,
-	"BND":   75.0,
-	"AGG":   100.0,
-	"GLD":   220.0,
-	"TLT":   90.0,
+	"QQQ":  450.0,
+	"SCHD": 30.0,
+	"VNQ":  90.0,
+	"VYM":  110.0,
+	"SPYD": 45.0,
+	"JEPQ": 55.0,
+	"JEPI": 55.0,
+	"VTI":  280.0,
+	"VOO":  480.0,
+	"VEA":  50.0,
+	"VWO":  45.0,
+	"BND":  75.0,
+	"AGG":  100.0,
+	"GLD":  220.0,
+	"TLT":  90.0,
 }
 
 func main() {

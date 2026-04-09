@@ -169,7 +169,7 @@ func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData
 
 		// 根据 ETF 类型设置合理的默认股息率
 		defaultDividendYield := getDefaultDividendYield(cfg.Symbol)
-		
+
 		result := map[string]interface{}{
 			"symbol":              cfg.Symbol,
 			"name":                cfg.Name,

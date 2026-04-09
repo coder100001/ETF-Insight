@@ -277,3 +277,25 @@ export interface AShareDividendCalculation {
   quarterly_dividend: number;
   holdings: AShareHoldingDetail[];
 }
+
+// ETF历史数据条目
+export interface ETFHistoryDataItem {
+  date: string;
+  close_price: number;
+  volume: number;
+  open_price?: number;
+  high_price?: number;
+  low_price?: number;
+}
+
+// ETF预测结果
+export interface ETFForecastResult {
+  years: number;
+  future_value: number;
+  capital_appreciation: number;
+  total_dividend_before_tax: number;
+  total_dividend_after_tax: number;
+  dividend_tax: number;
+  annual_return_rate: number;
+  effective_annual_return_rate: number;
+}

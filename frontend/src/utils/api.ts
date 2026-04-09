@@ -5,7 +5,9 @@ import type {
   UserConfig, 
   RealtimeUpdateResponse,
   ExchangeRate,
-  ApiResponse 
+  ApiResponse,
+  ETFHistoryDataItem,
+  ETFConfig
 } from '../types';
 
 // API基础配置 - 使用相对路径，让Django处理路由
@@ -60,7 +62,7 @@ export const etfApi = {
   },
 
   // 获取ETF历史数据
-  getETFHistory: async (symbol: string, period: string = '1y'): Promise<any[]> => {
+  getETFHistory: async (symbol: string, period: string = '1y'): Promise<ETFHistoryDataItem[]> => {
     const response = await apiClient.get(`/etfs/${symbol}/history/?period=${period}`);
     return response.data;
   },
@@ -84,7 +86,7 @@ export const portfolioApi = {
   forecastPortfolio: async (
     config: UserConfig, 
     years: number[] = [3, 5, 10]
-  ): Promise<any> => {
+  ): Promise<Record<string, unknown>> => {
     const response = await apiClient.post('/portfolio/forecast/', {
       ...config,
       forecast_years: years,
@@ -132,7 +134,7 @@ export const configApi = {
   },
 
   // 获取ETF配置列表
-  getETFConfigs: async (): Promise<any[]> => {
+  getETFConfigs: async (): Promise<ETFConfig[]> => {
     const response = await apiClient.get('/etf-configs/');
     return response.data;
   },

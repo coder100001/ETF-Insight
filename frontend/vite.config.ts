@@ -38,13 +38,13 @@ export default defineConfig({
         },
       },
     },
-    minify: 'terser' as any,
+    minify: 'terser',
     terserOptions: {
       compress: {
         drop_console: true,
         drop_debugger: true,
       },
-    } as any,
+    },
   },
   resolve: {
     dedupe: ['react', 'react-dom', 'react-router-dom'],

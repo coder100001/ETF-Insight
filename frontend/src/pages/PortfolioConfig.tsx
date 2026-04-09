@@ -45,41 +45,7 @@ interface PortfolioConfig {
   is_default: boolean;
 }
 
-const mockConfigs: PortfolioConfig[] = [
-  {
-    id: 1,
-    name: '稳健型组合',
-    description: '适合保守投资者，注重稳定收益',
-    etfs: ['SCHD', 'VYM', 'JEPI'],
-    allocation: { SCHD: 40, VYM: 40, JEPI: 20 },
-    total_investment: 100000,
-    created_at: '2024-03-01',
-    updated_at: '2024-03-28',
-    is_default: true,
-  },
-  {
-    id: 2,
-    name: '进取型组合',
-    description: '适合激进投资者，追求高收益',
-    etfs: ['JEPQ', 'SPYD', 'JEPI'],
-    allocation: { JEPQ: 40, SPYD: 30, JEPI: 30 },
-    total_investment: 50000,
-    created_at: '2024-03-15',
-    updated_at: '2024-03-28',
-    is_default: false,
-  },
-  {
-    id: 3,
-    name: '平衡型组合',
-    description: '平衡风险与收益',
-    etfs: ['SCHD', 'SPYD', 'JEPQ', 'JEPI', 'VYM'],
-    allocation: { SCHD: 30, SPYD: 20, JEPQ: 20, JEPI: 15, VYM: 15 },
-    total_investment: 200000,
-    created_at: '2024-03-20',
-    updated_at: '2024-03-28',
-    is_default: false,
-  },
-];
+
 
 interface ETFOption {
   value: string;
@@ -100,7 +66,7 @@ const PortfolioConfigPage: React.FC = () => {
     try {
       const response = await etfAPI.getList();
       if (response.success && response.data) {
-        const options = response.data.map((etf: any) => ({
+        const options = response.data.map((etf: { symbol: string; name: string }) => ({
           value: etf.symbol,
           label: `${etf.symbol} - ${etf.name}`,
         }));
@@ -120,7 +86,7 @@ const PortfolioConfigPage: React.FC = () => {
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setConfigs(result.data.map((c: any) => ({
+          setConfigs(result.data.map((c: { id: number; name: string; description?: string; allocation?: string; total_investment?: number; created_at?: string; updated_at?: string; is_default?: boolean }) => ({
             id: c.id,
             name: c.name,
             description: c.description || '',
@@ -186,7 +152,7 @@ const PortfolioConfigPage: React.FC = () => {
       title: '操作',
       key: 'action',
       align: 'center' as const,
-      render: (_: any, record: PortfolioConfig) => (
+      render: (_text: string, record: PortfolioConfig) => (
         <Space>
           <Button 
             size="small" 
@@ -298,7 +264,7 @@ const PortfolioConfigPage: React.FC = () => {
       <Card style={{ boxShadow: theme.shadows.card }}>
         <StyledTable
           dataSource={configs}
-          columns={columns as any}
+          columns={columns}
           rowKey="id"
           pagination={false}
         />

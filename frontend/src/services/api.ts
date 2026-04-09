@@ -20,7 +20,7 @@ interface RetryConfig {
 
 // 请求合并器 - 避免重复请求
 class RequestCoalescer {
-  private pendingRequests = new Map<string, Promise<any>>();
+  private pendingRequests = new Map<string, Promise<unknown>>();
 
   async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number = 30000): Promise<T> {
     // 检查是否有正在进行的请求

@@ -9,7 +9,7 @@
 **项目名称**: ETF-Insight  
 **定位**: 专业的 ETF 分析与对比平台，对标 Trackinsight、ETF Insider 等国际知名工具  
 **技术栈**: Go (Gin + GORM) + React (Vite + Ant Design) + SQLite  
-**版本**: v2.1.0  
+**版本**: v2.2.0  
 
 ---
 
@@ -113,7 +113,7 @@ ETF-Insight/
 │       └── metrics/
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/              # 页面组件
+│   │   ├── pages/              # 页面组件 (14个)
 │   │   │   ├── Dashboard.tsx          # 仪表盘
 │   │   │   ├── ETFDashboard.tsx       # ETF 市场总览
 │   │   │   ├── ETFComparison.tsx      # ETF 对比分析
@@ -137,8 +137,9 @@ ETF-Insight/
 │   │   │   ├── SectorBarChart.tsx     # 行业柱状图
 │   │   │   ├── StatCard.tsx           # 统计卡片
 │   │   │   └── StockCard.tsx          # 股票卡片
-│   │   ├── services/api.ts     # API 服务 (含请求合并+重试)
-│   │   ├── types/index.ts      # TypeScript 类型定义
+│   │   ├── services/api.ts     # API 服务 (含请求合并+重试, 类型安全)
+│   │   ├── utils/api.ts        # API 工具函数 (类型安全, ETFHistoryDataItem/ETFConfig)
+│   │   ├── types/index.ts      # TypeScript 类型定义 (含ETFHistoryDataItem/ETFForecastResult)
 │   │   └── styles/theme.ts     # 主题配置
 │   └── package.json
 ├── docs/
@@ -940,6 +941,7 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 | 2025-04-08 | AI Agent | **文档全面更新**：补充缺失的数据模型(ExchangeRate系列/AShare系列)、完整API接口列表(含ETF配置/组合配置/A股/汇率)、目录结构细化(含所有文件)、命令行工具文档、定时任务说明、安全中间件说明 |
 | **2026-04-08** | **AI Agent** | **v2.0 重大架构调整**：1) **完全依赖 Finage 作为唯一数据源**，删除所有硬编码mock数据；2) **所有字段必须入库**，数据完整性严格校验；3) **删除前端硬编码** (InvestmentStrategy/PortfolioConfig/ETFConfig/PortfolioAnalysis)；4) **删除后端硬编码** (scheduler只更新2只ETF、cache.go MockRealtimeData、etf_handler.go默认列表)；5) **更新架构文档**：Finage-only数据流，废弃Finnhub |
 | **2026-04-09** | **AI Agent** | **v2.1 股息率与资本利得优化**：1) **修复股息率显示问题**：添加 `getDefaultDividendYield()` 函数，根据 ETF 类型智能设置合理股息率（高股息 ETF 3.5%、覆盖收益型 7%、债券 ETF 4%、宽基指数 0.5%）；2) **修复资本利得计算问题**：从数据库获取真实价格，从历史数据计算真实收益率，从数据库获取 ETF 真实名称；3) **优化 FallbackProvider**：从数据库读取最新真实价格作为基准，减小模拟波动范围（±3% → ±0.5%）；4) **清理数据**：删除 15 条错误的 fallback 污染数据；5) **添加 .gitignore**：排除二进制文件 |
+| **2026-04-09** | **AI Agent** | **v2.2 代码质量全面优化**：1) **Go 代码格式化**：使用 `gofmt -w .` 统一格式化，修复 map 对齐和尾部空格问题；2) **ESLint 问题修复**：修复全部 29 个 ESLint 问题 (3 errors + 26 warnings)；3) **消除未使用变量**：删除 InvestmentStrategy.tsx 中未使用的 `getETF` 变量、PortfolioConfig.tsx 中约35行未使用的 `mockConfigs`；4) **TypeScript 类型安全**：新增 `ETFHistoryDataItem` 和 `ETFForecastResult` 类型定义，替换所有 `any` 类型为具体类型（~15个文件）；5) **React Hooks 规范**：为仅挂载执行的 useEffect 添加 exhaustive-deps 禁用注释；6) **Vite 配置清理**：移除 vite.config.ts 中的 `as any` 断言 |
 
 ---
 
@@ -964,4 +966,4 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 
 ---
 
-*本文档最后更新: 2026-04-09 (v2.1 股息率与资本利得优化)*
+*本文档最后更新: 2026-04-09 (v2.2 代码质量全面优化)*

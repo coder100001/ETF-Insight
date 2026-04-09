@@ -240,13 +240,14 @@ const InvestmentStrategy: React.FC = () => {
             setCustomAllocation(initAlloc);
           }
         }
-      } catch (error) {
+      } catch {
         message.error('获取ETF数据失败');
       } finally {
         setLoading(false);
       }
     };
     fetchETFData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 根据API数据动态生成策略
@@ -254,7 +255,6 @@ const InvestmentStrategy: React.FC = () => {
     if (etfData.length === 0) return [];
     
     const symbols = etfData.map(e => e.symbol);
-    const getETF = (sym: string) => etfData.find(e => e.symbol === sym);
     
     // 根据数据中可用的ETF构建策略配置
     const first3 = symbols.slice(0, 3);

@@ -1,8 +1,19 @@
-# ETF-Insight (v2.0 Finage-Only)
+# ETF-Insight (v2.2)
 
 一个专业的 ETF 分析与对比平台，对标 Trackinsight、ETF Insider 等国际知名 ETF 分析工具。基于 Go + React 技术栈，提供深度的 ETF 数据洞察、多维度对比分析、持仓解构、风险评估和投资组合优化等一站式解决方案。
 
+**v2.2 更新**: 代码质量全面优化 - 修复全部 ESLint 问题，实现 TypeScript 类型安全，统一代码风格。
+
+**v2.1 更新**: 修复股息率和资本利得计算，优化数据准确性。
+
 **v2.0 架构更新**: 完全依赖 Finage 真实数据，删除所有硬编码mock，所有字段必须入库。
+
+**v2.2 代码质量更新**:
+- ✅ **ESLint 零错误**: 修复全部 29 个 ESLint 问题 (3 errors + 26 warnings)
+- ✅ **TypeScript 类型安全**: 新增 `ETFHistoryDataItem`、`ETFForecastResult` 类型，消除所有 `any` 类型
+- ✅ **Go 代码格式化**: 使用 `gofmt -w .` 统一代码风格
+- ✅ **React Hooks 规范**: 修复 `exhaustive-deps` 警告，规范 useEffect 依赖
+- ✅ **代码清理**: 删除未使用变量和冗余类型断言
 
 ## 🎯 产品定位
 
@@ -18,6 +29,7 @@ ETF-Insight 致力于成为专业投资者和机构用户的 ETF 分析利器：
 ### 📊 ETF 对比分析（ETF Comparison）
 - **并排对比** - 最多支持 5 只 ETF 同时对比
 - **多维度指标** - 费率、AUM、股息率、业绩表现、风险指标
+- **智能股息率** - 根据 ETF 类型自动设置合理股息率（高股息 3.5%、覆盖收益型 7%、债券 4%）
 - **持仓重叠分析** - 识别 ETF 间的持仓重合度，避免过度集中
 - **业绩回测对比** - 不同时间周期的收益表现对比
 
@@ -47,6 +59,7 @@ ETF-Insight 致力于成为专业投资者和机构用户的 ETF 分析利器：
 ### 📈 投资组合配置
 - **组合构建** - 自定义投资组合及权重分配
 - **收益分析** - 基于历史数据的组合收益模拟
+- **资本利得计算** - 基于真实历史数据计算资本利得和收益率
 - **预设组合** - 内置多种投资策略组合模板
 
 ## 🛠️ 技术栈
@@ -312,7 +325,7 @@ ETF-Insight/
 │   └── infrastructure/         # 基础设施 (预留目录)
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/              # 页面组件
+│   │   ├── pages/              # 页面组件 (14个)
 │   │   │   ├── Dashboard.tsx          # 仪表盘
 │   │   │   ├── ETFDashboard.tsx       # ETF 市场总览
 │   │   │   ├── ETFComparison.tsx      # ETF 对比分析
@@ -324,7 +337,9 @@ ETF-Insight/
 │   │   │   ├── ASharePortfolio.tsx     # A股红利ETF组合
 │   │   │   ├── ExchangeRate.tsx        # 汇率管理
 │   │   │   ├── InvestmentStrategy.tsx  # 投资策略
-│   │   │   └── OperationLogs.tsx       # 操作日志
+│   │   │   ├── OperationLogs.tsx       # 操作日志
+│   │   │   ├── WorkflowList.tsx        # 工作流列表
+│   │   │   └── InstanceList.tsx        # 实例列表
 │   │   ├── components/         # 公共组件
 │   │   │   ├── Layout.tsx             # 布局
 │   │   │   ├── PriceChart.tsx         # 价格图表
@@ -334,8 +349,9 @@ ETF-Insight/
 │   │   │   ├── SectorBarChart.tsx     # 行业柱状图
 │   │   │   ├── StatCard.tsx           # 统计卡片
 │   │   │   └── StockCard.tsx          # 股票卡片
-│   │   ├── services/api.ts     # API 服务 (含请求合并+重试)
-│   │   ├── types/index.ts      # TypeScript 类型定义
+│   │   ├── services/api.ts     # API 服务 (含请求合并+重试, 类型安全)
+│   │   ├── utils/api.ts        # API 工具函数 (类型安全)
+│   │   ├── types/index.ts      # TypeScript 类型定义 (30+ 接口)
 │   │   └── styles/theme.ts     # 主题配置
 │   └── package.json
 ├── docs/
@@ -478,6 +494,19 @@ cd backend && go run ./cmd/test_finage/
 - **涨跌计算** 基于前一日收盘价 (PreviousClose)，从数据库查询真实数据
 - **严格校验** - 数据不全则拒绝入库，避免脏数据污染数据库
 
+### 股息率标准 (v2.1)
+
+| ETF 类型 | 代表 ETF | 默认股息率 |
+|---------|---------|-----------|
+| 高股息 ETF | SCHD, VYM, SPYD, HDV, DGRO | **3.5%** |
+| 覆盖收益型 | JEPI, JEPQ, QYLD, XYLD | **7.0%** |
+| 债券 ETF | BND, AGG, TLT | **4.0%** |
+| 房地产 ETF | VNQ | **4.0%** |
+| 黄金 ETF | GLD | **0.0%** |
+| 宽基指数 | QQQ, VOO, VTI, SPY | **0.5%** |
+| 国际市场 | VEA, VWO, VXUS | **3.0%** |
+| 默认 | 其他 | **1.0%** |
+
 ### 常见问题
 
 **Q: 端口被占用怎么办？**
@@ -522,6 +551,7 @@ npm config set registry https://registry.npmmirror.com
 - [x] ETF 对比分析
 - [x] ETF 配置管理 (CRUD)
 - [x] 投资组合配置管理
+- [x] **代码质量优化 (v2.2)** - ESLint 零错误、TypeScript 类型安全、Go 代码格式化
 
 ### Phase 2: 深度分析 🚧
 - [x] 风险指标计算 (波动率、夏普比率、最大回撤)

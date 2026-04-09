@@ -91,6 +91,7 @@ const ExchangeRatePage: React.FC = () => {
     // 每5分钟自动刷新一次
     const interval = setInterval(fetchRates, 5 * 60 * 1000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchRates = async () => {

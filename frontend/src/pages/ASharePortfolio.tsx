@@ -207,6 +207,7 @@ export default function ASharePortfolioPage() {
 
   useEffect(() => {
     loadPortfolio();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 更新投资金额
@@ -226,7 +227,7 @@ export default function ASharePortfolioPage() {
   };
 
   // 表格列定义
-  const columns: any[] = [
+  const columns = [
     {
       title: 'ETF代码',
       dataIndex: 'symbol',

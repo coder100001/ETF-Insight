@@ -105,16 +105,15 @@ const getChangeClass = (value: number | null): string => {
   return value > 0 ? 'positive' : 'negative';
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ETFComparisonReport: React.FC = () => {
   const { message } = App.useApp();
   const [selectedPeriod, setSelectedPeriod] = useState('1y');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [etfData, setEtfData] = useState<any[]>([]);
+  const [etfData, setEtfData] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchETFData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchETFData = async () => {

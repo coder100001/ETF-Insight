@@ -164,6 +164,7 @@ const ETFDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchETFData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchETFData = async () => {

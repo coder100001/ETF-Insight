@@ -195,7 +195,7 @@ const InstanceList: React.FC = () => {
       <Card style={{ boxShadow: theme.shadows.card }}>
         <StyledTable
           dataSource={instances}
-          columns={columns as any}
+          columns={columns}
           rowKey="id"
           pagination={{
             pageSize: 10,

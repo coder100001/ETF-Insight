@@ -7,7 +7,7 @@ import { ArrowLeftOutlined, BarChartOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
-import type { ETFData } from '../types';
+import type { ETFData, ETFHistoryDataItem } from '../types';
 import PriceChart from '../components/PriceChart';
 
 const PageHeader = styled.div`
@@ -128,6 +128,7 @@ const ETFDetail: React.FC = () => {
     if (symbol) {
       fetchETFData(symbol);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
   const fetchETFData = async (sym: string) => {
@@ -170,11 +171,11 @@ const ETFDetail: React.FC = () => {
 
         // 处理历史数据用于图表
         if (historyResponse.success && historyResponse.data && Array.isArray(historyResponse.data)) {
-          const history = historyResponse.data;
+          const history: ETFHistoryDataItem[] = historyResponse.data;
           setChartData({
-            dates: history.map((item: any) => item.date?.split('T')[0] || ''),
-            prices: history.map((item: any) => item.close_price || 0),
-            volumes: history.map((item: any) => item.volume || 0),
+            dates: history.map((item) => item.date?.split('T')[0] || ''),
+            prices: history.map((item) => item.close_price || 0),
+            volumes: history.map((item) => item.volume || 0),
           });
         }
       } else {

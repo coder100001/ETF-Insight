@@ -190,6 +190,7 @@ const PortfolioAnalysis: React.FC = () => {
     };
     
     fetchETFList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAllocationChange = (symbol: string, value: number) => {

@@ -161,7 +161,7 @@ const WorkflowList: React.FC = () => {
       <Card style={{ boxShadow: theme.shadows.card }}>
         <StyledTable
           dataSource={workflows}
-          columns={columns as any}
+          columns={columns}
           rowKey="id"
           pagination={false}
         />
