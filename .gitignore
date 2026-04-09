@@ -3,6 +3,10 @@
 *.dll
 *.so
 *.dylib
+.history
+.github
+.idea
+.env
 backend/app
 backend/syncetf
 backend/update_etf_prices
