@@ -1,0 +1,140 @@
+# .golangci.yml
+# Go 代码检查配置文件
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: etf-insight
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0.8
+  gocyclo:
+    min-complexity: 15
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+  funlen:
+    lines: 100
+    statements: 50
+
+linters:
+  disable-all: true
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - ineffassign
+    - typecheck
+    - unused
+    - deadcode
+    - varcheck
+    - structcheck
+    - errcheck
+    - gosimple
+    - staticcheck
+    - gosec
+    - bodyclose
+    - noctx
+    - contextcheck
+    - durationcheck
+    - errname
+    - errorlint
+    - forbidigo
+    - gocognit
+    - goconst
+    - gocyclo
+    - godot
+    - goerr113
+    - gofmt
+    - goheader
+    - goimports
+    - golint
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - importas
+    - ineffassign
+    - interfacer
+    - lll
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - promlinter
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - tagliatelle
+    - testpackage
+    - thelper
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+    - wrapcheck
+
+issues:
+  exclude-use-default: false
+  exclude:
+    - '^could not import'
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - funlen
+        - gocyclo
+    - text: "G104: Errors unhandled."
+      linters:
+        - gosec
+    - text: "G307: Deferring unsafe method"
+      linters:
+        - gosec
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  timeout: 5m
+  go: 1.21
+  skip-dirs:
+    - vendor$
+    - testdata$
+  skip-files:
+    - "\\.min\\.go$"
+    - "^zz_"

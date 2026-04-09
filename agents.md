@@ -1,25 +1,24 @@
 # ETF-Insight 项目上下文文档
 
 > **⚠️ 强制上下文绑定 | MANDATORY CONTEXT BINDING**
-> 
+>
 > ## AI Agent 必须遵守的规则
-> 
+>
 > ### 1. 强制阅读要求 (MANDATORY READING)
 > ```
 > [CRITICAL] 每次对话开始时，必须首先完整阅读本文档
 > [CRITICAL] 任何代码修改前，必须查阅本文档相关章节
 > [CRITICAL] 禁止在不了解上下文的情况下修改代码
 > ```
-> 
+>
 > ### 2. 本文档包含的关键信息
 > - ✅ 系统架构设计 (System Architecture)
 > - ✅ 数据模型定义 (Data Models)
 > - ✅ API 接口规范 (API Specifications)
 > - ✅ 编码规则与约束 (Coding Rules & Constraints)
 > - ✅ 数据源策略 (Data Source Strategy)
-> - ✅ 缓存架构设计 (Cache Architecture)
 > - ✅ 项目目录结构 (Project Structure)
-> 
+>
 > ### 3. 修改同步要求 (MANDATORY SYNC)
 > ```
 > [RULE] 修改架构 → 必须更新本文档架构章节
@@ -28,7 +27,7 @@
 > [RULE] 修改配置 → 必须更新本文档核心配置章节
 > [RULE] 修改编码规则 → 必须更新本文档编码规则章节
 > ```
-> 
+>
 > ### 4. 违规后果
 > > 不阅读本文档直接修改代码可能导致：
 > > - 违反架构设计原则
@@ -115,17 +114,13 @@ ETF-Insight/
 │   │   │   └── config.go       # ETF配置数据 + 预设组合
 │   │   ├── etf_analysis.go     # ETF分析服务 (指标/组合/预测/对比)
 │   │   ├── yahoo_finance.go    # Yahoo Finance 客户端
-│   │   ├── cache.go            # 缓存服务 (策略模式重构)
-│   │   ├── cache_provider.go   # 缓存提供者接口 (抽象)
-│   │   ├── cache_factory.go    # 缓存工厂 (工厂模式)
-│   │   ├── redis_client.go     # Redis 客户端封装
 │   │   ├── exchange_rate.go    # 汇率服务
 │   │   └── finnhub.go          # Finnhub 独立客户端
 │   ├── middleware/             # 中间件
 │   │   ├── security.go         # 安全头 + 速率限制 (100/min)
 │   │   └── security_test.go
 │   ├── tasks/                  # 定时任务
-│   │   ├── scheduler.go        # 主调度器 (ETF更新/汇率更新/小时检查)
+│   │   ├── scheduler.go        # 主调度器 (ETF更新/汇率更新)
 │   │   └── exchange_rate_task.go   # 汇率同步任务 (5min/10:30daily)
 │   ├── utils/                  # 工具包
 │   │   ├── logger.go           # 日志工具
@@ -140,7 +135,6 @@ ETF-Insight/
 │   │   ├── test_factory/       # 数据源工厂测试
 │   │   └── test_finage/        # Finage API 测试
 │   └── infrastructure/         # 基础设施 (预留目录)
-│       ├── cache/
 │       ├── circuitbreaker/
 │       ├── database/
 │       ├── messagequeue/
@@ -223,11 +217,6 @@ server:
 database:
   dsn: "etf_insight.db"     # SQLite / PostgreSQL DSN
 
-etf:
-  cache:
-    type: "memory"
-    ttl: 3600
-
 schedule:
   update_interval: "1h"
 
@@ -241,191 +230,6 @@ log:
 |------|------|------|
 | 后端 | 8080 | Gin Web 服务 |
 | 前端 | 5173 | Vite Dev Server |
-
----
-
-## 🏛️ 缓存架构设计 (OOP 重构)
-
-### 设计原则
-
-缓存系统经过全面重构，严格遵循面向对象编程原则：
-
-#### 1. **单一职责原则 (SRP)**
-- `CacheProvider` 接口：只定义缓存操作
-- `MemoryCache`：只负责内存缓存
-- `RedisCache`：只负责 Redis 缓存
-- `HybridCache`：只负责混合缓存策略
-- `CacheFactory`：只负责创建缓存实例
-- `CacheService`：只负责缓存业务逻辑
-
-#### 2. **开闭原则 (OCP)**
-- 通过 `CacheProvider` 接口扩展新的缓存类型，无需修改现有代码
-- 使用工厂模式创建缓存实例，支持灵活配置
-
-#### 3. **里氏替换原则 (LSP)**
-- 所有缓存实现（MemoryCache、RedisCache、HybridCache）都可以替换 `CacheProvider` 接口
-
-#### 4. **接口隔离原则 (ISP)**
-- `CacheProvider` 接口只包含必要的缓存操作方法
-
-#### 5. **依赖倒置原则 (DIP)**
-- `CacheService` 依赖于抽象接口 `CacheProvider`，而不是具体实现
-
-### 架构图
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CacheService (业务层)                    │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  - provider: CacheProvider (依赖倒置)                 │  │
-│  │  - cfg: *config.CacheConfig                          │  │
-│  │  - ctx: context.Context                              │  │
-│  └───────────────────────────────────────────────────────┘  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│            CacheProvider Interface (抽象接口)               │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  + Get(key string) (interface{}, bool)                │  │
-│  │  + Set(key string, value interface{}, exp Duration)   │  │
-│  │  + Delete(key string) error                           │  │
-│  │  + Clear()                                            │  │
-│  │  + GetType() string                                   │  │
-│  └───────────────────────────────────────────────────────┘  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-          ▼                ▼                ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│ MemoryCache  │  │  RedisCache  │  │ HybridCache  │
-│              │  │              │  │              │
-│ - cache      │  │ - client     │  │ - primary    │
-│              │  │              │  │ - secondary  │
-└──────────────┘  └──────────────┘  └──────────────┘
-      ▲                  ▲                  ▲
-      │                  │                  │
-      └──────────────────┴──────────────────┘
-                         │
-                         ▼
-              ┌────────────────────┐
-              │  CacheFactory      │
-              │  (工厂模式)        │
-              │                    │
-              │  + CreateCache()   │
-              └────────────────────┘
-```
-
-### 核心组件
-
-#### 1. CacheProvider 接口 (抽象)
-
-```go
-type CacheProvider interface {
-    Get(key string) (interface{}, bool)
-    Set(key string, value interface{}, expiration time.Duration)
-    Delete(key string) error
-    Clear()
-    GetType() string
-}
-```
-
-#### 2. MemoryCache 实现
-
-```go
-type MemoryCache struct {
-    cache *cache.Cache
-}
-
-func NewMemoryCache(defaultExpiration, cleanupInterval time.Duration) *MemoryCache {
-    return &MemoryCache{
-        cache: cache.New(defaultExpiration, cleanupInterval),
-    }
-}
-```
-
-#### 3. RedisCache 实现
-
-```go
-type RedisCache struct {
-    client *RedisClient
-}
-
-func NewRedisCache(client *RedisClient) *RedisCache {
-    return &RedisCache{client: client}
-}
-```
-
-#### 4. HybridCache 实现 (组合模式)
-
-```go
-type HybridCache struct {
-    primary   CacheProvider  // Redis
-    secondary CacheProvider  // Memory
-}
-
-func (h *HybridCache) Get(key string) (interface{}, bool) {
-    if val, ok := h.primary.Get(key); ok {
-        return val, true
-    }
-    return h.secondary.Get(key)
-}
-```
-
-#### 5. CacheFactory (工厂模式)
-
-```go
-type CacheFactory struct{}
-
-func (f *CacheFactory) CreateCache(cfg *config.CacheConfig, redisCfg *config.RedisConfig) CacheProvider {
-    if redisCfg.Enabled {
-        return f.createHybridCache(cfg, redisCfg)
-    }
-    return f.createMemoryCache(cfg)
-}
-```
-
-### 使用示例
-
-```go
-// 创建缓存服务
-factory := NewCacheFactory()
-provider := factory.CreateCache(cacheCfg, redisCfg)
-cacheService := NewCacheServiceWithProvider(provider, cacheCfg)
-
-// 使用缓存
-cacheService.Set("key", "value", 5*time.Minute)
-value, found := cacheService.Get("key")
-```
-
-### 缓存策略
-
-| 策略 | 描述 | 适用场景 |
-|------|------|---------|
-| `CacheStrategyMemory` | 纯内存缓存 | 单机部署、开发测试 |
-| `CacheStrategyRedis` | 纯 Redis 缓存 | 分布式部署、需要持久化 |
-| `CacheStrategyHybrid` | Redis + Memory 混合缓存 | 生产环境、高性能要求 |
-
-### 配置方式
-
-```yaml
-redis:
-  enabled: true
-  host: localhost
-  port: 6379
-  password: ""
-  db: 0
-  pool_size: 10
-  timeout: 5s
-
-etf:
-  cache:
-    realtime_ttl: 5m
-    historical_ttl: 24h
-    metrics_ttl: 1h
-    comparison_ttl: 30m
-```
 
 ---
 
@@ -638,7 +442,7 @@ DefaultETFList = []ETFInfo{
 ### ETF 行情相关
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/etf/list` | 获取 ETF 列表 (含行情+指标, 5min缓存) |
+| GET | `/api/etf/list` | 获取 ETF 列表 (含行情+指标, 从数据库获取) |
 | GET | `/api/etf/:symbol/realtime` | 获取单只 ETF 实时数据 (数据库最新OHLCV) |
 | GET | `/api/etf/:symbol/history` | 获取历史数据 (支持 period: 1m/3m/6m/1y/3y/5y) |
 | GET | `/api/etf/:symbol/metrics` | 获取风险指标 (波动率/夏普比率/最大回撤) |
@@ -763,7 +567,6 @@ Finage 提供两种 API，优先级如下：
    └─> 记录入库成功/失败详情
 ```
    └─> 写入 operation_logs 表
-```
 
 ### 涨跌计算逻辑
 
@@ -775,9 +578,8 @@ changePercent = (change / PreviousClose) * 100
 ```
 
 PreviousClose 获取优先级：
-1. 从 realtimeData 缓存获取 (Yahoo Finance 提供)
-2. 从数据库查询前一日 ETFData 的 ClosePrice
-3. 兜底：使用当日 OpenPrice（不理想但好于0）
+1. 从数据库查询前一日 ETFData 的 ClosePrice
+2. 兜底：使用当日 OpenPrice（不理想但好于0）
 
 ### ETF 价格更新工具
 
@@ -839,7 +641,6 @@ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 ./syncetf
 | 汇率更新 | `0 30 10 * * *` | 每天 10:30 更新汇率 |
 | ETF盘前更新 | `0 30 9 * * *` | 每天 09:30 (盘前) |
 | ETF收盘更新 | `0 30 16 * * *` | 每天 16:30 (收盘后) |
-| 小时检查 | `0 0 * * * *` | 每小时检查缓存状态 |
 
 ### 汇率同步任务 (tasks/exchange_rate_task.go)
 
@@ -968,7 +769,7 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 |------|--------|------|
 | 2025-04-07 | AI Agent | 初始创建 agents.md，记录微服务架构、数据源设计、同步流程 |
 | 2025-04-07 17:09 | AI Agent | 修改 GetETFList API，从数据库读取实时数据，移除硬编码模拟数据 |
-| 2025-04-07 18:00 | AI Agent | 优化 ETF 对比接口性能，添加缓存机制，响应时间 < 300ms |
+| 2025-04-07 18:00 | AI Agent | 优化 ETF 对比接口性能，响应时间优化 |
 | 2025-04-07 18:30 | AI Agent | 集成 Finage API，创建 update_etf_prices 批量更新工具 |
 | 2025-04-07 18:50 | AI Agent | 优化批量请求，每批 10 只 ETF，减少 87% API 请求次数 |
 | 2025-04-08 | AI Agent | **数据入库逻辑全面修复**：1) FinageProvider 重写为优先使用聚合API获取完整OHLCV；2) 修复涨跌计算逻辑改用PreviousClose；3) update_etf_prices改用逐个请求避免symbol推断错乱；4) 清理handler中硬编码mock数据改为数据库查询；5) 更新Fallback基准价格；6) sync层增加OHLCV校验拒绝不完整数据入库 |
@@ -976,6 +777,7 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 | **2026-04-08** | **AI Agent** | **v2.0 重大架构调整**：1) **完全依赖 Finage 作为唯一数据源**，删除所有硬编码mock数据；2) **所有字段必须入库**，数据完整性严格校验；3) **删除前端硬编码** (InvestmentStrategy/PortfolioConfig/ETFConfig/PortfolioAnalysis)；4) **删除后端硬编码** (scheduler只更新2只ETF、cache.go MockRealtimeData、etf_handler.go默认列表)；5) **更新架构文档**：Finage-only数据流，废弃Finnhub |
 | **2026-04-09** | **AI Agent** | **v2.1 股息率与资本利得优化**：1) **修复股息率显示问题**：添加 `getDefaultDividendYield()` 函数，根据 ETF 类型智能设置合理股息率（高股息 ETF 3.5%、覆盖收益型 7%、债券 ETF 4%、宽基指数 0.5%）；2) **修复资本利得计算问题**：从数据库获取真实价格，从历史数据计算真实收益率，从数据库获取 ETF 真实名称；3) **优化 FallbackProvider**：从数据库读取最新真实价格作为基准，减小模拟波动范围（±3% → ±0.5%）；4) **清理数据**：删除 15 条错误的 fallback 污染数据；5) **添加 .gitignore**：排除二进制文件 |
 | **2026-04-09** | **AI Agent** | **v2.2 代码质量全面优化**：1) **Go 代码格式化**：使用 `gofmt -w .` 统一格式化，修复 map 对齐和尾部空格问题；2) **ESLint 问题修复**：修复全部 29 个 ESLint 问题 (3 errors + 26 warnings)；3) **消除未使用变量**：删除 InvestmentStrategy.tsx 中未使用的 `getETF` 变量、PortfolioConfig.tsx 中约35行未使用的 `mockConfigs`；4) **TypeScript 类型安全**：新增 `ETFHistoryDataItem` 和 `ETFForecastResult` 类型定义，替换所有 `any` 类型为具体类型（~15个文件）；5) **React Hooks 规范**：为仅挂载执行的 useEffect 添加 exhaustive-deps 禁用注释；6) **Vite 配置清理**：移除 vite.config.ts 中的 `as any` 断言 |
+| **2026-04-09** | **AI Agent** | **v2.2.1 缓存残留清理**：1) **删除缓存相关文件**：删除已废弃的 cache.go、cache_provider.go、cache_factory.go、redis_client.go；2) **清理 agents.md**：移除所有缓存架构章节、缓存相关注释、缓存策略说明；3) **更新目录结构**：移除 services/ 下已删除的缓存文件；4) **更新 API 说明**：移除缓存相关说明；5) **更新定时任务**：移除缓存检查任务 |
 
 ---
 
@@ -992,7 +794,7 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 3. **修改数据库模型**: 更新本文档的 "数据模型" 章节
 4. **添加新 API**: 记录到 "API 接口" 章节
 5. **修改配置**: 更新 "核心配置" 章节
-6. **优化性能**: 考虑批量请求、缓存策略、并发控制
+6. **优化性能**: 考虑批量请求、并发控制
 7. **数据入库**: 必须确保 OHLCV 数据完整（非全0），否则 sync 层会拒绝入库
 8. **涨跌计算**: 始终使用 PreviousClose（前日收盘价），禁止用 OpenPrice 代替
 9. **Finage API**: **只使用聚合API** (`/agg/stock/`)，不使用last API（数据不完整）
@@ -1047,5 +849,5 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 
 ---
 
-*本文档最后更新: 2026-04-09 (v2.2 代码质量全面优化)*
+*本文档最后更新: 2026-04-09 (v2.2.1 缓存残留清理)*
 *强制上下文绑定版本: v1.0*
