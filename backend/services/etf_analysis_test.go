@@ -3,6 +3,7 @@ package services
 import (
 	"testing"
 
+	"etf-insight/models"
 	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
@@ -11,6 +12,11 @@ import (
 
 func TestAnalyzePortfolio_EmptyAllocation(t *testing.T) {
 	utils.InitLogger("warn")
+
+	// 初始化内存数据库
+	if err := models.InitDB(":memory:"); err != nil {
+		t.Fatalf("Failed to init database: %v", err)
+	}
 
 	mockExchange := NewExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
@@ -28,6 +34,14 @@ func TestAnalyzePortfolio_EmptyAllocation(t *testing.T) {
 
 func TestAnalyzePortfolio_DefaultTaxRate(t *testing.T) {
 	utils.InitLogger("warn")
+
+	// 初始化内存数据库
+	if err := models.InitDB(":memory:"); err != nil {
+		t.Fatalf("Failed to init database: %v", err)
+	}
+
+	// 初始化默认 ETF 数据
+	models.InitDefaultData()
 
 	mockExchange := NewExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
