@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
+import type { ETFData } from '../types';
 
 const PageHeader = styled.div`
   display: flex;
@@ -108,7 +109,7 @@ const getChangeClass = (value: number | null): string => {
 const ETFComparisonReport: React.FC = () => {
   const { message } = App.useApp();
   const [selectedPeriod, setSelectedPeriod] = useState('1y');
-  const [etfData, setEtfData] = useState<Record<string, unknown>[]>([]);
+  const [etfData, setEtfData] = useState<ETFData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -135,8 +136,7 @@ const ETFComparisonReport: React.FC = () => {
   const chartData = useMemo(() => {
     if (etfData.length === 0) return [];
     const days = 30;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dates: any[] = [];
+    const dates: Record<string, string | number>[] = [];
     for (let i = 0; i < days; i++) {
       const date = new Date();
       date.setDate(date.getDate() - (days - i));
@@ -152,33 +152,30 @@ const ETFComparisonReport: React.FC = () => {
     return dates;
   }, [etfData]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderNameCell = (record: any) => (
+  const renderNameCell = (record: ETFData) => (
     <ETFNameCell>
       <div className="symbol">{record.symbol}</div>
       <div className="name">{record.name}</div>
     </ETFNameCell>
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const basicColumns: any = [
-    { title: 'ETF', key: 'name', width: 200, render: (_: unknown, r: unknown) => renderNameCell(r) },
-    { title: '类别', dataIndex: 'category', key: 'category', align: 'center' },
-    { title: '提供商', dataIndex: 'provider', key: 'provider', align: 'center' },
-    { title: '当前价格', dataIndex: 'current_price', key: 'price', align: 'right', render: (v: number) => `$${v?.toFixed(2)}` },
-    { title: '涨跌幅', dataIndex: 'change_percent', key: 'change', align: 'right', render: (v: number) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
-    { title: '成交量', dataIndex: 'volume', key: 'volume', align: 'right', render: (v: number) => formatNumber(v) },
+  const basicColumns = [
+    { title: 'ETF', key: 'name', width: 200, render: (_: unknown, r: ETFData) => renderNameCell(r) },
+    { title: '类别', dataIndex: 'category', key: 'category', align: 'center' as const },
+    { title: '提供商', dataIndex: 'provider', key: 'provider', align: 'center' as const },
+    { title: '当前价格', dataIndex: 'current_price', key: 'price', align: 'right' as const, render: (v: number) => `$${v?.toFixed(2)}` },
+    { title: '涨跌幅', dataIndex: 'change_percent', key: 'change', align: 'right' as const, render: (v: number) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
+    { title: '成交量', dataIndex: 'volume', key: 'volume', align: 'right' as const, render: (v: number) => formatNumber(v) },
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const metricColumns: any = [
-    { title: 'ETF', key: 'name', width: 200, render: (_: unknown, r: unknown) => renderNameCell(r) },
-    { title: '年化波动率', dataIndex: 'volatility', key: 'volatility', align: 'right', render: (v: number) => `${v?.toFixed(2)}%` },
-    { title: '夏普比率', dataIndex: 'sharpe_ratio', key: 'sharpe', align: 'right', render: (v: number) => v?.toFixed(2) },
-    { title: '最大回撤', dataIndex: 'max_drawdown', key: 'maxDrawdown', align: 'right', render: (v: number) => <span className="negative">{v?.toFixed(2)}%</span> },
-    { title: '年度收益', dataIndex: 'total_return', key: 'totalReturn', align: 'right', render: (v: number) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
-    { title: '股息率', dataIndex: 'dividend_yield', key: 'dividend', align: 'right', render: (v: number) => `${v?.toFixed(2)}%` },
-    { title: '费率', dataIndex: 'expense_ratio', key: 'expense', align: 'right', render: (v: number) => `${v?.toFixed(2)}%` },
+  const metricColumns = [
+    { title: 'ETF', key: 'name', width: 200, render: (_: unknown, r: ETFData) => renderNameCell(r) },
+    { title: '年化波动率', dataIndex: 'volatility', key: 'volatility', align: 'right' as const, render: (v: number) => `${v?.toFixed(2)}%` },
+    { title: '夏普比率', dataIndex: 'sharpe_ratio', key: 'sharpe', align: 'right' as const, render: (v: number) => v?.toFixed(2) },
+    { title: '最大回撤', dataIndex: 'max_drawdown', key: 'maxDrawdown', align: 'right' as const, render: (v: number) => <span className="negative">{v?.toFixed(2)}%</span> },
+    { title: '年度收益', dataIndex: 'total_return', key: 'totalReturn', align: 'right' as const, render: (v: number) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
+    { title: '股息率', dataIndex: 'dividend_yield', key: 'dividend', align: 'right' as const, render: (v: number) => `${v?.toFixed(2)}%` },
+    { title: '费率', dataIndex: 'expense_ratio', key: 'expense', align: 'right' as const, render: (v: number) => `${v?.toFixed(2)}%` },
   ];
 
   if (loading) {
@@ -217,17 +214,16 @@ const ETFComparisonReport: React.FC = () => {
             <RechartsTooltip 
               contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 8 }} 
               labelStyle={{ color: '#333' }} 
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={(value: any) => [`${Number(value).toFixed(2)}%`, '']} 
+              formatter={(value: number | string) => [`${Number(value).toFixed(2)}%`, '']} 
             />
             <Legend wrapperStyle={{ paddingTop: 20 }} />
             <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
             {etfData.map((etf, idx) => (
               <Line 
-                key={etf.symbol} 
+                key={String(etf.symbol)} 
                 type="monotone" 
-                dataKey={etf.symbol} 
-                name={`${etf.symbol}`} 
+                dataKey={String(etf.symbol)} 
+                name={String(etf.symbol)} 
                 stroke={COLORS[idx % COLORS.length]} 
                 strokeWidth={2} 
                 dot={false} 

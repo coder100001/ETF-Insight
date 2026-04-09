@@ -1,5 +1,5 @@
 // API服务 - 连接Go后端
-import type { ETFData, ETFConfig, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig } from '../types';
+import type { ETFData, ETFConfig, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig, ETFHistoryDataItem } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -25,7 +25,7 @@ class RequestCoalescer {
   async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number = 30000): Promise<T> {
     // 检查是否有正在进行的请求
     if (this.pendingRequests.has(key)) {
-      return this.pendingRequests.get(key)!;
+      return this.pendingRequests.get(key) as Promise<T>;
     }
 
     // 创建新的请求
@@ -134,7 +134,7 @@ export const etfAPI = {
 
   // 获取历史数据
   getHistory: (symbol: string, period: string = '1y') => {
-    return request<ApiResponse<{ date: string; price: number }[]>>(`/etf/${symbol}/history?period=${period}`);
+    return request<ApiResponse<ETFHistoryDataItem[]>>(`/etf/${symbol}/history?period=${period}`);
   },
 
   // 获取收益预测

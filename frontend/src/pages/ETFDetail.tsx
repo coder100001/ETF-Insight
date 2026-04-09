@@ -174,8 +174,8 @@ const ETFDetail: React.FC = () => {
           const history: ETFHistoryDataItem[] = historyResponse.data;
           setChartData({
             dates: history.map((item) => item.date?.split('T')[0] || ''),
-            prices: history.map((item) => item.close_price || 0),
-            volumes: history.map((item) => item.volume || 0),
+            prices: history.map((item) => item.close_price ?? item.price ?? 0),
+            volumes: history.map((item) => item.volume ?? 0),
           });
         }
       } else {

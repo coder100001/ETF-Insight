@@ -278,14 +278,15 @@ export interface AShareDividendCalculation {
   holdings: AShareHoldingDetail[];
 }
 
-// ETF历史数据条目
+// ETF历史数据条目 (兼容后端两种返回格式: {date, price} 或 {date, close_price, volume})
 export interface ETFHistoryDataItem {
   date: string;
-  close_price: number;
-  volume: number;
+  close_price?: number;
+  volume?: number;
   open_price?: number;
   high_price?: number;
   low_price?: number;
+  price?: number;  // 兼容旧格式
 }
 
 // ETF预测结果
