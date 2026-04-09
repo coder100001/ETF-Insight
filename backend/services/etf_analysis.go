@@ -358,7 +358,7 @@ func getDividendYieldByCategory(symbol string, category string) decimal.Decimal 
 		return decimal.NewFromFloat(0.07) // 7%
 	}
 	// 债券 ETF
-	if symbol == "BND" || symbol == "AGG" || symbol == "TLT" || symbol == "BND" {
+	if symbol == "BND" || symbol == "AGG" || symbol == "TLT" {
 		return decimal.NewFromFloat(0.04) // 4%
 	}
 	// 房地产 ETF

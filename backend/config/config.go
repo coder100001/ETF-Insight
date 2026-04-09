@@ -39,16 +39,16 @@ type DatabaseConfig struct {
 	SSLMode  string `yaml:"sslmode"`
 }
 
-// RedisConfig Redis 配置（已移除）
-// type RedisConfig struct {
-// 	Host     string        `yaml:"host"`
-// 	Port     int           `yaml:"port"`
-// 	Password string        `yaml:"password"`
-// 	DB       int           `yaml:"db"`
-// 	PoolSize int           `yaml:"pool_size"`
-// 	Timeout  time.Duration `yaml:"timeout"`
-// 	Enabled  bool          `yaml:"enabled"`
-// }
+// RedisConfig Redis 配置
+type RedisConfig struct {
+	Host     string        `yaml:"host"`
+	Port     int           `yaml:"port"`
+	Password string        `yaml:"password"`
+	DB       int           `yaml:"db"`
+	PoolSize int           `yaml:"pool_size"`
+	Timeout  time.Duration `yaml:"timeout"`
+	Enabled  bool          `yaml:"enabled"`
+}
 
 // GetDSN 构建 PostgreSQL DSN 连接字符串
 func (c *DatabaseConfig) GetDSN() string {
@@ -79,6 +79,7 @@ func (c *DatabaseConfig) GetDSN() string {
 type ETFConfig struct {
 	DefaultSymbols []string        `yaml:"default_symbols"`
 	DataFetch      DataFetchConfig `yaml:"data_fetch"`
+	Cache          CacheConfig     `yaml:"cache"`
 }
 
 // DataFetchConfig 数据获取配置
@@ -90,13 +91,13 @@ type DataFetchConfig struct {
 	MaxWorkers     int           `yaml:"max_workers"`
 }
 
-// CacheConfig 缓存配置（已移除）
-// type CacheConfig struct {
-// 	RealtimeTTL   time.Duration `yaml:"realtime_ttl"`
-// 	HistoricalTTL time.Duration `yaml:"historical_ttl"`
-// 	MetricsTTL    time.Duration `yaml:"metrics_ttl"`
-// 	ComparisonTTL time.Duration `yaml:"comparison_ttl"`
-// }
+// CacheConfig 缓存配置
+type CacheConfig struct {
+	RealtimeTTL   time.Duration `yaml:"realtime_ttl"`
+	HistoricalTTL time.Duration `yaml:"historical_ttl"`
+	MetricsTTL    time.Duration `yaml:"metrics_ttl"`
+	ComparisonTTL time.Duration `yaml:"comparison_ttl"`
+}
 
 // ScheduleConfig 定时任务配置
 type ScheduleConfig struct {
@@ -141,6 +142,12 @@ func DefaultConfig() *Config {
 				RequestTimeout: 30 * time.Second,
 				RateLimitDelay: 1 * time.Second,
 				MaxWorkers:     3,
+			},
+			Cache: CacheConfig{
+				RealtimeTTL:   5 * time.Minute,
+				HistoricalTTL: 24 * time.Hour,
+				MetricsTTL:    1 * time.Hour,
+				ComparisonTTL: 30 * time.Minute,
 			},
 		},
 		Schedule: ScheduleConfig{
