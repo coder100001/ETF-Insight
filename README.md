@@ -15,6 +15,10 @@
 - ✅ **React Hooks 规范**: 修复 `exhaustive-deps` 警告，规范 useEffect 依赖
 - ✅ **代码清理**: 删除未使用变量和冗余类型断言
 
+> **📚 开发者必读**: 本项目使用 **agents.md** 作为核心上下文文档，包含架构设计、数据模型、编码规则等关键信息。
+> 
+> 👉 [查看 agents.md](./agents.md) | 👉 [English README](./README_EN.md)
+
 ## 🎯 产品定位
 
 ETF-Insight 致力于成为专业投资者和机构用户的 ETF 分析利器：

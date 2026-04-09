@@ -8,6 +8,10 @@ A professional ETF analysis and comparison platform, benchmarking against intern
 
 **v2.0 Architecture Update**: Fully rely on Finage real data, removed all hard-coded mock data, all fields must be persisted.
 
+> **📚 For Developers**: This project uses **agents.md** as the core context document, containing architecture design, data models, coding rules, and other critical information.
+>
+> 👉 [View agents.md](./agents.md) | 👉 [中文 README](./README.md)
+
 ---
 
 ## 🎯 Product Positioning
