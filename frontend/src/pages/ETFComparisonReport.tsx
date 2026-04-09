@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import { Table, App, Row, Col, Spin } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { ArrowLeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import Layout from '../components/Layout';
@@ -59,7 +60,7 @@ const SectionCard = styled.div`
   }
 `;
 
-const StyledTable = styled(Table)`
+const StyledTable = styled(Table<ETFData>)`
   .ant-table-thead > tr > th { background: ${theme.colors.background}; font-weight: ${theme.fonts.weight.semibold}; color: ${theme.colors.textSecondary}; font-size: ${theme.fonts.size.sm}; border-bottom: 1px solid ${theme.colors.border}; }
   .ant-table-tbody > tr > td { border-bottom: 1px solid ${theme.colors.border}; }
   .ant-table-tbody > tr:hover > td { background: rgba(0,0,0,0.02); }
@@ -159,23 +160,23 @@ const ETFComparisonReport: React.FC = () => {
     </ETFNameCell>
   );
 
-  const basicColumns = [
-    { title: 'ETF', key: 'name', width: 200, render: (_: unknown, r: ETFData) => renderNameCell(r) },
-    { title: '类别', dataIndex: 'category', key: 'category', align: 'center' as const },
-    { title: '提供商', dataIndex: 'provider', key: 'provider', align: 'center' as const },
-    { title: '当前价格', dataIndex: 'current_price', key: 'price', align: 'right' as const, render: (v: number) => `$${v?.toFixed(2)}` },
-    { title: '涨跌幅', dataIndex: 'change_percent', key: 'change', align: 'right' as const, render: (v: number) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
-    { title: '成交量', dataIndex: 'volume', key: 'volume', align: 'right' as const, render: (v: number) => formatNumber(v) },
+  const basicColumns: ColumnsType<ETFData> = [
+    { title: 'ETF', key: 'name', width: 200, render: (_, r) => renderNameCell(r) },
+    { title: '类别', dataIndex: 'category', key: 'category', align: 'center' },
+    { title: '提供商', dataIndex: 'provider', key: 'provider', align: 'center' },
+    { title: '当前价格', dataIndex: 'current_price', key: 'price', align: 'right', render: (v) => `$${Number(v)?.toFixed(2)}` },
+    { title: '涨跌幅', dataIndex: 'change_percent', key: 'change', align: 'right', render: (v) => <span className={getChangeClass(Number(v))}>{formatPercent(Number(v))}</span> },
+    { title: '成交量', dataIndex: 'volume', key: 'volume', align: 'right', render: (v) => formatNumber(Number(v)) },
   ];
 
-  const metricColumns = [
-    { title: 'ETF', key: 'name', width: 200, render: (_: unknown, r: ETFData) => renderNameCell(r) },
-    { title: '年化波动率', dataIndex: 'volatility', key: 'volatility', align: 'right' as const, render: (v: number) => `${v?.toFixed(2)}%` },
-    { title: '夏普比率', dataIndex: 'sharpe_ratio', key: 'sharpe', align: 'right' as const, render: (v: number) => v?.toFixed(2) },
-    { title: '最大回撤', dataIndex: 'max_drawdown', key: 'maxDrawdown', align: 'right' as const, render: (v: number) => <span className="negative">{v?.toFixed(2)}%</span> },
-    { title: '年度收益', dataIndex: 'total_return', key: 'totalReturn', align: 'right' as const, render: (v: number) => <span className={getChangeClass(v)}>{formatPercent(v)}</span> },
-    { title: '股息率', dataIndex: 'dividend_yield', key: 'dividend', align: 'right' as const, render: (v: number) => `${v?.toFixed(2)}%` },
-    { title: '费率', dataIndex: 'expense_ratio', key: 'expense', align: 'right' as const, render: (v: number) => `${v?.toFixed(2)}%` },
+  const metricColumns: ColumnsType<ETFData> = [
+    { title: 'ETF', key: 'name', width: 200, render: (_, r) => renderNameCell(r) },
+    { title: '年化波动率', dataIndex: 'volatility', key: 'volatility', align: 'right', render: (v) => `${Number(v)?.toFixed(2)}%` },
+    { title: '夏普比率', dataIndex: 'sharpe_ratio', key: 'sharpe', align: 'right', render: (v) => Number(v)?.toFixed(2) },
+    { title: '最大回撤', dataIndex: 'max_drawdown', key: 'maxDrawdown', align: 'right', render: (v) => <span className="negative">{Number(v)?.toFixed(2)}%</span> },
+    { title: '年度收益', dataIndex: 'total_return', key: 'totalReturn', align: 'right', render: (v) => <span className={getChangeClass(Number(v))}>{formatPercent(Number(v))}</span> },
+    { title: '股息率', dataIndex: 'dividend_yield', key: 'dividend', align: 'right', render: (v) => `${Number(v)?.toFixed(2)}%` },
+    { title: '费率', dataIndex: 'expense_ratio', key: 'expense', align: 'right', render: (v) => `${Number(v)?.toFixed(2)}%` },
   ];
 
   if (loading) {
@@ -214,7 +215,8 @@ const ETFComparisonReport: React.FC = () => {
             <RechartsTooltip 
               contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 8 }} 
               labelStyle={{ color: '#333' }} 
-              formatter={(value: number | string) => [`${Number(value).toFixed(2)}%`, '']} 
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(value: any) => [`${Number(value).toFixed(2)}%`, '']} 
             />
             <Legend wrapperStyle={{ paddingTop: 20 }} />
             <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
