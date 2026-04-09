@@ -44,88 +44,23 @@ const ETFConfigPage: React.FC = () => {
     try {
       const response = await etfConfigAPI.getConfigs();
       if (response.success && response.data) {
-        // 将后端数据转换为前端格式
         const formattedConfigs = response.data.map(config => ({
           ...config,
           is_active: config.status === 1,
           auto_update: config.auto_update ?? true,
           update_frequency: config.update_frequency ?? '每日',
           last_updated: config.last_updated ?? config.updated_at ?? '-',
-          data_source: config.data_source ?? 'Yahoo Finance',
+          data_source: config.data_source ?? 'Finage',
         }));
         setConfigs(formattedConfigs);
-      } else {
-        // 如果API失败，使用默认数据
-        setConfigs(getDefaultConfigs());
       }
     } catch (error) {
       console.error('Failed to load ETF configs:', error);
       message.error('加载ETF配置失败');
-      // 使用默认数据
-      setConfigs(getDefaultConfigs());
     } finally {
       setLoading(false);
     }
   };
-
-  // 默认配置数据
-  const getDefaultConfigs = (): ETFConfig[] => [
-    {
-      id: 1,
-      symbol: 'SCHD',
-      name: 'Schwab US Dividend Equity ETF',
-      status: 1,
-      is_active: true,
-      auto_update: true,
-      update_frequency: '每日',
-      last_updated: '2024-03-28 09:00:00',
-      data_source: 'Yahoo Finance',
-    },
-    {
-      id: 2,
-      symbol: 'SPYD',
-      name: 'SPDR S&P 500 High Dividend ETF',
-      status: 1,
-      is_active: true,
-      auto_update: true,
-      update_frequency: '每日',
-      last_updated: '2024-03-28 09:00:00',
-      data_source: 'Yahoo Finance',
-    },
-    {
-      id: 3,
-      symbol: 'JEPQ',
-      name: 'JPMorgan Nasdaq Equity Premium Income ETF',
-      status: 1,
-      is_active: true,
-      auto_update: true,
-      update_frequency: '每日',
-      last_updated: '2024-03-28 09:00:00',
-      data_source: 'Yahoo Finance',
-    },
-    {
-      id: 4,
-      symbol: 'JEPI',
-      name: 'JPMorgan Equity Premium Income ETF',
-      status: 1,
-      is_active: true,
-      auto_update: true,
-      update_frequency: '每日',
-      last_updated: '2024-03-28 09:00:00',
-      data_source: 'Yahoo Finance',
-    },
-    {
-      id: 5,
-      symbol: 'VYM',
-      name: 'Vanguard High Dividend Yield ETF',
-      status: 1,
-      is_active: true,
-      auto_update: true,
-      update_frequency: '每日',
-      last_updated: '2024-03-28 09:00:00',
-      data_source: 'Yahoo Finance',
-    },
-  ];
 
   useEffect(() => {
     loadConfigs();

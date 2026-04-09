@@ -22,7 +22,10 @@ func TestAnalyzePortfolio_Basic(t *testing.T) {
 		MetricsTTL:    1 * time.Hour,
 		ComparisonTTL: 30 * time.Minute,
 	}
-	mockCache := NewCacheService(cacheCfg)
+	redisCfg := &config.RedisConfig{
+		Enabled: false,
+	}
+	mockCache := NewCacheService(cacheCfg, redisCfg)
 	defer mockCache.Close()
 
 	// 添加模拟数据
@@ -68,7 +71,8 @@ func TestAnalyzePortfolio_TaxCalculation(t *testing.T) {
 		MetricsTTL:    1 * time.Hour,
 		ComparisonTTL: 30 * time.Minute,
 	}
-	mockCache := NewCacheService(cacheCfg)
+	redisCfg := &config.RedisConfig{Enabled: false}
+	mockCache := NewCacheService(cacheCfg, redisCfg)
 	defer mockCache.Close()
 
 	mockCache.SetRealtimeData("SCHD", &RealtimeData{
@@ -108,7 +112,8 @@ func TestAnalyzePortfolio_EmptyAllocation(t *testing.T) {
 		MetricsTTL:    1 * time.Hour,
 		ComparisonTTL: 30 * time.Minute,
 	}
-	mockCache := NewCacheService(cacheCfg)
+	redisCfg := &config.RedisConfig{Enabled: false}
+	mockCache := NewCacheService(cacheCfg, redisCfg)
 	defer mockCache.Close()
 
 	mockExchange := NewExchangeRateService()
@@ -134,7 +139,8 @@ func TestAnalyzePortfolio_DefaultTaxRate(t *testing.T) {
 		MetricsTTL:    1 * time.Hour,
 		ComparisonTTL: 30 * time.Minute,
 	}
-	mockCache := NewCacheService(cacheCfg)
+	redisCfg := &config.RedisConfig{Enabled: false}
+	mockCache := NewCacheService(cacheCfg, redisCfg)
 	defer mockCache.Close()
 
 	mockCache.SetRealtimeData("SCHD", &RealtimeData{
@@ -169,7 +175,8 @@ func TestAnalyzePortfolio_MultipleHoldings(t *testing.T) {
 		MetricsTTL:    1 * time.Hour,
 		ComparisonTTL: 30 * time.Minute,
 	}
-	mockCache := NewCacheService(cacheCfg)
+	redisCfg := &config.RedisConfig{Enabled: false}
+	mockCache := NewCacheService(cacheCfg, redisCfg)
 	defer mockCache.Close()
 
 	mockCache.SetRealtimeData("SCHD", &RealtimeData{

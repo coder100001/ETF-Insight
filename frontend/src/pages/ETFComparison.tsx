@@ -190,7 +190,7 @@ const ETFComparison: React.FC = () => {
       dataIndex: 'expense_ratio',
       key: 'expense_ratio',
       align: 'center' as const,
-      render: (value) => `${value}%`,
+      render: (value) => `${(value as number).toFixed(2)}%`,
     },
     {
       title: '策略',

@@ -32,13 +32,13 @@
 │                              │  Service  │                                   │
 │                              └─────┬─────┘                                   │
 │                                    │                                         │
-│              ┌─────────────────────┼─────────────────────┐                   │
-│              │                     │                     │                   │
-│        ┌─────┴─────┐        ┌─────┴─────┐        ┌─────┴─────┐              │
-│        │  Finnhub  │        │  Finage   │        │  Fallback │              │
-│        │  Provider │        │  Provider │        │  Provider │              │
-│        │           │        │           │        │ (Mock)    │              │
-│        └───────────┘        └───────────┘        └───────────┘              │
+│              ┌─────────────────────┴─────────────────────┐                   │
+│              │                                           │                   │
+│        ┌─────┴─────┐                               ┌─────┴─────┐              │
+│        │  Finage   │                               │  Fallback │              │
+│        │  Provider │                               │  Provider │              │
+│        │           │                               │ (Emergency) │            │
+│        └───────────┘                               └───────────┘              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -81,7 +81,10 @@ ETF-Insight/
 │   │   │   └── config.go       # ETF配置数据 + 预设组合
 │   │   ├── etf_analysis.go     # ETF分析服务 (指标/组合/预测/对比)
 │   │   ├── yahoo_finance.go    # Yahoo Finance 客户端
-│   │   ├── cache.go            # 缓存服务 + RealtimeData 模型
+│   │   ├── cache.go            # 缓存服务 (策略模式重构)
+│   │   ├── cache_provider.go   # 缓存提供者接口 (抽象)
+│   │   ├── cache_factory.go    # 缓存工厂 (工厂模式)
+│   │   ├── redis_client.go     # Redis 客户端封装
 │   │   ├── exchange_rate.go    # 汇率服务
 │   │   └── finnhub.go          # Finnhub 独立客户端
 │   ├── middleware/             # 中间件
@@ -154,8 +157,8 @@ ETF-Insight/
 
 | 服务 | 环境变量 | 状态 |
 |------|---------|------|
-| **Finage** | `FINAGE_API_KEY` | ✅ 主要数据源 |
-| **Finnhub** | `FINNHUB_API_KEY` | ⚠️ 备用 |
+| **Finage** | `FINAGE_API_KEY` | ✅ **唯一数据源 (必须配置)** |
+| **Finnhub** | `FINNHUB_API_KEY` | 🚫 **已废弃** (代码保留但不使用) |
 
 > **⚠️ 安全提醒**: API Key 不得硬编码到代码中，统一通过环境变量配置。参考 `.env.example`。
 
@@ -166,11 +169,11 @@ ETF-Insight/
 HTTP_PROXY=http://127.0.0.1:7897
 HTTPS_PROXY=http://127.0.0.1:7897
 
-# Finage API Key (主要数据源) - 必须配置
+# Finage API Key (唯一数据源) - 必须配置，否则系统无法工作
 FINAGE_API_KEY=your_finage_api_key_here
 
-# Finnhub API Key (备用) - 可选
-FINNHUB_API_KEY=your_finnhub_api_key_here
+# 注意：Finnhub API Key 已废弃，仅作为历史代码保留
+# FINNHUB_API_KEY=your_finnhub_api_key_here
 ```
 
 ### 配置文件 (backend/config.yaml)
@@ -206,6 +209,191 @@ log:
 
 ---
 
+## 🏛️ 缓存架构设计 (OOP 重构)
+
+### 设计原则
+
+缓存系统经过全面重构，严格遵循面向对象编程原则：
+
+#### 1. **单一职责原则 (SRP)**
+- `CacheProvider` 接口：只定义缓存操作
+- `MemoryCache`：只负责内存缓存
+- `RedisCache`：只负责 Redis 缓存
+- `HybridCache`：只负责混合缓存策略
+- `CacheFactory`：只负责创建缓存实例
+- `CacheService`：只负责缓存业务逻辑
+
+#### 2. **开闭原则 (OCP)**
+- 通过 `CacheProvider` 接口扩展新的缓存类型，无需修改现有代码
+- 使用工厂模式创建缓存实例，支持灵活配置
+
+#### 3. **里氏替换原则 (LSP)**
+- 所有缓存实现（MemoryCache、RedisCache、HybridCache）都可以替换 `CacheProvider` 接口
+
+#### 4. **接口隔离原则 (ISP)**
+- `CacheProvider` 接口只包含必要的缓存操作方法
+
+#### 5. **依赖倒置原则 (DIP)**
+- `CacheService` 依赖于抽象接口 `CacheProvider`，而不是具体实现
+
+### 架构图
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CacheService (业务层)                    │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  - provider: CacheProvider (依赖倒置)                 │  │
+│  │  - cfg: *config.CacheConfig                          │  │
+│  │  - ctx: context.Context                              │  │
+│  └───────────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│            CacheProvider Interface (抽象接口)               │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  + Get(key string) (interface{}, bool)                │  │
+│  │  + Set(key string, value interface{}, exp Duration)   │  │
+│  │  + Delete(key string) error                           │  │
+│  │  + Clear()                                            │  │
+│  │  + GetType() string                                   │  │
+│  └───────────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+          ▼                ▼                ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ MemoryCache  │  │  RedisCache  │  │ HybridCache  │
+│              │  │              │  │              │
+│ - cache      │  │ - client     │  │ - primary    │
+│              │  │              │  │ - secondary  │
+└──────────────┘  └──────────────┘  └──────────────┘
+      ▲                  ▲                  ▲
+      │                  │                  │
+      └──────────────────┴──────────────────┘
+                         │
+                         ▼
+              ┌────────────────────┐
+              │  CacheFactory      │
+              │  (工厂模式)        │
+              │                    │
+              │  + CreateCache()   │
+              └────────────────────┘
+```
+
+### 核心组件
+
+#### 1. CacheProvider 接口 (抽象)
+
+```go
+type CacheProvider interface {
+    Get(key string) (interface{}, bool)
+    Set(key string, value interface{}, expiration time.Duration)
+    Delete(key string) error
+    Clear()
+    GetType() string
+}
+```
+
+#### 2. MemoryCache 实现
+
+```go
+type MemoryCache struct {
+    cache *cache.Cache
+}
+
+func NewMemoryCache(defaultExpiration, cleanupInterval time.Duration) *MemoryCache {
+    return &MemoryCache{
+        cache: cache.New(defaultExpiration, cleanupInterval),
+    }
+}
+```
+
+#### 3. RedisCache 实现
+
+```go
+type RedisCache struct {
+    client *RedisClient
+}
+
+func NewRedisCache(client *RedisClient) *RedisCache {
+    return &RedisCache{client: client}
+}
+```
+
+#### 4. HybridCache 实现 (组合模式)
+
+```go
+type HybridCache struct {
+    primary   CacheProvider  // Redis
+    secondary CacheProvider  // Memory
+}
+
+func (h *HybridCache) Get(key string) (interface{}, bool) {
+    if val, ok := h.primary.Get(key); ok {
+        return val, true
+    }
+    return h.secondary.Get(key)
+}
+```
+
+#### 5. CacheFactory (工厂模式)
+
+```go
+type CacheFactory struct{}
+
+func (f *CacheFactory) CreateCache(cfg *config.CacheConfig, redisCfg *config.RedisConfig) CacheProvider {
+    if redisCfg.Enabled {
+        return f.createHybridCache(cfg, redisCfg)
+    }
+    return f.createMemoryCache(cfg)
+}
+```
+
+### 使用示例
+
+```go
+// 创建缓存服务
+factory := NewCacheFactory()
+provider := factory.CreateCache(cacheCfg, redisCfg)
+cacheService := NewCacheServiceWithProvider(provider, cacheCfg)
+
+// 使用缓存
+cacheService.Set("key", "value", 5*time.Minute)
+value, found := cacheService.Get("key")
+```
+
+### 缓存策略
+
+| 策略 | 描述 | 适用场景 |
+|------|------|---------|
+| `CacheStrategyMemory` | 纯内存缓存 | 单机部署、开发测试 |
+| `CacheStrategyRedis` | 纯 Redis 缓存 | 分布式部署、需要持久化 |
+| `CacheStrategyHybrid` | Redis + Memory 混合缓存 | 生产环境、高性能要求 |
+
+### 配置方式
+
+```yaml
+redis:
+  enabled: true
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  timeout: 5s
+
+etf:
+  cache:
+    realtime_ttl: 5m
+    historical_ttl: 24h
+    metrics_ttl: 1h
+    comparison_ttl: 30m
+```
+
+---
+
 ## 🗄️ 数据模型
 
 ### 核心表结构
@@ -229,7 +417,7 @@ type ETFConfig struct {
     Status          int             // 状态: 1启用, 0禁用
     AutoUpdate      bool            // 自动更新
     UpdateFrequency string          // 更新频率
-    DataSource      string          // 数据来源: "Finage" / "Finnhub" / "Yahoo Finance"
+    DataSource      string          // 数据来源: "finage_agg" / "fallback" (v2.0: 仅Finage或明确fallback)
     CreatedAt       time.Time
     UpdatedAt       time.Time
 }
@@ -482,11 +670,21 @@ type DataSourceProvider interface {
 }
 ```
 
-### 数据源优先级
+### 数据源策略 (v2.0)
 
-1. **Finage** - 主要数据源，优先使用聚合API获取完整OHLCV
-2. **Finnhub** - 备用数据源，60 calls/sec 限制
-3. **Fallback Provider** - 提供模拟数据，始终可用（基准价格基于2025年4月市场参考价）
+**核心原则：完全依赖 Finage 真实数据，干掉所有硬编码mock**
+
+1. **Finage (唯一真实数据源)** - 必须配置 `FINAGE_API_KEY`，系统无法工作
+   - 使用聚合API获取完整OHLCV + Volume数据
+   - **所有字段必须入库** → 数据库必须有完整的数据记录
+   - 如果API Key未配置或请求失败 → 系统明确报错，不返回假数据
+
+2. **Fallback Provider (仅紧急备用)** - 仅在没有Finage API Key时提供基础演示
+   - **不提供模拟假数据** → 仅返回有限的基本信息
+   - **不会入库** → 避免污染数据库
+   - **前端会明确显示"数据源: fallback"** → 提醒用户配置API Key
+
+3. **Finnhub (已废弃)** - 代码保留，但不再使用
 
 ### Finage Provider 数据获取策略
 
@@ -497,33 +695,38 @@ Finage 提供两种 API，优先级如下：
 | 1 (优先) | `GET /agg/stock/{symbol}/1/day/{from}/{to}` | 完整 OHLCV + Volume | 主力数据源，入库数据必须来自此API |
 | 2 (降级) | `GET /last/stock/{symbol}` | 仅 ask/bid | 聚合API失败时的备选，**数据不完整，不可入库** |
 
-**关键规则**：
-- `GetQuote` 优先调用聚合API，获取最近5天的聚合数据，取最新一条
-- 聚合API返回的数据包含完整 OHLCV，且可通过对比前日收盘价计算涨跌
-- 如果聚合API失败，降级到 last API，此时 `DataSource` 标注为 `finage_last`
-- **sync/service.go 的 `updateETFData` 会校验 OHLCV**：如果全为0则拒绝入库，避免不完整数据污染数据库
+**关键规则 (v2.0 严格模式)**：
+- **完全依赖 Finage 聚合API** → `GetQuote` 只调用 `/agg/stock/{symbol}/1/day/` 获取完整OHLCV
+- **不降级到 last API** → last API 数据不完整，不满足"所有字段入库"要求
+- **所有字段必须入库** → OHLCV、Volume、数据来源等全部写入 `etf_data` 表
+- **严格数据校验** → `sync/service.go` 校验：OHLCV不全>0则拒绝入库，避免脏数据
+- **无硬编码回退** → 前端/后端所有硬编码mock数据已删除
 
-### 同步流程
+### 同步流程 (v2.0 Finage-Only)
 
 ```
 1. 检查数据源可用性
-   └─> 如果不可用，自动降级到 Fallback
+   └─> Finage API Key 配置 → 继续
+   └─> 无API Key → 明确报错，不降级到模拟数据
 
-2. 获取报价 (逐个请求)
-   ├─> Finage: 先尝试聚合API (/agg/stock/{symbol}/1/day)
-   │   └─> 获取完整 OHLCV + Volume + 涨跌计算
-   └─> 聚合API失败时降级到 last API (仅 ask/bid)
-       └─> 标注 DataSource 为 "finage_last"，不入库
+2. 获取报价 (Finage聚合API)
+   └─> GET /agg/stock/{symbol}/1/day/{from}/{to}
+       └─> 获取最近5天完整OHLCV + Volume
+       └─> **不降级到last API** (数据不完整)
 
-3. 数据入库校验 (sync/service.go)
-   ├─> 检查 OHLCV 是否全为0 → 拒绝入库
-   └─> 通过校验 → 更新/创建 ETFData
+3. 数据入库校验 (sync/service.go - 严格模式)
+   ├─> 检查 OHLCV 是否全为0 → ❌ 拒绝入库
+   ├─> 检查数据完整性 → ❌ 不完整则拒绝
+   └─> 通过校验 → ✅ 更新/创建 ETFData (所有字段)
 
-4. 更新数据库
-   ├─> 更新/创建 ETFConfig (配置表)
-   └─> 更新/创建 ETFData (行情表，按日期)
+4. 更新数据库 (完整字段)
+   ├─> 更新 ETFConfig (配置表)
+   └─> 更新 ETFData (行情表，包含: Open/High/Low/Close/Volume/DataSource等)
 
 5. 记录操作日志
+   └─> 明确标记数据来源: "finage_agg"
+   └─> 记录入库成功/失败详情
+```
    └─> 写入 operation_logs 表
 ```
 
@@ -735,21 +938,29 @@ sqlite3 etf_insight.db "SELECT * FROM operation_logs ORDER BY id DESC LIMIT 5;"
 | 2025-04-07 18:50 | AI Agent | 优化批量请求，每批 10 只 ETF，减少 87% API 请求次数 |
 | 2025-04-08 | AI Agent | **数据入库逻辑全面修复**：1) FinageProvider 重写为优先使用聚合API获取完整OHLCV；2) 修复涨跌计算逻辑改用PreviousClose；3) update_etf_prices改用逐个请求避免symbol推断错乱；4) 清理handler中硬编码mock数据改为数据库查询；5) 更新Fallback基准价格；6) sync层增加OHLCV校验拒绝不完整数据入库 |
 | 2025-04-08 | AI Agent | **文档全面更新**：补充缺失的数据模型(ExchangeRate系列/AShare系列)、完整API接口列表(含ETF配置/组合配置/A股/汇率)、目录结构细化(含所有文件)、命令行工具文档、定时任务说明、安全中间件说明 |
+| **2026-04-08** | **AI Agent** | **v2.0 重大架构调整**：1) **完全依赖 Finage 作为唯一数据源**，删除所有硬编码mock数据；2) **所有字段必须入库**，数据完整性严格校验；3) **删除前端硬编码** (InvestmentStrategy/PortfolioConfig/ETFConfig/PortfolioAnalysis)；4) **删除后端硬编码** (scheduler只更新2只ETF、cache.go MockRealtimeData、etf_handler.go默认列表)；5) **更新架构文档**：Finage-only数据流，废弃Finnhub |
 
 ---
 
-## 🤖 给 AI 的提示
+## 🤖 给 AI 的提示 (v2.0 更新)
 
+### 核心原则
+1. **完全依赖 Finage 真实数据** - 无硬编码mock，无Fallback假数据
+2. **所有字段必须入库** - OHLCV+Volume+DataSource全部写入etf_data表
+3. **严格数据校验** - 数据不全则拒绝入库，避免脏数据
+
+### 编码规则
 1. **修改代码后**: 必须同步更新本文档中的相关部分
-2. **添加新数据源**: 实现 `DataSourceProvider` 接口，在 ProviderFactory 中注册
+2. **数据源策略**: Finage是唯一真实数据源，不添加其他数据源
 3. **修改数据库模型**: 更新本文档的 "数据模型" 章节
 4. **添加新 API**: 记录到 "API 接口" 章节
 5. **修改配置**: 更新 "核心配置" 章节
 6. **优化性能**: 考虑批量请求、缓存策略、并发控制
 7. **数据入库**: 必须确保 OHLCV 数据完整（非全0），否则 sync 层会拒绝入库
 8. **涨跌计算**: 始终使用 PreviousClose（前日收盘价），禁止用 OpenPrice 代替
-9. **Finage API**: 优先使用聚合API (`/agg/stock/`)，last API 仅作降级备选且数据不完整
+9. **Finage API**: **只使用聚合API** (`/agg/stock/`)，不使用last API（数据不完整）
+10. **前端开发**: **禁止硬编码数据**，所有数据从API获取
 
 ---
 
-*本文档最后更新: 2025-04-08*
+*本文档最后更新: 2026-04-08 (v2.0 Finage-Only 架构)*

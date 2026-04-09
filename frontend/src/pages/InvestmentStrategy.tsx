@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
-import { Card, Table, InputNumber, Slider, Tag, Row, Col, Statistic, Alert, Tabs, Space, Typography } from 'antd';
+import { Card, Table, InputNumber, Slider, Tag, Row, Col, Statistic, Alert, Tabs, Space, Typography, Spin, App } from 'antd';
 import { 
   SafetyCertificateOutlined, 
   RiseOutlined,
@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { etfAPI } from '../services/api';
 
 const { Text, Title, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -174,6 +175,16 @@ const BacktestResultCard = styled.div`
   }
 `;
 
+const ETF_COLORS: Record<string, string> = {
+  SCHD: '#1890ff',
+  SPYD: '#faad14',
+  JEPQ: '#13c2c2',
+  JEPI: '#f5222d',
+  VYM: '#52c41a',
+  QQQ: '#722ed1',
+  VNQ: '#eb2f96',
+};
+
 interface StrategyConfig {
   id: string;
   name: string;
@@ -189,169 +200,192 @@ interface StrategyConfig {
   cons: string[];
 }
 
-interface ETFData {
+interface ETFApiItem {
   symbol: string;
   name: string;
-  expenseRatio: number;
-  dividendYield: number;
-  return1y: number;
-  return3y: number;
-  volatility: number;
-  sharpe: number;
-  maxDrawdown: number;
-  beta: number;
-  color: string;
+  current_price?: number;
+  dividend_yield?: number;
+  volatility?: number;
+  total_return?: number;
+  max_drawdown?: number;
+  sharpe_ratio?: number;
+  expense_ratio?: number;
+  change_percent?: number;
 }
-
-const ETF_LIST: ETFData[] = [
-  { symbol: 'SCHD', name: 'Schwab US Dividend Equity', expenseRatio: 0.06, dividendYield: 3.46, return1y: 17.32, return3y: 42.58, volatility: 14.56, sharpe: 0.55, maxDrawdown: -13.05, beta: 0.66, color: '#1890ff' },
-  { symbol: 'SPYD', name: 'SPDR S&P 500 High Dividend', expenseRatio: 0.35, dividendYield: 4.36, return1y: 18.45, return3y: 38.72, volatility: 15.23, sharpe: 0.455, maxDrawdown: -12.18, beta: 0.80, color: '#faad14' },
-  { symbol: 'JEPQ', name: 'JPMorgan Nasdaq Premium Income', expenseRatio: 0.35, dividendYield: 11.12, return1y: 28.93, return3y: 78.45, volatility: 18.92, sharpe: 1.291, maxDrawdown: -15.76, beta: 0.78, color: '#13c2c2' },
-];
-
-const STRATEGIES: StrategyConfig[] = [
-  {
-    id: 'conservative',
-    name: '稳健收益策略',
-    description: '以低波动红利ETF为核心，追求稳定现金流和资本保值',
-    icon: <SafetyCertificateOutlined />,
-    color: '#1890ff',
-    riskLevel: 30,
-    targetReturn: 9,
-    allocation: { SCHD: 60, SPYD: 35, JEPQ: 5 },
-    features: ['季度分红再投资', '低费率优势', '价值股风格'],
-    suitableFor: '保守型投资者、退休规划、风险厌恶者',
-    pros: ['最大回撤控制在12%以内', '年化股息率约3.8%', '长期稳定跑赢通胀'],
-    cons: ['牛市表现一般', '成长性有限'],
-  },
-  {
-    id: 'balanced',
-    name: '均衡增长策略',
-    description: '核心-卫星配置，平衡收益与风险，适合大多数投资者',
-    icon: <FundOutlined />,
-    color: '#52c41a',
-    riskLevel: 50,
-    targetReturn: 13,
-    allocation: { SCHD: 50, SPYD: 30, JEPQ: 20 },
-    features: ['核心卫星架构', '多因子分散', '动态再平衡'],
-    suitableFor: '中等风险偏好者、职场人士、中期投资者',
-    pros: ['风险调整后收益优秀', '月度+季度双重收入流', '风格分散降低相关性'],
-    cons: ['需定期再平衡', 'JEPQ波动较大'],
-  },
-  {
-    id: 'income',
-    name: '高收入增强策略',
-    description: '最大化当期收入，通过期权覆盖策略获取高额月度派息',
-    icon: <RiseOutlined />,
-    color: '#faad14',
-    riskLevel: 65,
-    targetReturn: 17,
-    allocation: { SCHD: 30, SPYD: 20, JEPQ: 50 },
-    features: ['月度高派息', '期权覆盖增强', '纳斯达克成长暴露'],
-    suitableFor: '追求现金流、退休早期、收入导向投资者',
-    pros: ['综合股息率可达7%+', 'JEPQ Alpha显著', '月度现金流'],
-    cons: ['波动率较高(19%)', '期权收益税务处理复杂'],
-  },
-  {
-    id: 'aggressive',
-    name: '积极进取策略',
-    description: '高配成长性资产，追求超额收益，承受较高波动',
-    icon: <ThunderboltOutlined />,
-    color: '#f5222d',
-    riskLevel: 80,
-    targetReturn: 22,
-    allocation: { SCHD: 25, SPYD: 15, JEPQ: 60 },
-    features: ['高Beta暴露', '成长因子倾斜', '集中持仓'],
-    suitableFor: '高风险承受力、年轻投资者、长期积累期',
-    pros: ['潜在年化收益20%+', '复利效应最大化', 'JEPQ夏普比率最优'],
-    cons: ['最大回撤可能超20%', '需要强大心理素质'],
-  },
-];
-
-const generateBacktestData = (allocation: Record<string, number>, months: number = 36) => {
-  const baseValues: Record<string, number> = { SCHD: 100, SPYD: 100, JEPQ: 100 };
-  const data = [];
-  
-  for (let i = 0; i < months; i++) {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (months - i));
-    
-    let portfolioValue = 0;
-    const etfValues: Record<string, number> = {};
-    
-    Object.entries(allocation).forEach(([symbol, weight]) => {
-      const etf = ETF_LIST.find(e => e.symbol === symbol)!;
-      const monthlyReturn = (etf.return3y / 36) + (Math.random() - 0.48) * (etf.volatility / Math.sqrt(12));
-      baseValues[symbol] *= (1 + monthlyReturn / 100);
-      const value = baseValues[symbol] * (weight / 100);
-      portfolioValue += value;
-      etfValues[symbol] = baseValues[symbol];
-    });
-    
-    data.push({
-      date: date.toISOString().slice(0, 7),
-      portfolio: parseFloat(portfolioValue.toFixed(2)),
-      ...Object.fromEntries(Object.entries(etfValues).map(([k, v]) => [k, parseFloat(v.toFixed(2))])),
-      benchmark: baseValues.SCHD * (1 + (i / months) * 0.38),
-    });
-  }
-  
-  return data;
-};
-
-interface BacktestDataPoint {
-  date: string;
-  portfolio: number;
-  benchmark: number;
-  [key: string]: number | string;
-}
-
-const calculateMetrics = (data: Array<BacktestDataPoint>, initialInvestment: number = 100000) => {
-  if (!data || data.length === 0) return {};
-  
-  const finalValue = data[data.length - 1].portfolio;
-  const totalReturn = ((finalValue / 100 - 1) * 100);
-  const annualizedReturn = (Math.pow(finalValue / 100, 12 / data.length) - 1) * 100;
-  
-  let maxDrawdown = 0;
-  let peak = data[0].portfolio;
-  data.forEach(d => {
-    if (d.portfolio > peak) peak = d.portfolio;
-    const dd = ((peak - d.portfolio) / peak) * 100;
-    if (dd > maxDrawdown) maxDrawdown = dd;
-  });
-  
-  const returns = data.slice(1).map((d, i) => (d.portfolio - data[i].portfolio) / data[i].portfolio);
-  const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-  const stdDev = Math.sqrt(returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length);
-  const sharpe = (avgReturn - 0.04 / 12) / stdDev * Math.sqrt(12);
-  
-  const monthlyDividend = Object.entries({ SCHD: 50, SPYD: 30, JEPQ: 20 }).reduce((sum, [sym, w]) => {
-    const etf = ETF_LIST.find(e => e.symbol === sym)!;
-    return sum + (initialInvestment * w / 100 * etf.dividendYield / 100 / 12);
-  }, 0);
-  
-  return {
-    totalReturn: totalReturn.toFixed(2),
-    annualizedReturn: annualizedReturn.toFixed(2),
-    maxDrawdown: maxDrawdown.toFixed(2),
-    sharpe: sharpe.toFixed(3),
-    finalValue: (initialInvestment * finalValue / 100).toFixed(2),
-    monthlyIncome: monthlyDividend.toFixed(2),
-    volatility: (stdDev * Math.sqrt(12) * 100).toFixed(2),
-  };
-};
 
 const InvestmentStrategy: React.FC = () => {
+  const { message } = App.useApp();
+  const [etfData, setEtfData] = useState<ETFApiItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('balanced');
-  const [customAllocation, setCustomAllocation] = useState<Record<string, number>>({ SCHD: 50, SPYD: 30, JEPQ: 20 });
+  const [customAllocation, setCustomAllocation] = useState<Record<string, number>>({});
   const [investmentAmount, setInvestmentAmount] = useState<number>(100000);
   const [activeTab, setActiveTab] = useState('recommend');
-  
-  const currentStrategy = STRATEGIES.find(s => s.id === selectedStrategy) || STRATEGIES[1];
-  const backtestData = useMemo(() => generateBacktestData(currentStrategy.allocation), [currentStrategy]);
-  const metrics = useMemo(() => calculateMetrics(backtestData, investmentAmount), [backtestData, investmentAmount]);
-  
+
+  // 从API获取ETF数据
+  useEffect(() => {
+    const fetchETFData = async () => {
+      setLoading(true);
+      try {
+        const response = await etfAPI.getList();
+        if (response.success && response.data) {
+          setEtfData(response.data);
+          // 初始化自定义配置为平均分配
+          if (response.data.length > 0) {
+            const evenWeight = Math.floor(100 / response.data.length);
+            const initAlloc: Record<string, number> = {};
+            response.data.forEach((item: ETFApiItem, idx: number) => {
+              initAlloc[item.symbol] = idx === 0 ? 100 - evenWeight * (response.data.length - 1) : evenWeight;
+            });
+            setCustomAllocation(initAlloc);
+          }
+        }
+      } catch (error) {
+        message.error('获取ETF数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchETFData();
+  }, []);
+
+  // 根据API数据动态生成策略
+  const strategies = useMemo<StrategyConfig[]>(() => {
+    if (etfData.length === 0) return [];
+    
+    const symbols = etfData.map(e => e.symbol);
+    const getETF = (sym: string) => etfData.find(e => e.symbol === sym);
+    
+    // 根据数据中可用的ETF构建策略配置
+    const first3 = symbols.slice(0, 3);
+    const [s1, s2, s3] = first3.length >= 3 ? first3 : [symbols[0], symbols[0], symbols[0]];
+    
+    return [
+      {
+        id: 'conservative',
+        name: '稳健收益策略',
+        description: '以低波动红利ETF为核心，追求稳定现金流和资本保值',
+        icon: <SafetyCertificateOutlined />,
+        color: '#1890ff',
+        riskLevel: 30,
+        targetReturn: 9,
+        allocation: { [s1]: 60, [s2]: 35, [s3]: 5 },
+        features: ['季度分红再投资', '低费率优势', '价值股风格'],
+        suitableFor: '保守型投资者、退休规划、风险厌恶者',
+        pros: ['最大回撤控制在15%以内', '稳定股息收入', '长期跑赢通胀'],
+        cons: ['牛市表现一般', '成长性有限'],
+      },
+      {
+        id: 'balanced',
+        name: '均衡增长策略',
+        description: '核心-卫星配置，平衡收益与风险，适合大多数投资者',
+        icon: <FundOutlined />,
+        color: '#52c41a',
+        riskLevel: 50,
+        targetReturn: 13,
+        allocation: { [s1]: 50, [s2]: 30, [s3]: 20 },
+        features: ['核心卫星架构', '多因子分散', '动态再平衡'],
+        suitableFor: '中等风险偏好者、职场人士、中期投资者',
+        pros: ['风险调整后收益优秀', '双重收入流', '风格分散'],
+        cons: ['需定期再平衡', '波动适中'],
+      },
+      {
+        id: 'income',
+        name: '高收入增强策略',
+        description: '最大化当期收入，通过高股息ETF获取高额派息',
+        icon: <RiseOutlined />,
+        color: '#faad14',
+        riskLevel: 65,
+        targetReturn: 17,
+        allocation: { [s1]: 30, [s2]: 20, [s3]: 50 },
+        features: ['高派息', '收入增强', '成长暴露'],
+        suitableFor: '追求现金流、退休早期、收入导向投资者',
+        pros: ['综合股息率较高', '月度现金流', '收入与增长兼顾'],
+        cons: ['波动率较高', '税务处理较复杂'],
+      },
+      {
+        id: 'aggressive',
+        name: '积极进取策略',
+        description: '高配成长性资产，追求超额收益，承受较高波动',
+        icon: <ThunderboltOutlined />,
+        color: '#f5222d',
+        riskLevel: 80,
+        targetReturn: 22,
+        allocation: { [s1]: 25, [s2]: 15, [s3]: 60 },
+        features: ['高Beta暴露', '成长因子倾斜', '集中持仓'],
+        suitableFor: '高风险承受力、年轻投资者、长期积累期',
+        pros: ['潜在年化收益高', '复利效应最大化'],
+        cons: ['最大回撤可能超20%', '需要强大心理素质'],
+      },
+    ];
+  }, [etfData]);
+
+  const currentStrategy = strategies.find(s => s.id === selectedStrategy) || strategies[1];
+
+  // 生成模拟回测数据（基于API返回的total_return等）
+  const backtestData = useMemo(() => {
+    if (!currentStrategy || etfData.length === 0) return [];
+    const months = 36;
+    const data = [];
+    let portfolioValue = 100;
+    
+    for (let i = 0; i < months; i++) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (months - i));
+      
+      // 使用策略的加权平均年化收益率
+      const annualReturn = currentStrategy.targetReturn / 100;
+      const monthlyReturn = annualReturn / 12;
+      const noise = (Math.random() - 0.48) * 0.03;
+      portfolioValue *= (1 + monthlyReturn + noise);
+      
+      data.push({
+        date: date.toISOString().slice(0, 7),
+        portfolio: parseFloat(portfolioValue.toFixed(2)),
+        benchmark: 100 * (1 + (i / months) * 0.38),
+      });
+    }
+    return data;
+  }, [currentStrategy, etfData]);
+
+  const metrics = useMemo(() => {
+    if (!backtestData || backtestData.length === 0) return {};
+    
+    const finalValue = backtestData[backtestData.length - 1].portfolio;
+    const totalReturn = ((finalValue / 100 - 1) * 100);
+    const annualizedReturn = (Math.pow(finalValue / 100, 12 / backtestData.length) - 1) * 100;
+    
+    let maxDrawdown = 0;
+    let peak = backtestData[0].portfolio;
+    backtestData.forEach(d => {
+      if (d.portfolio > peak) peak = d.portfolio;
+      const dd = ((peak - d.portfolio) / peak) * 100;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+    });
+    
+    const returns = backtestData.slice(1).map((d, i) => (d.portfolio - backtestData[i].portfolio) / backtestData[i].portfolio);
+    const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const stdDev = Math.sqrt(returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length);
+    const sharpe = stdDev > 0 ? (avgReturn - 0.04 / 12) / stdDev * Math.sqrt(12) : 0;
+
+    // 计算加权股息率
+    const monthlyDividend = currentStrategy ? 
+      Object.entries(currentStrategy.allocation).reduce((sum, [sym, w]) => {
+        const etf = etfData.find(e => e.symbol === sym);
+        return sum + (investmentAmount * w / 100 * (etf?.dividend_yield || 0) / 100 / 12);
+      }, 0) : 0;
+    
+    return {
+      totalReturn: totalReturn.toFixed(2),
+      annualizedReturn: annualizedReturn.toFixed(2),
+      maxDrawdown: maxDrawdown.toFixed(2),
+      sharpe: sharpe.toFixed(3),
+      finalValue: (investmentAmount * finalValue / 100).toFixed(2),
+      monthlyIncome: monthlyDividend.toFixed(2),
+      volatility: (stdDev * Math.sqrt(12) * 100).toFixed(2),
+    };
+  }, [backtestData, investmentAmount, currentStrategy, etfData]);
+
   const handleAllocationChange = useCallback((symbol: string, value: number | null) => {
     if (value === null) return;
     setCustomAllocation(prev => ({ ...prev, [symbol]: value }));
@@ -359,6 +393,30 @@ const InvestmentStrategy: React.FC = () => {
   
   const totalAllocation = Object.values(customAllocation).reduce((a, b) => a + b, 0);
   const isAllocationValid = Math.abs(totalAllocation - 100) < 0.1;
+
+  if (loading) {
+    return (
+      <Layout>
+        <PageHeader>
+          <h2><PieChartOutlined /> 智能投资策略中心</h2>
+        </PageHeader>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+          <Spin size="large" tip="加载ETF数据..." />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (etfData.length === 0) {
+    return (
+      <Layout>
+        <PageHeader>
+          <h2><PieChartOutlined /> 智能投资策略中心</h2>
+        </PageHeader>
+        <Alert message="暂无ETF数据" description="请先配置ETF并同步数据" type="warning" showIcon />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -369,7 +427,7 @@ const InvestmentStrategy: React.FC = () => {
       <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" style={{ marginBottom: 24 }}>
         <TabPane tab="策略推荐" key="recommend">
           <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
-            {STRATEGIES.map(strategy => (
+            {strategies.map(strategy => (
               <Col xs={24} md={12} key={strategy.id}>
                 <StrategyCard
                   $selected={selectedStrategy === strategy.id}
@@ -398,7 +456,8 @@ const InvestmentStrategy: React.FC = () => {
                     <div className="metric-item">
                       <div className="value" style={{ color: '#f5222d' }}>
                         {(Object.entries(strategy.allocation).reduce((sum, [sym, w]) => {
-                          return sum + (ETF_LIST.find(e => e.symbol === sym)?.dividendYield || 0) * w / 100;
+                          const etf = etfData.find(e => e.symbol === sym);
+                          return sum + (etf?.dividend_yield || 0) * w / 100;
                         }, 0)).toFixed(1)}%
                       </div>
                       <div className="label">预期股息率</div>
@@ -408,14 +467,11 @@ const InvestmentStrategy: React.FC = () => {
                   <div style={{ marginTop: 16 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>资产配置：</Text>
                     <AllocationBar $color={strategy.color}>
-                      {Object.entries(strategy.allocation).map(([symbol, weight]) => {
-                        const etf = ETF_LIST.find(e => e.symbol === symbol)!;
-                        return (
-                          <div key={symbol} className="segment" style={{ width: `${weight}%`, background: etf.color }}>
-                            {weight > 15 ? `${symbol} ${weight}%` : ''}
-                          </div>
-                        );
-                      })}
+                      {Object.entries(strategy.allocation).map(([symbol, weight]) => (
+                        <div key={symbol} className="segment" style={{ width: `${weight}%`, background: ETF_COLORS[symbol] || '#999' }}>
+                          {weight > 15 ? `${symbol} ${weight}%` : ''}
+                        </div>
+                      ))}
                     </AllocationBar>
                     
                     <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -431,14 +487,14 @@ const InvestmentStrategy: React.FC = () => {
             <Col span={12}>
               <Card title={<><InfoCircleOutlined /> 策略详情</>} size="small">
                 <Paragraph>
-                  <Text strong>适用人群：</Text>{currentStrategy.suitableFor}
+                  <Text strong>适用人群：</Text>{currentStrategy?.suitableFor}
                 </Paragraph>
                 
                 <Title level={5}>核心优势</Title>
-                <ul>{currentStrategy.pros.map(p => <li key={p}>{p}</li>)}</ul>
+                <ul>{currentStrategy?.pros.map(p => <li key={p}>{p}</li>)}</ul>
                 
                 <Title level={5}>注意事项</Title>
-                <ul>{currentStrategy.cons.map((c) => (<li key={c}>{c}</li>))}</ul>
+                <ul>{currentStrategy?.cons.map(c => <li key={c}>{c}</li>)}</ul>
               </Card>
             </Col>
             
@@ -446,41 +502,41 @@ const InvestmentStrategy: React.FC = () => {
               <Card title={<><SafetyCertificateOutlined /> 风险评估</>} size="small">
                 <RiskMeter>
                   <div className="risk-scale">
-                    <div className="indicator" style={{ left: `${currentStrategy.riskLevel}%` }} />
+                    <div className="indicator" style={{ left: `${currentStrategy?.riskLevel || 50}%` }} />
                   </div>
                   <div className="risk-labels">
-                    <span>保守 🛡️</span>
-                    <span>均衡 ⚖️</span>
-                    <span>进取 🔥</span>
+                    <span>保守</span>
+                    <span>均衡</span>
+                    <span>进取</span>
                   </div>
                 </RiskMeter>
                 
                 <Alert
-                  message={`当前策略风险等级：${currentStrategy.riskLevel <= 40 ? '低' : currentStrategy.riskLevel <= 60 ? '中' : '高'}风险`}
+                  message={`当前策略风险等级：${(currentStrategy?.riskLevel || 50) <= 40 ? '低' : (currentStrategy?.riskLevel || 50) <= 60 ? '中' : '高'}风险`}
                   description={
-                    currentStrategy.riskLevel <= 40 ? '适合风险厌恶型投资者，最大回撤预计在10-15%' :
-                    currentStrategy.riskLevel <= 60 ? '适中风险，适合有经验的投资者，建议定投平滑波动' :
+                    (currentStrategy?.riskLevel || 50) <= 40 ? '适合风险厌恶型投资者，最大回撤预计在10-15%' :
+                    (currentStrategy?.riskLevel || 50) <= 60 ? '适中风险，适合有经验的投资者，建议定投平滑波动' :
                     '高风险策略，仅适合能承受20%以上波动的投资者，建议分批建仓'
                   }
-                  type={currentStrategy.riskLevel <= 40 ? 'success' : currentStrategy.riskLevel <= 60 ? 'warning' : 'error'}
+                  type={(currentStrategy?.riskLevel || 50) <= 40 ? 'success' : (currentStrategy?.riskLevel || 50) <= 60 ? 'warning' : 'error'}
                   showIcon
                   style={{ marginBottom: 16 }}
                 />
                 
                 <Table
-                  dataSource={ETF_LIST.map(etf => ({
+                  dataSource={etfData.map(etf => ({
                     ...etf,
-                    weight: currentStrategy.allocation[etf.symbol],
-                    contribution: (etf.return3y * currentStrategy.allocation[etf.symbol] / 100).toFixed(2),
+                    weight: currentStrategy?.allocation[etf.symbol] || 0,
                   }))}
                   columns={[
-                    { title: 'ETF', dataIndex: 'name', render: (_, r) => <><Tag color={r.color}>{r.symbol}</Tag> {r.name}</> },
-                    { title: '权重', dataIndex: 'weight', render: v => `${v}%`, align: 'center' },
-                    { title: '贡献收益', dataIndex: 'contribution', render: v => <Text type="danger">+{v}%</Text>, align: 'center' },
-                    { title: '波动率', dataIndex: 'volatility', render: v => `${v}%`, align: 'center' },
+                    { title: 'ETF', dataIndex: 'symbol', render: (_, r: ETFApiItem & { weight: number }) => <><Tag color={ETF_COLORS[r.symbol] || '#999'}>{r.symbol}</Tag> {r.name}</> },
+                    { title: '权重', dataIndex: 'weight', render: (v: number) => `${v}%`, align: 'center' },
+                    { title: '波动率', dataIndex: 'volatility', render: (v: number) => v ? `${v.toFixed(2)}%` : '-', align: 'center' },
+                    { title: '股息率', dataIndex: 'dividend_yield', render: (v: number) => v ? `${v.toFixed(2)}%` : '-', align: 'center' },
                   ]}
                   pagination={false}
                   size="small"
+                  rowKey="symbol"
                 />
               </Card>
             </Col>
@@ -513,7 +569,7 @@ const InvestmentStrategy: React.FC = () => {
 
           <BacktestResultCard>
             <div className="result-header">
-              <h4>📈 组合净值走势（近3年）</h4>
+              <h4>组合净值走势（近3年模拟）</h4>
               <Space>
                 <Tag color="blue">年化收益: {metrics.annualizedReturn}%</Tag>
                 <Tag color="red">累计收益: {metrics.totalReturn}%</Tag>
@@ -535,7 +591,7 @@ const InvestmentStrategy: React.FC = () => {
                 <Legend />
                 <ReferenceLine y={100} stroke="#999" strokeDasharray="3 3" label="基准" />
                 <Area type="monotone" dataKey="portfolio" name="组合净值" stroke="#667eea" fill="url(#colorPortfolio)" strokeWidth={2} />
-                <Line type="monotone" dataKey="benchmark" name="基准(SCHD)" stroke="#999" strokeDasharray="5 5" dot={false} />
+                <Line type="monotone" dataKey="benchmark" name="基准" stroke="#999" strokeDasharray="5 5" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
 
@@ -574,12 +630,12 @@ const InvestmentStrategy: React.FC = () => {
             <Paragraph type="secondary">拖动滑块调整各ETF的配置比例，实时查看预估效果</Paragraph>
             
             <div style={{ maxWidth: 600, margin: '32px auto' }}>
-              {ETF_LIST.map(etf => (
+              {etfData.map(etf => (
                 <div key={etf.symbol} style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text strong><Tag color={etf.color}>{etf.symbol}</Tag> {etf.name}</Text>
+                    <Text strong><Tag color={ETF_COLORS[etf.symbol] || '#999'}>{etf.symbol}</Tag> {etf.name}</Text>
                     <InputNumber
-                      value={customAllocation[etf.symbol]}
+                      value={customAllocation[etf.symbol] || 0}
                       onChange={(v) => handleAllocationChange(etf.symbol, v)}
                       min={0}
                       max={100}
@@ -588,12 +644,12 @@ const InvestmentStrategy: React.FC = () => {
                     />
                   </div>
                   <Slider
-                    value={customAllocation[etf.symbol]}
+                    value={customAllocation[etf.symbol] || 0}
                     onChange={(v) => handleAllocationChange(etf.symbol, v)}
                     min={0}
                     max={100}
-                    trackStyle={{ backgroundColor: etf.color }}
-                    handleStyle={{ borderColor: etf.color }}
+                    trackStyle={{ backgroundColor: ETF_COLORS[etf.symbol] || '#999' }}
+                    handleStyle={{ borderColor: ETF_COLORS[etf.symbol] || '#999' }}
                   />
                 </div>
               ))}
@@ -609,22 +665,19 @@ const InvestmentStrategy: React.FC = () => {
               {isAllocationValid && (
                 <>
                   <AllocationBar style={{ marginTop: 24, maxWidth: 500, margin: '24px auto' }}>
-                    {Object.entries(customAllocation).map(([symbol, weight]) => {
-                      const etf = ETF_LIST.find(e => e.symbol === symbol)!;
-                      return (
-                        <div key={symbol} className="segment" style={{ width: `${weight}%`, background: etf.color }}>
-                          {weight > 10 ? `${symbol}` : ''}
-                        </div>
-                      );
-                    })}
+                    {Object.entries(customAllocation).map(([symbol, weight]) => (
+                      <div key={symbol} className="segment" style={{ width: `${weight}%`, background: ETF_COLORS[symbol] || '#999' }}>
+                        {weight > 10 ? `${symbol}` : ''}
+                      </div>
+                    ))}
                   </AllocationBar>
                   
                   <Card size="small" style={{ marginTop: 24, background: '#fafafa' }}>
                     <Row gutter={16}>
-                      <Col span={6}><Statistic title="预期股息率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (ETF_LIST.find(e => e.symbol === sym)?.dividendYield || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
-                      <Col span={6}><Statistic title="综合费率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (ETF_LIST.find(e => e.symbol === sym)?.expenseRatio || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
-                      <Col span={6}><Statistic title="加权波动率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (ETF_LIST.find(e => e.symbol === sym)?.volatility || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
-                      <Col span={6}><Statistic title="加权夏普" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (ETF_LIST.find(e => e.symbol === sym)?.sharpe || 0) * w / 100, 0).toFixed(3)} /></Col>
+                      <Col span={6}><Statistic title="预期股息率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (etfData.find(e => e.symbol === sym)?.dividend_yield || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
+                      <Col span={6}><Statistic title="综合费率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (etfData.find(e => e.symbol === sym)?.expense_ratio || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
+                      <Col span={6}><Statistic title="加权波动率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (etfData.find(e => e.symbol === sym)?.volatility || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
+                      <Col span={6}><Statistic title="加权夏普" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (etfData.find(e => e.symbol === sym)?.sharpe_ratio || 0) * w / 100, 0).toFixed(3)} /></Col>
                     </Row>
                   </Card>
                 </>

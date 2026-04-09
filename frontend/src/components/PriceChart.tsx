@@ -23,9 +23,10 @@ interface PriceChartProps {
 const PriceChart: React.FC<PriceChartProps> = ({ data, symbol }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
+  const hasEnoughData = data.dates && data.dates.length >= 2;
 
   useEffect(() => {
-    if (!chartRef.current) return;
+    if (!chartRef.current || !hasEnoughData) return;
 
     // 初始化图表
     chartInstance.current = echarts.init(chartRef.current);
@@ -185,7 +186,19 @@ const PriceChart: React.FC<PriceChartProps> = ({ data, symbol }) => {
       window.removeEventListener('resize', handleResize);
       chartInstance.current?.dispose();
     };
-  }, [data, symbol]);
+  }, [data, symbol, hasEnoughData]);
+
+  // 数据点太少时显示提示
+  if (!hasEnoughData) {
+    return (
+      <ChartContainer style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: theme.colors.textSecondary }}>
+          <p>历史数据不足，无法显示图表</p>
+          <p style={{ fontSize: 12, marginTop: 8 }}>至少需要 2 个交易日的数据</p>
+        </div>
+      </ChartContainer>
+    );
+  }
 
   return <ChartContainer ref={chartRef} />;
 };

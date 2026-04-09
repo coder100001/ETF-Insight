@@ -71,11 +71,13 @@ export interface PortfolioAnalysisResult {
   total_return: number;
   total_return_pct: number;
   annual_dividend_before_tax: number;
-  annual_dividend: number;
+  annual_dividend_after_tax: number;
   dividend_yield: number;
   tax_rate: number;
   after_tax_return: number;
   dividend_tax: number;
+  total_return_with_dividend: number;
+  total_return_with_dividend_percent: number;
   holdings: PortfolioHolding[];
 }
 

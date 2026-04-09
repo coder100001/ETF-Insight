@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -21,9 +22,34 @@ type YahooFinanceClient struct {
 
 // NewYahooFinanceClient 创建新的Yahoo Finance客户端
 func NewYahooFinanceClient() *YahooFinanceClient {
+	// 创建HTTP传输配置
+	transport := &http.Transport{}
+
+	// 检查环境变量中的代理设置
+	proxyURL := os.Getenv("HTTP_PROXY")
+	if proxyURL == "" {
+		proxyURL = os.Getenv("http_proxy")
+	}
+	if proxyURL == "" {
+		proxyURL = os.Getenv("HTTPS_PROXY")
+	}
+	if proxyURL == "" {
+		proxyURL = os.Getenv("https_proxy")
+	}
+
+	// 如果环境变量中有代理，使用它
+	if proxyURL != "" {
+		parsedURL, err := url.Parse(proxyURL)
+		if err == nil {
+			transport.Proxy = http.ProxyURL(parsedURL)
+			fmt.Printf("Using proxy for Yahoo Finance: %s\n", proxyURL)
+		}
+	}
+
 	return &YahooFinanceClient{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: transport,
+			Timeout:   30 * time.Second,
 		},
 		baseURL:     "https://query1.finance.yahoo.com",
 		rateLimiter: make(chan struct{}, 3), // 限制并发数
@@ -321,9 +347,18 @@ func (c *YahooFinanceClient) makeRequest(url string) (*http.Response, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// 设置请求头
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-	req.Header.Set("Accept", "application/json")
+	// 设置请求头 - 模拟真实浏览器
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-User", "?1")
+	req.Header.Set("Cache-Control", "max-age=0")
 
 	resp, err := c.client.Do(req)
 	if err != nil {

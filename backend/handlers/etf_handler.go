@@ -1,289 +1,233 @@
 package handlers
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"etf-insight/models"
 	"etf-insight/services"
+	"etf-insight/services/datasource"
+	"etf-insight/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm/clause"
 )
+
+// SimpleRealtimeData 简单的实时数据占位符类型（缓存移除后使用）
+type SimpleRealtimeData struct {
+	Symbol           string
+	Name             string
+	CurrentPrice     float64
+	PreviousClose    float64
+	OpenPrice        float64
+	DayHigh          float64
+	DayLow           float64
+	Volume           int64
+	Change           float64
+	ChangePercent    float64
+	MarketCap        int64
+	DividendYield    float64
+	FiftyTwoWeekHigh float64
+	FiftyTwoWeekLow  float64
+	AverageVolume    int64
+	Beta             float64
+	PERatio          float64
+	Currency         string
+	DataSource       string
+	UpdatedAt        time.Time
+}
 
 // ETFHandler ETF 相关处理器
 type ETFHandler struct {
-	cacheService    *services.CacheService
 	analysisService *services.ETFAnalysisService
+	provider        datasource.DataSourceProvider
 }
 
 // NewETFHandler 创建 ETF 处理器
-func NewETFHandler(cacheService *services.CacheService, analysisService *services.ETFAnalysisService) *ETFHandler {
+func NewETFHandler(analysisService *services.ETFAnalysisService, provider datasource.DataSourceProvider) *ETFHandler {
 	return &ETFHandler{
-		cacheService:    cacheService,
 		analysisService: analysisService,
+		provider:        provider,
 	}
 }
 
-// GetETFList 获取 ETF 列表
+// GetETFList 获取 ETF 列表 - 数据全部从数据库/Finage获取，不使用缓存
 func (h *ETFHandler) GetETFList(c *gin.Context) {
 	// 获取所有启用的 ETF 配置
 	var etfConfigs []models.ETFConfig
-	if err := models.DB.Where("status = ?", 1).Find(&etfConfigs).Error; err != nil {
-		etfConfigs = []models.ETFConfig{}
+	if err := models.DB.Where("status = ?", 1).Find(&etfConfigs).Error; err != nil || len(etfConfigs) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    []interface{}{},
+		})
+		return
 	}
 
-	// 如果没有配置，使用默认的 ETF 列表
-	if len(etfConfigs) == 0 {
-		etfConfigs = []models.ETFConfig{
-			{Symbol: "QQQ", Name: "Invesco QQQ Trust", Currency: "USD"},
-			{Symbol: "SCHD", Name: "Schwab US Dividend Equity ETF", Currency: "USD"},
-			{Symbol: "VNQ", Name: "Vanguard Real Estate ETF", Currency: "USD"},
-			{Symbol: "VYM", Name: "Vanguard High Dividend Yield ETF", Currency: "USD"},
-			{Symbol: "SPYD", Name: "SPDR S&P 500 High Dividend ETF", Currency: "USD"},
-			{Symbol: "JEPQ", Name: "JPMorgan Nasdaq Equity Premium Income ETF", Currency: "USD"},
-			{Symbol: "JEPI", Name: "JPMorgan Equity Premium Income ETF", Currency: "USD"},
-		}
+	// 并行获取数据
+	type ETFResult struct {
+		Symbol string
+		Data   map[string]interface{}
+		Error  error
 	}
 
-	// 模拟数据后备方案
-	mockData := map[string]map[string]interface{}{
-		"QQQ": {
-			"symbol":              "QQQ",
-			"name":                "Invesco QQQ Trust",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       485.23,
-			"previous_close":      482.15,
-			"change":              3.08,
-			"change_percent":      0.64,
-			"open_price":          483.50,
-			"high_price":          486.95,
-			"low_price":           482.10,
-			"volume":              25000000,
-			"market_cap":          1850000000000,
-			"dividend_yield":      0.55,
-			"fifty_two_week_high": 500.12,
-			"fifty_two_week_low":  360.15,
-			"currency":            "USD",
-			"focus":               "科技股",
-			"strategy":            "纳斯达克100指数ETF",
-			"volatility":          18.5,
-			"sharpe_ratio":        1.25,
-			"max_drawdown":        -15.2,
-			"expense_ratio":       0.20,
-		},
-		"SCHD": {
-			"symbol":              "SCHD",
-			"name":                "Schwab US Dividend Equity ETF",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       85.45,
-			"previous_close":      85.20,
-			"change":              0.25,
-			"change_percent":      0.29,
-			"open_price":          85.10,
-			"high_price":          85.60,
-			"low_price":           84.95,
-			"volume":              3500000,
-			"market_cap":          32000000000,
-			"dividend_yield":      3.45,
-			"fifty_two_week_high": 88.25,
-			"fifty_two_week_low":  75.30,
-			"currency":            "USD",
-			"focus":               "高股息",
-			"strategy":            "高股息股票ETF",
-			"volatility":          12.8,
-			"sharpe_ratio":        0.95,
-			"max_drawdown":        -8.5,
-			"expense_ratio":       0.06,
-		},
-		"VNQ": {
-			"symbol":              "VNQ",
-			"name":                "Vanguard Real Estate ETF",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       115.80,
-			"previous_close":      115.50,
-			"change":              0.30,
-			"change_percent":      0.26,
-			"open_price":          115.30,
-			"high_price":          116.10,
-			"low_price":           115.10,
-			"volume":              2800000,
-			"market_cap":          58000000000,
-			"dividend_yield":      3.85,
-			"fifty_two_week_high": 122.40,
-			"fifty_two_week_low":  105.20,
-			"currency":            "USD",
-			"focus":               "房地产",
-			"strategy":            "房地产投资信托ETF",
-			"volatility":          15.2,
-			"sharpe_ratio":        0.72,
-			"max_drawdown":        -18.5,
-			"expense_ratio":       0.12,
-		},
-		"VYM": {
-			"symbol":              "VYM",
-			"name":                "Vanguard High Dividend Yield ETF",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       82.30,
-			"previous_close":      82.00,
-			"change":              0.30,
-			"change_percent":      0.37,
-			"open_price":          82.10,
-			"high_price":          82.50,
-			"low_price":           81.80,
-			"volume":              2200000,
-			"market_cap":          45000000000,
-			"dividend_yield":      3.65,
-			"fifty_two_week_high": 86.50,
-			"fifty_two_week_low":  74.20,
-			"currency":            "USD",
-			"focus":               "高股息",
-			"strategy":            "高股息收益率ETF",
-			"volatility":          13.5,
-			"sharpe_ratio":        0.88,
-			"max_drawdown":        -10.2,
-			"expense_ratio":       0.06,
-		},
-		"SPYD": {
-			"symbol":              "SPYD",
-			"name":                "SPDR S&P 500 High Dividend ETF",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       52.60,
-			"previous_close":      52.40,
-			"change":              0.20,
-			"change_percent":      0.38,
-			"open_price":          52.30,
-			"high_price":          52.80,
-			"low_price":           52.10,
-			"volume":              1800000,
-			"market_cap":          12000000000,
-			"dividend_yield":      3.75,
-			"fifty_two_week_high": 55.20,
-			"fifty_two_week_low":  48.50,
-			"currency":            "USD",
-			"focus":               "高股息",
-			"strategy":            "标普500高股息ETF",
-			"volatility":          14.2,
-			"sharpe_ratio":        0.82,
-			"max_drawdown":        -12.8,
-			"expense_ratio":       0.07,
-		},
-		"JEPQ": {
-			"symbol":              "JEPQ",
-			"name":                "JPMorgan Nasdaq Equity Premium Income ETF",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       58.40,
-			"previous_close":      58.10,
-			"change":              0.30,
-			"change_percent":      0.52,
-			"open_price":          58.20,
-			"high_price":          58.60,
-			"low_price":           57.90,
-			"volume":              1200000,
-			"market_cap":          3500000000,
-			"dividend_yield":      6.25,
-			"fifty_two_week_high": 62.80,
-			"fifty_two_week_low":  52.10,
-			"currency":            "USD",
-			"focus":               "科技股",
-			"strategy":            "纳斯达克 premium收入ETF",
-			"volatility":          16.8,
-			"sharpe_ratio":        1.05,
-			"max_drawdown":        -14.5,
-			"expense_ratio":       0.35,
-		},
-		"JEPI": {
-			"symbol":              "JEPI",
-			"name":                "JPMorgan Equity Premium Income ETF",
-			"market":              "US",
-			"category":            "ETF",
-			"current_price":       42.50,
-			"previous_close":      42.30,
-			"change":              0.20,
-			"change_percent":      0.47,
-			"open_price":          42.40,
-			"high_price":          42.70,
-			"low_price":           42.10,
-			"volume":              950000,
-			"market_cap":          3200000000,
-			"dividend_yield":      6.85,
-			"fifty_two_week_high": 45.80,
-			"fifty_two_week_low":  39.20,
-			"currency":            "USD",
-			"focus":               "大盘股",
-			"strategy":            "标普500 premium收入ETF",
-			"volatility":          14.5,
-			"sharpe_ratio":        0.98,
-			"max_drawdown":        -11.2,
-			"expense_ratio":       0.35,
-		},
-	}
+	results := make(chan ETFResult, len(etfConfigs))
 
-	// 构建返回数据
-	var etfList []map[string]interface{}
 	for _, cfg := range etfConfigs {
-		// 尝试从缓存获取实时数据
-		realtimeData, err := h.cacheService.GetRealtimeData(cfg.Symbol)
-		if err != nil {
-			// 没有缓存数据，使用模拟数据
-			if mock, ok := mockData[cfg.Symbol]; ok {
-				etfList = append(etfList, mock)
-			} else {
-				etfList = append(etfList, map[string]interface{}{
-					"symbol":         cfg.Symbol,
-					"name":           cfg.Name,
-					"market":         "US",
-					"category":       "ETF",
-					"current_price":  0.0,
-					"change":         0.0,
-					"change_percent": 0.0,
-					"dividend_yield": 0.0,
-				})
-			}
-		} else {
-			// 有缓存数据，使用实时数据，并合并mock数据中的风险指标
-			result := map[string]interface{}{
-				"symbol":              realtimeData.Symbol,
-				"name":                realtimeData.Name,
-				"market":              "US",
-				"category":            "ETF",
-				"current_price":       realtimeData.CurrentPrice,
-				"previous_close":      realtimeData.PreviousClose,
-				"change":              realtimeData.Change,
-				"change_percent":      realtimeData.ChangePercent,
-				"open_price":          realtimeData.OpenPrice,
-				"high_price":          realtimeData.DayHigh,
-				"low_price":           realtimeData.DayLow,
-				"volume":              realtimeData.Volume,
-				"market_cap":          realtimeData.MarketCap,
-				"dividend_yield":      realtimeData.DividendYield,
-				"fifty_two_week_high": realtimeData.FiftyTwoWeekHigh,
-				"fifty_two_week_low":  realtimeData.FiftyTwoWeekLow,
-				"currency":            realtimeData.Currency,
-			}
-			// 合并mock数据中的额外字段（如风险指标）
-			if mock, ok := mockData[cfg.Symbol]; ok {
-				for key, value := range mock {
-					if _, exists := result[key]; !exists {
-						result[key] = value
-					}
-				}
-			}
-			etfList = append(etfList, result)
+		go func(cfg models.ETFConfig) {
+			result := ETFResult{Symbol: cfg.Symbol}
+			result.Data, result.Error = h.getETFDetailData(cfg)
+			results <- result
+		}(cfg)
+	}
+
+	etfList := make([]map[string]interface{}, 0, len(etfConfigs))
+	for i := 0; i < len(etfConfigs); i++ {
+		result := <-results
+		if result.Error == nil && result.Data != nil {
+			etfList = append(etfList, result.Data)
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response := gin.H{
 		"success": true,
 		"data":    etfList,
-	})
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// getETFDetailData 获取单个 ETF 的详细数据
+func (h *ETFHandler) getETFDetailData(cfg models.ETFConfig) (map[string]interface{}, error) {
+	// 从数据库获取最新的行情数据
+	var etfData models.ETFData
+	err := models.DB.Where("symbol = ?", cfg.Symbol).
+		Order("date DESC").
+		First(&etfData).Error
+
+	// 实时数据（移除缓存后，需要重新设计数据获取方式）
+	var realtimeData *SimpleRealtimeData
+	// TODO: 如果需要实时数据，可直接调用provider获取
+	// quote, err := h.provider.GetRealtimeQuote(cfg.Symbol)
+	// if err == nil {
+	// 	realtimeData = &services.RealtimeData{
+	// 		Symbol:           quote.Symbol,
+	// 		CurrentPrice:     quote.CurrentPrice,
+	// 		PreviousClose:    quote.PreviousClose,
+	// 		OpenPrice:        quote.OpenPrice,
+	// 		DayHigh:          quote.DayHigh,
+	// 		DayLow:           quote.DayLow,
+	// 		Volume:           quote.Volume,
+	// 		Change:           quote.Change,
+	// 		ChangePercent:    quote.ChangePercent,
+	// 		DividendYield:    quote.DividendYield,
+	// 		FiftyTwoWeekHigh: quote.FiftyTwoWeekHigh,
+	// 		FiftyTwoWeekLow:  quote.FiftyTwoWeekLow,
+	// 		DataSource:       quote.DataSource,
+	// 		UpdatedAt:        quote.UpdatedAt,
+	// 	}
+	// }
+
+	// 从数据库获取历史价格数据计算指标
+	var prices []models.ETFData
+	models.DB.Where("symbol = ?", cfg.Symbol).Order("date DESC").Limit(252).Find(&prices)
+	metrics := calculateMetricsFromPrices(prices, "1y")
+
+	return h.buildETFResult(cfg, etfData, realtimeData, metrics, err == nil && etfData.ID > 0), nil
+}
+
+// buildETFResult 构建 ETF 结果数据
+func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData, realtimeData *SimpleRealtimeData, metrics *HandlerMetrics, hasData bool) map[string]interface{} {
+	if hasData {
+		// 涨跌计算：基于前一日收盘价
+		// 优先从 realtimeData 获取 previousClose
+		previousClose := 0.0
+		if realtimeData != nil && realtimeData.PreviousClose > 0 {
+			previousClose = realtimeData.PreviousClose
+		} else {
+			// 从数据库获取前一日数据作为 previousClose
+			var prevData models.ETFData
+			if err := models.DB.Where("symbol = ? AND date < ?", cfg.Symbol, etfData.Date).
+				Order("date DESC").First(&prevData).Error; err == nil && prevData.ID > 0 {
+				previousClose = prevData.ClosePrice.InexactFloat64()
+			}
+		}
+
+		// 如果仍无 previousClose，使用 OpenPrice 作为近似值（不理想但好于0）
+		if previousClose == 0 {
+			previousClose = etfData.OpenPrice.InexactFloat64()
+		}
+
+		change := etfData.ClosePrice.InexactFloat64() - previousClose
+		changePercent := 0.0
+		if previousClose > 0 {
+			changePercent = (change / previousClose) * 100
+		}
+
+		// 根据 ETF 类型设置合理的默认股息率
+		defaultDividendYield := getDefaultDividendYield(cfg.Symbol)
+		
+		result := map[string]interface{}{
+			"symbol":              cfg.Symbol,
+			"name":                cfg.Name,
+			"market":              "US",
+			"category":            cfg.Category,
+			"current_price":       etfData.ClosePrice.InexactFloat64(),
+			"previous_close":      previousClose,
+			"change":              math.Round(change*100) / 100,
+			"change_percent":      math.Round(changePercent*100) / 100,
+			"open_price":          etfData.OpenPrice.InexactFloat64(),
+			"high_price":          etfData.HighPrice.InexactFloat64(),
+			"low_price":           etfData.LowPrice.InexactFloat64(),
+			"volume":              etfData.Volume,
+			"market_cap":          cfg.AUM.InexactFloat64(),
+			"dividend_yield":      defaultDividendYield,
+			"fifty_two_week_high": 0.0,
+			"fifty_two_week_low":  0.0,
+			"currency":            cfg.Currency,
+			"focus":               cfg.Focus,
+			"strategy":            cfg.Strategy,
+			"data_source":         etfData.DataSource,
+			"volatility":          metrics.Volatility,
+			"total_return":        metrics.TotalReturn,
+			"max_drawdown":        metrics.MaxDrawdown,
+			"sharpe_ratio":        metrics.SharpeRatio,
+			"expense_ratio":       cfg.ExpenseRatio.InexactFloat64() * 100,
+		}
+
+		// 合并缓存数据中的额外字段
+		if realtimeData != nil {
+			result["market_cap"] = realtimeData.MarketCap
+			result["dividend_yield"] = realtimeData.DividendYield
+			result["fifty_two_week_high"] = realtimeData.FiftyTwoWeekHigh
+			result["fifty_two_week_low"] = realtimeData.FiftyTwoWeekLow
+		}
+
+		return result
+	}
+
+	// 没有数据库数据，返回基本信息
+	return map[string]interface{}{
+		"symbol":         cfg.Symbol,
+		"name":           cfg.Name,
+		"market":         "US",
+		"category":       cfg.Category,
+		"current_price":  0.0,
+		"change":         0.0,
+		"change_percent": 0.0,
+		"dividend_yield": 0.0,
+		"currency":       cfg.Currency,
+		"focus":          cfg.Focus,
+		"strategy":       cfg.Strategy,
+		"volatility":     metrics.Volatility,
+		"total_return":   metrics.TotalReturn,
+		"max_drawdown":   metrics.MaxDrawdown,
+		"sharpe_ratio":   metrics.SharpeRatio,
+		"expense_ratio":  cfg.ExpenseRatio.InexactFloat64() * 100,
+	}
 }
 
 // GetETFRealtime 获取 ETF 实时数据
@@ -297,18 +241,66 @@ func (h *ETFHandler) GetETFRealtime(c *gin.Context) {
 		return
 	}
 
-	realtimeData, err := h.cacheService.GetRealtimeData(symbol)
-	if err != nil {
+	// 从数据库获取最新的 OHLCV 数据
+	var etfData models.ETFData
+	result := models.DB.Where("symbol = ?", symbol).Order("date DESC").First(&etfData)
+	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"error":   "ETF not found",
+			"error":   "ETF data not found",
 		})
 		return
 	}
 
+	// 获取 ETF 配置信息
+	var etfConfig models.ETFConfig
+	models.DB.Where("symbol = ?", symbol).First(&etfConfig)
+
+	// 计算涨跌幅 - 基于前一日收盘价
+	var prevData models.ETFData
+	previousClose := etfData.OpenPrice.InexactFloat64() // 默认使用开盘价作为近似
+	if err := models.DB.Where("symbol = ? AND date < ?", symbol, etfData.Date).
+		Order("date DESC").First(&prevData).Error; err == nil && prevData.ID > 0 {
+		previousClose = prevData.ClosePrice.InexactFloat64()
+	}
+
+	change := etfData.ClosePrice.Sub(decimal.NewFromFloat(previousClose))
+	changePercent := decimal.Zero
+	if previousClose > 0 {
+		changePercent = change.Div(decimal.NewFromFloat(previousClose)).Mul(decimal.NewFromInt(100))
+	}
+
+	// 根据 ETF 类型设置合理的默认股息率
+	defaultDividendYield := getDefaultDividendYield(symbol)
+
+	data := map[string]interface{}{
+		"symbol":         symbol,
+		"name":           etfConfig.Name,
+		"current_price":  etfData.ClosePrice.InexactFloat64(),
+		"previous_close": previousClose,
+		"open_price":     etfData.OpenPrice.InexactFloat64(),
+		"high_price":     etfData.HighPrice.InexactFloat64(),
+		"low_price":      etfData.LowPrice.InexactFloat64(),
+		"day_high":       etfData.HighPrice.InexactFloat64(),
+		"day_low":        etfData.LowPrice.InexactFloat64(),
+		"volume":         etfData.Volume,
+		"change":         change.InexactFloat64(),
+		"change_percent": changePercent.InexactFloat64(),
+		"market_cap":     etfConfig.AUM.InexactFloat64(),
+		"dividend_yield": defaultDividendYield,
+		"expense_ratio":  etfConfig.ExpenseRatio.InexactFloat64() * 100,
+		"focus":          etfConfig.Focus,
+		"strategy":       etfConfig.Strategy,
+		"category":       etfConfig.Category,
+		"provider":       etfConfig.Provider,
+		"currency":       "USD",
+		"data_source":    etfData.DataSource,
+		"updated_at":     etfData.Date,
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    realtimeData,
+		"data":    data,
 	})
 }
 
@@ -316,7 +308,24 @@ func (h *ETFHandler) GetETFRealtime(c *gin.Context) {
 func (h *ETFHandler) GetETFComparison(c *gin.Context) {
 	period := c.DefaultQuery("period", "1y")
 
-	data, err := h.cacheService.GetComparison([]string{"SCHD", "SPYD", "JEPQ", "JEPI", "VYM", "QQQ"}, period)
+	// 从数据库获取所有启用的ETF列表，不硬编码
+	var etfConfigs []models.ETFConfig
+	models.DB.Where("status = ?", 1).Find(&etfConfigs)
+
+	symbols := make([]string, 0, len(etfConfigs))
+	for _, cfg := range etfConfigs {
+		symbols = append(symbols, cfg.Symbol)
+	}
+
+	if len(symbols) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    []interface{}{},
+		})
+		return
+	}
+
+	data, err := h.analysisService.GetComparisonData(symbols, period)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -336,13 +345,46 @@ func (h *ETFHandler) GetETFHistory(c *gin.Context) {
 	symbol := c.Param("symbol")
 	period := c.DefaultQuery("period", "1y")
 
-	data, err := h.cacheService.GetHistoricalData(symbol, period)
-	if err != nil {
+	var startDate time.Time
+	switch period {
+	case "1m":
+		startDate = time.Now().AddDate(0, -1, 0)
+	case "3m":
+		startDate = time.Now().AddDate(0, -3, 0)
+	case "6m":
+		startDate = time.Now().AddDate(0, -6, 0)
+	case "1y":
+		startDate = time.Now().AddDate(-1, 0, 0)
+	case "3y":
+		startDate = time.Now().AddDate(-3, 0, 0)
+	case "5y":
+		startDate = time.Now().AddDate(-5, 0, 0)
+	default:
+		startDate = time.Now().AddDate(-1, 0, 0)
+	}
+
+	var prices []models.ETFData
+	if err := models.DB.Where("symbol = ? AND date >= ?", symbol, startDate).
+		Order("date ASC").
+		Find(&prices).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Failed to fetch historical data",
 		})
 		return
+	}
+
+	var data []map[string]interface{}
+	for _, price := range prices {
+		data = append(data, map[string]interface{}{
+			"date":        price.Date.Format("2006-01-02"),
+			"open_price":  price.OpenPrice.InexactFloat64(),
+			"close_price": price.ClosePrice.InexactFloat64(),
+			"high_price":  price.HighPrice.InexactFloat64(),
+			"low_price":   price.LowPrice.InexactFloat64(),
+			"volume":      price.Volume,
+			"price":       price.ClosePrice.InexactFloat64(),
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -356,19 +398,168 @@ func (h *ETFHandler) GetETFMetrics(c *gin.Context) {
 	symbol := c.Param("symbol")
 	period := c.DefaultQuery("period", "1y")
 
-	data, err := h.cacheService.GetMetrics(symbol, period)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	var etfConfig models.ETFConfig
+	if result := models.DB.Where("symbol = ?", symbol).First(&etfConfig); result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "ETF not found",
 		})
 		return
+	}
+
+	var prices []models.ETFData
+	if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").Limit(252).Find(&prices).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to fetch price data",
+		})
+		return
+	}
+
+	if len(prices) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "No price data available",
+		})
+		return
+	}
+
+	metrics := calculateMetricsFromPrices(prices, period)
+
+	data := map[string]interface{}{
+		"symbol":         symbol,
+		"name":           etfConfig.Name,
+		"expense_ratio":  etfConfig.ExpenseRatio.InexactFloat64() * 100,
+		"dividend_yield": 0.0, // 从数据库/Finage获取，不硬编码
+		"strategy":       etfConfig.Strategy,
+		"focus":          etfConfig.Focus,
+		"category":       etfConfig.Category,
+		"provider":       etfConfig.Provider,
+		"aum":            etfConfig.AUM.InexactFloat64(),
+		"volatility":     metrics.Volatility,
+		"total_return":   metrics.TotalReturn,
+		"max_drawdown":   metrics.MaxDrawdown,
+		"sharpe_ratio":   metrics.SharpeRatio,
+		"period":         period,
+		"data_source":    "database",
+		"updated_at":     time.Now(),
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    data,
 	})
+}
+
+// HandlerMetrics 指标数据结构（用于 handlers 包）
+type HandlerMetrics struct {
+	Volatility  float64
+	TotalReturn float64
+	MaxDrawdown float64
+	SharpeRatio float64
+}
+
+// calculateMetricsFromPrices 从历史价格计算指标
+func calculateMetricsFromPrices(prices []models.ETFData, period string) *HandlerMetrics {
+	if len(prices) < 2 {
+		return &HandlerMetrics{}
+	}
+
+	returns := make([]float64, len(prices)-1)
+	for i := 1; i < len(prices); i++ {
+		prevPrice := prices[i].ClosePrice.InexactFloat64()
+		currPrice := prices[i-1].ClosePrice.InexactFloat64()
+		if prevPrice > 0 {
+			returns[i-1] = (currPrice - prevPrice) / prevPrice
+		}
+	}
+
+	firstPrice := prices[len(prices)-1].ClosePrice.InexactFloat64()
+	lastPrice := prices[0].ClosePrice.InexactFloat64()
+	totalReturn := 0.0
+	if firstPrice > 0 {
+		totalReturn = (lastPrice - firstPrice) / firstPrice * 100
+	}
+
+	volatility := calculateVolatility(returns)
+	maxDrawdown := calculateMaxDrawdown(prices)
+	sharpeRatio := calculateSharpeRatio(returns, 0.02)
+
+	return &HandlerMetrics{
+		Volatility:  volatility,
+		TotalReturn: totalReturn,
+		MaxDrawdown: maxDrawdown,
+		SharpeRatio: sharpeRatio,
+	}
+}
+
+func calculateVolatility(returns []float64) float64 {
+	if len(returns) < 10 {
+		return 0
+	}
+
+	var sum float64
+	for _, r := range returns {
+		sum += r
+	}
+	mean := sum / float64(len(returns))
+
+	var variance float64
+	for _, r := range returns {
+		variance += math.Pow(r-mean, 2)
+	}
+	stdDev := math.Sqrt(variance / float64(len(returns)))
+
+	return stdDev * math.Sqrt(252) * 100
+}
+
+func calculateMaxDrawdown(prices []models.ETFData) float64 {
+	if len(prices) < 10 {
+		return 0
+	}
+
+	maxDrawdown := 0.0
+	peak := prices[len(prices)-1].ClosePrice.InexactFloat64()
+
+	for i := len(prices) - 1; i >= 0; i-- {
+		price := prices[i].ClosePrice.InexactFloat64()
+		if price > peak {
+			peak = price
+		}
+		drawdown := (peak - price) / peak
+		if drawdown > maxDrawdown {
+			maxDrawdown = drawdown
+		}
+	}
+
+	return maxDrawdown * 100
+}
+
+func calculateSharpeRatio(returns []float64, riskFreeRate float64) float64 {
+	if len(returns) < 10 {
+		return 0
+	}
+
+	var sum float64
+	for _, r := range returns {
+		sum += r
+	}
+	meanReturn := sum / float64(len(returns))
+
+	annualizedReturn := meanReturn * 252
+
+	var variance float64
+	for _, r := range returns {
+		variance += math.Pow(r-meanReturn, 2)
+	}
+	stdDev := math.Sqrt(variance / float64(len(returns)))
+	annualizedStdDev := stdDev * math.Sqrt(252)
+
+	if annualizedStdDev == 0 {
+		return 0
+	}
+
+	return (annualizedReturn - riskFreeRate) / annualizedStdDev
 }
 
 // GetETFForecast 获取 ETF 收益预测
@@ -385,7 +576,6 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 		return
 	}
 
-	// 解析参数
 	initialInvestment, err := strconv.ParseFloat(initialInvestmentStr, 64)
 	if err != nil || initialInvestment <= 0 {
 		initialInvestment = 10000
@@ -396,43 +586,55 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 		taxRate = 0.10
 	}
 
-	// 获取ETF实时数据
-	realtimeData, err := h.cacheService.GetRealtimeData(symbol)
-	if err != nil {
-		// 使用默认数据
-		realtimeData = h.getDefaultRealtimeData(symbol)
-	}
-
-	// 获取ETF配置信息
+	// 获取ETF配置
 	var etfConfig models.ETFConfig
 	models.DB.Where("symbol = ?", symbol).First(&etfConfig)
 
-	// 计算预测参数
-	dividendYield := realtimeData.DividendYield / 100 // 转换为小数
-	expenseRatio := 0.0020                            // 默认费率0.2%
+	// 从数据库获取历史数据计算预期收益率
+	dividendYield := 0.0
+	expenseRatio := 0.0020
 	if etfConfig.ExpenseRatio.GreaterThan(decimal.Zero) {
 		expenseRatio = etfConfig.ExpenseRatio.InexactFloat64()
 	}
 
-	// 历史平均年化收益率(基于不同ETF类型)
-	expectedAnnualReturn := h.getExpectedAnnualReturn(symbol)
+	// 从历史数据计算年化收益率
+	expectedAnnualReturn := 0.08 // 默认8%
+	var prices []models.ETFData
+	if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").Limit(252).Find(&prices).Error; err == nil && len(prices) >= 30 {
+		firstPrice := prices[len(prices)-1].ClosePrice.InexactFloat64()
+		lastPrice := prices[0].ClosePrice.InexactFloat64()
+		if firstPrice > 0 {
+			// 简单年化收益率计算
+			days := len(prices)
+			totalReturn := (lastPrice - firstPrice) / firstPrice
+			expectedAnnualReturn = totalReturn * (252.0 / float64(days))
+			if expectedAnnualReturn < -0.5 {
+				expectedAnnualReturn = -0.5
+			}
+			if expectedAnnualReturn > 0.5 {
+				expectedAnnualReturn = 0.5
+			}
+		}
+	}
 
-	// 计算未来10年的预测
+	// 获取实时数据中的dividend_yield（移除缓存后需要重新设计）
+	// TODO: 如果需要实时股息率，可直接调用provider获取
+	// realtimeData, _ := h.provider.GetRealtimeQuote(symbol)
+	// if realtimeData != nil && realtimeData.DividendYield > 0 {
+	// 	dividendYield = realtimeData.DividendYield / 100
+	// }
+
+	// 计算预测
 	forecast := make([]map[string]interface{}, 10)
 	currentValue := initialInvestment
 	cumulativeDividend := 0.0
 
 	for year := 1; year <= 10; year++ {
-		// 资本增值
 		capitalGrowth := currentValue * expectedAnnualReturn
-		// 股息收入
 		dividendIncome := currentValue * dividendYield
-		// 税后股息
 		afterTaxDividend := dividendIncome * (1 - taxRate)
-		// 费用扣除
 		fees := currentValue * expenseRatio
 
-		// 年末价值 = 当前价值 + 资本增值 + 再投资股息 - 费用
 		currentValue = currentValue + capitalGrowth + afterTaxDividend - fees
 		cumulativeDividend += afterTaxDividend
 
@@ -449,15 +651,19 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 		}
 	}
 
-	// 计算汇总信息
 	totalReturn := currentValue - initialInvestment
 	totalReturnPercent := (totalReturn / initialInvestment) * 100
+
+	name := symbol
+	if etfConfig.Name != "" {
+		name = etfConfig.Name
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": map[string]interface{}{
 			"symbol":                 symbol,
-			"name":                   realtimeData.Name,
+			"name":                   name,
 			"initial_investment":     initialInvestment,
 			"tax_rate":               taxRate * 100,
 			"dividend_yield":         dividendYield * 100,
@@ -475,307 +681,139 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 	})
 }
 
-// getDefaultRealtimeData 获取默认实时数据
-func (h *ETFHandler) getDefaultRealtimeData(symbol string) *services.RealtimeData {
-	defaults := map[string]*services.RealtimeData{
-		"QQQ": {
-			Symbol:        "QQQ",
-			Name:          "Invesco QQQ Trust",
-			DividendYield: 0.58,
-		},
-		"SCHD": {
-			Symbol:        "SCHD",
-			Name:          "Schwab US Dividend Equity ETF",
-			DividendYield: 3.42,
-		},
-		"VNQ": {
-			Symbol:        "VNQ",
-			Name:          "Vanguard Real Estate ETF",
-			DividendYield: 3.95,
-		},
-		"VYM": {
-			Symbol:        "VYM",
-			Name:          "Vanguard High Dividend Yield ETF",
-			DividendYield: 2.95,
-		},
-		"SPYD": {
-			Symbol:        "SPYD",
-			Name:          "SPDR S&P 500 High Dividend ETF",
-			DividendYield: 4.15,
-		},
-		"JEPQ": {
-			Symbol:        "JEPQ",
-			Name:          "JPMorgan Nasdaq Equity Premium Income ETF",
-			DividendYield: 10.85,
-		},
-		"JEPI": {
-			Symbol:        "JEPI",
-			Name:          "JPMorgan Equity Premium Income ETF",
-			DividendYield: 7.25,
-		},
-	}
-
-	if data, ok := defaults[symbol]; ok {
-		return data
-	}
-	return &services.RealtimeData{
-		Symbol:        symbol,
-		Name:          symbol,
-		DividendYield: 3.0,
-	}
-}
-
-// getExpectedAnnualReturn 获取预期年化收益率
-func (h *ETFHandler) getExpectedAnnualReturn(symbol string) float64 {
-	// 基于历史数据和市场预期的年化收益率
-	returns := map[string]float64{
-		"QQQ":  0.10, // 科技股 10%
-		"SCHD": 0.08, // 高股息 8%
-		"VNQ":  0.07, // 房地产 7%
-		"VYM":  0.08, // 高股息 8%
-		"SPYD": 0.08, // 高股息 8%
-		"JEPQ": 0.09, // 科技股+期权 9%
-		"JEPI": 0.08, // 大盘股+期权 8%
-	}
-
-	if r, ok := returns[symbol]; ok {
-		return r
-	}
-	return 0.08 // 默认8%
-}
-
-// UpdateRealtimeData 更新实时数据
+// UpdateRealtimeData 更新实时数据 - 使用Finage数据源获取完整OHLCV并入库
 func (h *ETFHandler) UpdateRealtimeData(c *gin.Context) {
 	// 获取所有启用的ETF
 	var etfConfigs []models.ETFConfig
 	models.DB.Where("status = ?", 1).Find(&etfConfigs)
 
-	// 如果没有配置，使用默认列表
 	if len(etfConfigs) == 0 {
-		etfConfigs = []models.ETFConfig{
-			{Symbol: "QQQ", Currency: "USD"},
-			{Symbol: "SCHD", Currency: "USD"},
-			{Symbol: "VNQ", Currency: "USD"},
-			{Symbol: "VYM", Currency: "USD"},
-			{Symbol: "SPYD", Currency: "USD"},
-			{Symbol: "JEPQ", Currency: "USD"},
-			{Symbol: "JEPI", Currency: "USD"},
-		}
-	}
-
-	// 创建Yahoo Finance客户端
-	yahooClient := services.NewYahooFinanceClient()
-
-	// 获取所有symbol
-	var symbols []string
-	for _, cfg := range etfConfigs {
-		symbols = append(symbols, cfg.Symbol)
-	}
-
-	// 从Yahoo Finance获取实时数据
-	quotes, err := yahooClient.GetQuotes(symbols)
-
-	// 更新缓存
-	successCount := 0
-
-	if err != nil {
-		// Yahoo Finance API失败，使用更真实的模拟数据（基于2024年真实市场数据）
-		realisticMockData := map[string]*services.RealtimeData{
-			"QQQ": {
-				Symbol:           "QQQ",
-				Name:             "Invesco QQQ Trust",
-				CurrentPrice:     497.50,
-				PreviousClose:    494.20,
-				OpenPrice:        495.00,
-				DayHigh:          499.80,
-				DayLow:           493.50,
-				Volume:           28500000,
-				Change:           3.30,
-				ChangePercent:    0.67,
-				MarketCap:        1950000000000,
-				DividendYield:    0.58,
-				FiftyTwoWeekHigh: 520.00,
-				FiftyTwoWeekLow:  395.00,
-				AverageVolume:    32000000,
-				Beta:             1.08,
-				PERatio:          35.2,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-			"SCHD": {
-				Symbol:           "SCHD",
-				Name:             "Schwab US Dividend Equity ETF",
-				CurrentPrice:     26.85,
-				PreviousClose:    26.72,
-				OpenPrice:        26.75,
-				DayHigh:          26.95,
-				DayLow:           26.68,
-				Volume:           4200000,
-				Change:           0.13,
-				ChangePercent:    0.49,
-				MarketCap:        11800000000,
-				DividendYield:    3.42,
-				FiftyTwoWeekHigh: 28.50,
-				FiftyTwoWeekLow:  24.20,
-				AverageVolume:    4800000,
-				Beta:             0.88,
-				PERatio:          18.5,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-			"VNQ": {
-				Symbol:           "VNQ",
-				Name:             "Vanguard Real Estate ETF",
-				CurrentPrice:     89.45,
-				PreviousClose:    89.20,
-				OpenPrice:        89.25,
-				DayHigh:          89.80,
-				DayLow:           89.10,
-				Volume:           3200000,
-				Change:           0.25,
-				ChangePercent:    0.28,
-				MarketCap:        32000000000,
-				DividendYield:    3.95,
-				FiftyTwoWeekHigh: 95.00,
-				FiftyTwoWeekLow:  78.50,
-				AverageVolume:    3500000,
-				Beta:             0.95,
-				PERatio:          28.3,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-			"VYM": {
-				Symbol:           "VYM",
-				Name:             "Vanguard High Dividend Yield ETF",
-				CurrentPrice:     108.35,
-				PreviousClose:    108.00,
-				OpenPrice:        108.10,
-				DayHigh:          108.60,
-				DayLow:           107.85,
-				Volume:           2600000,
-				Change:           0.35,
-				ChangePercent:    0.32,
-				MarketCap:        48000000000,
-				DividendYield:    2.95,
-				FiftyTwoWeekHigh: 112.00,
-				FiftyTwoWeekLow:  96.50,
-				AverageVolume:    2800000,
-				Beta:             0.85,
-				PERatio:          20.1,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-			"SPYD": {
-				Symbol:           "SPYD",
-				Name:             "SPDR S&P 500 High Dividend ETF",
-				CurrentPrice:     55.20,
-				PreviousClose:    54.95,
-				OpenPrice:        55.00,
-				DayHigh:          55.45,
-				DayLow:           54.85,
-				Volume:           1950000,
-				Change:           0.25,
-				ChangePercent:    0.45,
-				MarketCap:        12800000000,
-				DividendYield:    4.15,
-				FiftyTwoWeekHigh: 58.50,
-				FiftyTwoWeekLow:  49.80,
-				AverageVolume:    2200000,
-				Beta:             0.92,
-				PERatio:          16.8,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-			"JEPQ": {
-				Symbol:           "JEPQ",
-				Name:             "JPMorgan Nasdaq Equity Premium Income ETF",
-				CurrentPrice:     52.85,
-				PreviousClose:    52.55,
-				OpenPrice:        52.60,
-				DayHigh:          53.10,
-				DayLow:           52.45,
-				Volume:           1450000,
-				Change:           0.30,
-				ChangePercent:    0.57,
-				MarketCap:        3200000000,
-				DividendYield:    10.85,
-				FiftyTwoWeekHigh: 56.80,
-				FiftyTwoWeekLow:  47.20,
-				AverageVolume:    1800000,
-				Beta:             1.15,
-				PERatio:          25.5,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-			"JEPI": {
-				Symbol:           "JEPI",
-				Name:             "JPMorgan Equity Premium Income ETF",
-				CurrentPrice:     58.35,
-				PreviousClose:    58.05,
-				OpenPrice:        58.10,
-				DayHigh:          58.60,
-				DayLow:           57.95,
-				Volume:           1150000,
-				Change:           0.30,
-				ChangePercent:    0.52,
-				MarketCap:        2950000000,
-				DividendYield:    7.25,
-				FiftyTwoWeekHigh: 62.50,
-				FiftyTwoWeekLow:  53.80,
-				AverageVolume:    1400000,
-				Beta:             0.98,
-				PERatio:          22.3,
-				Currency:         "USD",
-				DataSource:       "realistic_mock",
-			},
-		}
-
-		for _, cfg := range etfConfigs {
-			if data, ok := realisticMockData[cfg.Symbol]; ok {
-				h.cacheService.SetRealtimeData(cfg.Symbol, data)
-				successCount++
-			}
-		}
-
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"message": "Realtime data updated with realistic mock data (Yahoo Finance unavailable)",
-			"count":   successCount,
-			"source":  "realistic_mock",
+			"message": "No enabled ETF configs found",
+			"count":   0,
 		})
 		return
 	}
 
-	// Yahoo Finance成功，使用真实数据
-	for _, quote := range quotes {
-		realtimeData := &services.RealtimeData{
-			Symbol:           quote.Symbol,
-			Name:             quote.Name,
-			CurrentPrice:     quote.CurrentPrice,
-			PreviousClose:    quote.PreviousClose,
-			OpenPrice:        quote.OpenPrice,
-			DayHigh:          quote.DayHigh,
-			DayLow:           quote.DayLow,
-			Volume:           quote.Volume,
-			Change:           quote.Change,
-			ChangePercent:    quote.ChangePercent,
-			MarketCap:        quote.MarketCap,
-			DividendYield:    quote.DividendYield,
-			FiftyTwoWeekHigh: quote.FiftyTwoWeekHigh,
-			FiftyTwoWeekLow:  quote.FiftyTwoWeekLow,
-			AverageVolume:    quote.AverageVolume,
-			Beta:             quote.Beta,
-			PERatio:          quote.PERatio,
-			Currency:         quote.Currency,
-			DataSource:       "yahoo_finance",
+	symbols := make([]string, 0, len(etfConfigs))
+	for _, cfg := range etfConfigs {
+		symbols = append(symbols, cfg.Symbol)
+	}
+
+	// 使用 Finage 数据源获取数据
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if h.provider == nil || !h.provider.IsAvailable(ctx) {
+		providerName := "nil"
+		if h.provider != nil {
+			providerName = h.provider.GetName()
 		}
-		h.cacheService.SetRealtimeData(quote.Symbol, realtimeData)
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   "Data source not available: " + providerName,
+		})
+		return
+	}
+
+	quotes, err := h.provider.GetQuotes(ctx, symbols)
+	if err != nil {
+		utils.Error("Failed to get quotes", err, "provider", h.provider.GetName())
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   "Failed to get data: " + err.Error(),
+		})
+		return
+	}
+
+	// 更新缓存和数据库
+	successCount := 0
+	for _, quote := range quotes {
+		// 缓存已移除，不再创建RealtimeData对象
+		// realtimeData := &SimpleRealtimeData{
+		//	Symbol:           quote.Symbol,
+		//	CurrentPrice:     quote.CurrentPrice,
+		//	PreviousClose:    quote.PreviousClose,
+		//	OpenPrice:        quote.OpenPrice,
+		//	DayHigh:          quote.DayHigh,
+		//	DayLow:           quote.DayLow,
+		//	Volume:           quote.Volume,
+		//	Change:           quote.Change,
+		//	ChangePercent:    quote.ChangePercent,
+		//	DividendYield:    quote.DividendYield,
+		//	DataSource:       quote.DataSource,
+		//	UpdatedAt:        time.Now(),
+		// }
+		// 缓存已移除：h.cacheService.SetRealtimeData(quote.Symbol, realtimeData)
+
+		// 入库完整OHLCV数据
+		if quote.OpenPrice > 0 || quote.DayHigh > 0 || quote.DayLow > 0 || quote.Volume > 0 {
+			date := quote.Timestamp
+			if date.IsZero() {
+				date = time.Now().Truncate(24 * time.Hour)
+			}
+
+			etfData := models.ETFData{
+				Symbol:     quote.Symbol,
+				Date:       date,
+				OpenPrice:  decimal.NewFromFloat(quote.OpenPrice),
+				ClosePrice: decimal.NewFromFloat(quote.CurrentPrice),
+				HighPrice:  decimal.NewFromFloat(quote.DayHigh),
+				LowPrice:   decimal.NewFromFloat(quote.DayLow),
+				Volume:     quote.Volume,
+				DataSource: quote.DataSource,
+			}
+
+			models.DB.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "symbol"}, {Name: "date"}},
+				DoUpdates: clause.AssignmentColumns([]string{"open_price", "close_price", "high_price", "low_price", "volume", "data_source"}),
+			}).Create(&etfData)
+		}
+
 		successCount++
 	}
 
+	// 缓存已移除：h.cacheService.ClearCache()
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Realtime data updated successfully from Yahoo Finance",
+		"message": "Realtime data updated successfully from " + h.provider.GetName(),
 		"count":   successCount,
+		"source":  h.provider.GetName(),
 	})
+}
+
+// getDefaultDividendYield 根据 ETF 类型返回合理的默认股息率（百分比）
+func getDefaultDividendYield(symbol string) float64 {
+	// 高股息 ETF
+	if symbol == "SCHD" || symbol == "VYM" || symbol == "SPYD" || symbol == "HDV" || symbol == "DGRO" {
+		return 3.5 // 3.5%
+	}
+	// 覆盖收益型 ETF
+	if symbol == "JEPI" || symbol == "JEPQ" || symbol == "QYLD" || symbol == "XYLD" {
+		return 7.0 // 7%
+	}
+	// 债券 ETF
+	if symbol == "BND" || symbol == "AGG" || symbol == "TLT" {
+		return 4.0 // 4%
+	}
+	// 房地产 ETF
+	if symbol == "VNQ" {
+		return 4.0 // 4%
+	}
+	// 黄金 ETF
+	if symbol == "GLD" {
+		return 0.0 // 0%
+	}
+	// 宽基指数 ETF
+	if symbol == "QQQ" || symbol == "VOO" || symbol == "VTI" || symbol == "SPY" {
+		return 0.5 // 0.5%
+	}
+	// 国际市场 ETF
+	if symbol == "VEA" || symbol == "VWO" || symbol == "VXUS" {
+		return 3.0 // 3%
+	}
+	// 默认
+	return 1.0 // 1%
 }

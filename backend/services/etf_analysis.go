@@ -4,23 +4,21 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"etf-insight/models"
-	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 )
 
 // ETFAnalysisService ETF分析服务
 type ETFAnalysisService struct {
-	cacheService *CacheService
 	exchangeRate *ExchangeRateService
 }
 
 // NewETFAnalysisService 创建新的ETF分析服务
-func NewETFAnalysisService(cache *CacheService, exchangeRate *ExchangeRateService) *ETFAnalysisService {
+func NewETFAnalysisService(exchangeRate *ExchangeRateService) *ETFAnalysisService {
 	return &ETFAnalysisService{
-		cacheService: cache,
 		exchangeRate: exchangeRate,
 	}
 }
@@ -237,17 +235,41 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			continue
 		}
 
-		// 获取实时数据
-		realtimeData, err := s.cacheService.GetRealtimeData(symbol)
-		if err != nil {
-			utils.Warn("Failed to get realtime data", err, "symbol", symbol)
-			continue
+		// 从数据库获取最新价格
+		var etfData models.ETFData
+		var currentPrice decimal.Decimal
+		var totalReturnPercent decimal.Decimal
+		var volatility decimal.Decimal
+
+		if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").First(&etfData).Error; err == nil {
+			currentPrice = etfData.ClosePrice
+		} else {
+			currentPrice = decimal.NewFromFloat(100.0)
+		}
+
+		// 从历史数据计算收益率
+		var prices []models.ETFData
+		if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").Limit(252).Find(&prices).Error; err == nil && len(prices) > 1 {
+			metrics, _ := s.CalculateMetrics(symbol, prices, "1y")
+			if metrics != nil {
+				totalReturnPercent = metrics.TotalReturn
+				volatility = metrics.Volatility
+			}
+		}
+
+		// 从数据库获取 ETF 配置信息
+		var etfConfig models.ETFConfig
+		etfName := symbol + " ETF"
+		if err := models.DB.Where("symbol = ?", symbol).First(&etfConfig).Error; err == nil {
+			etfName = etfConfig.Name
 		}
 
 		// 计算投资金额
 		investmentUSD := totalInvestment.Mul(weightDecimal)
 
-		currentPrice := decimal.NewFromFloat(realtimeData.CurrentPrice)
+		// 根据 ETF 类型设置合理的默认股息率
+		defaultDividendYield := getDividendYieldByCategory(symbol, etfConfig.Category)
+
 		var shares decimal.Decimal
 		if currentPrice.IsPositive() {
 			shares = investmentUSD.Div(currentPrice)
@@ -266,9 +288,15 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			capitalGainPercent = capitalGain.Div(investmentUSD).Mul(decimal.NewFromInt(100))
 		}
 
-		// 计算股息
-		dividendYield := decimal.NewFromFloat(realtimeData.DividendYield)
-		annualDividendBeforeTax := investmentUSD.Mul(dividendYield).Div(decimal.NewFromInt(100))
+		// 如果有历史收益率，使用历史收益率计算资本利得
+		if !totalReturnPercent.IsZero() {
+			capitalGainPercent = totalReturnPercent
+			capitalGain = investmentUSD.Mul(totalReturnPercent.Div(decimal.NewFromInt(100)))
+			currentValueUSD = investmentUSD.Add(capitalGain)
+		}
+
+		// 计算股息（使用默认股息率）
+		annualDividendBeforeTax := investmentUSD.Mul(defaultDividendYield)
 		annualDividendAfterTax := annualDividendBeforeTax.Mul(decimal.NewFromInt(1).Sub(taxRate))
 
 		// 计算总收益 = 资本利得 + 税后股息
@@ -276,7 +304,7 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 
 		holding := PortfolioHolding{
 			Symbol:                  symbol,
-			Name:                    realtimeData.Name,
+			Name:                    etfName,
 			Currency:                "USD",
 			Weight:                  weightDecimal.Mul(decimal.NewFromInt(100)).InexactFloat64(),
 			Investment:              investmentUSD.InexactFloat64(),
@@ -285,13 +313,13 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 			CurrentPrice:            currentPrice.InexactFloat64(),
 			CurrentValue:            currentValueUSD.InexactFloat64(),
 			CurrentValueUSD:         currentValueUSD.InexactFloat64(),
-			DividendYield:           dividendYield.InexactFloat64(),
+			DividendYield:           defaultDividendYield.InexactFloat64(),
 			AnnualDividendBeforeTax: annualDividendBeforeTax.InexactFloat64(),
 			AnnualDividendAfterTax:  annualDividendAfterTax.InexactFloat64(),
 			CapitalGain:             capitalGain.InexactFloat64(),
 			CapitalGainPercent:      capitalGainPercent.InexactFloat64(),
 			TotalReturn:             totalReturn.InexactFloat64(),
-			Volatility:              decimal.Zero.InexactFloat64(),
+			Volatility:              volatility.InexactFloat64(),
 		}
 
 		result.Holdings = append(result.Holdings, holding)
@@ -302,7 +330,7 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 
 		// 计算加权股息率
 		result.WeightedDividendYield = result.WeightedDividendYield.Add(
-			dividendYield.Mul(weightDecimal),
+			defaultDividendYield.Mul(weightDecimal),
 		)
 	}
 
@@ -319,19 +347,56 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 	return result, nil
 }
 
+// getDividendYieldByCategory 根据 ETF 类型返回合理的默认股息率
+func getDividendYieldByCategory(symbol string, category string) decimal.Decimal {
+	// 高股息 ETF
+	if symbol == "SCHD" || symbol == "VYM" || symbol == "SPYD" || symbol == "HDV" || symbol == "DGRO" {
+		return decimal.NewFromFloat(0.035) // 3.5%
+	}
+	// 覆盖收益型 ETF
+	if symbol == "JEPI" || symbol == "JEPQ" || symbol == "QYLD" || symbol == "XYLD" {
+		return decimal.NewFromFloat(0.07) // 7%
+	}
+	// 债券 ETF
+	if symbol == "BND" || symbol == "AGG" || symbol == "TLT" || symbol == "BND" {
+		return decimal.NewFromFloat(0.04) // 4%
+	}
+	// 房地产 ETF
+	if symbol == "VNQ" {
+		return decimal.NewFromFloat(0.04) // 4%
+	}
+	// 黄金 ETF
+	if symbol == "GLD" {
+		return decimal.NewFromFloat(0.00) // 0%
+	}
+	// 宽基指数 ETF
+	if symbol == "QQQ" || symbol == "VOO" || symbol == "VTI" || symbol == "SPY" {
+		return decimal.NewFromFloat(0.015) // 1.5%
+	}
+	// 国际市场 ETF
+	if symbol == "VEA" || symbol == "VWO" || symbol == "VXUS" {
+		return decimal.NewFromFloat(0.03) // 3%
+	}
+	// 默认
+	return decimal.NewFromFloat(0.02) // 2%
+}
+
 // ForecastETFGrowth 预测ETF增长
 func (s *ETFAnalysisService) ForecastETFGrowth(symbol string, initialInvestment decimal.Decimal, annualReturnRate *decimal.Decimal, taxRate decimal.Decimal) (*ForecastResult, error) {
 	if taxRate.IsZero() {
 		taxRate = decimal.NewFromFloat(0.10)
 	}
 
-	// 获取实时数据
-	realtimeData, err := s.cacheService.GetRealtimeData(symbol)
-	if err != nil {
-		return nil, err
-	}
+	// 获取实时数据（移除缓存后需要重新设计）
+	// realtimeData, err := s.cacheService.GetRealtimeData(symbol)
+	// if err != nil {
+	//	return nil, err
+	// }
+	// dividendYield := decimal.NewFromFloat(realtimeData.DividendYield).Div(decimal.NewFromInt(100))
 
-	dividendYield := decimal.NewFromFloat(realtimeData.DividendYield).Div(decimal.NewFromInt(100))
+	// 默认股息率
+	dividendYield := decimal.NewFromFloat(0.03) // 3% 默认股息率
+	// TODO: 从数据库获取真实股息率数据
 
 	// 如果没有提供年化收益率，使用默认值
 	if annualReturnRate == nil {
@@ -483,53 +548,125 @@ func (s *ETFAnalysisService) convertToUSD(amount decimal.Decimal, currency strin
 
 // GetComparisonData 获取ETF对比数据
 func (s *ETFAnalysisService) GetComparisonData(symbols []string, period string) ([]map[string]interface{}, error) {
-	var results []map[string]interface{}
+	// 批量获取ETF配置
+	var etfConfigs []models.ETFConfig
+	models.DB.Where("symbol IN ?", symbols).Find(&etfConfigs)
 
+	// 构建配置映射
+	configMap := make(map[string]models.ETFConfig)
+	for _, cfg := range etfConfigs {
+		configMap[cfg.Symbol] = cfg
+	}
+
+	// 批量获取每个ETF的最新行情数据
+	type LatestETFData struct {
+		Symbol     string
+		OpenPrice  decimal.Decimal
+		ClosePrice decimal.Decimal
+		HighPrice  decimal.Decimal
+		LowPrice   decimal.Decimal
+		Volume     int64
+		Date       time.Time
+	}
+
+	var latestData []LatestETFData
 	for _, symbol := range symbols {
-		// 获取实时数据
-		realtimeData, err := s.cacheService.GetRealtimeData(symbol)
-		if err != nil {
-			utils.Warn("Failed to get realtime data", err, "symbol", symbol)
+		var data LatestETFData
+		models.DB.Model(&models.ETFData{}).
+			Select("symbol, open_price, close_price, high_price, low_price, volume, date").
+			Where("symbol = ?", symbol).
+			Order("date DESC").
+			First(&data)
+		if data.Symbol != "" {
+			latestData = append(latestData, data)
+		}
+	}
+
+	// 构建最新数据映射
+	latestDataMap := make(map[string]LatestETFData)
+	for _, data := range latestData {
+		latestDataMap[data.Symbol] = data
+	}
+
+	// 批量获取历史数据
+	var allPrices []models.ETFData
+	models.DB.Where("symbol IN ?", symbols).Order("symbol, date DESC").Find(&allPrices)
+
+	// 构建历史数据映射
+	pricesMap := make(map[string][]models.ETFData)
+	for _, price := range allPrices {
+		pricesMap[price.Symbol] = append(pricesMap[price.Symbol], price)
+	}
+
+	// 构建结果
+	var results []map[string]interface{}
+	for _, symbol := range symbols {
+		// 获取ETF配置
+		cfg, ok := configMap[symbol]
+		if !ok {
 			continue
 		}
 
-		// 获取历史数据
-		var prices []models.ETFData
-		if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").Limit(252).Find(&prices).Error; err != nil {
-			utils.Warn("Failed to get historical data", err, "symbol", symbol)
+		// 获取最新行情数据
+		data, dataOk := latestDataMap[symbol]
+		if !dataOk {
+			continue
 		}
 
+		// 计算涨跌幅 - 基于前一日收盘价，而非当日OpenPrice
+		change := decimal.Zero
+		changePercent := decimal.Zero
+
+		// 从数据库获取前一日数据
+		var prevData models.ETFData
+		if err := models.DB.Where("symbol = ? AND date < ?", symbol, data.Date).
+			Order("date DESC").First(&prevData).Error; err == nil && prevData.ID > 0 {
+			previousClose := prevData.ClosePrice
+			change = data.ClosePrice.Sub(previousClose)
+			if previousClose.GreaterThan(decimal.Zero) {
+				changePercent = change.Div(previousClose).Mul(decimal.NewFromInt(100))
+			}
+		} else {
+			// 没有前日数据，使用当日开盘价作为近似
+			change = data.ClosePrice.Sub(data.OpenPrice)
+			if data.OpenPrice.GreaterThan(decimal.Zero) {
+				changePercent = change.Div(data.OpenPrice).Mul(decimal.NewFromInt(100))
+			}
+		}
+
+		// 获取历史数据
+		prices := pricesMap[symbol]
+		if len(prices) > 252 {
+			prices = prices[:252] // 限制数量
+		}
+
+		// 计算指标
 		var metrics *ETFMetrics
 		if len(prices) > 0 {
 			metrics, _ = s.CalculateMetrics(symbol, prices, period)
 		}
 
-		// 获取ETF配置
-		var cfg models.ETFConfig
-		models.DB.Where("symbol = ?", symbol).First(&cfg)
-
-		data := map[string]interface{}{
+		// 构建结果
+		result := map[string]interface{}{
 			"symbol":         symbol,
-			"name":           realtimeData.Name,
-			"current_price":  realtimeData.CurrentPrice,
-			"change":         realtimeData.Change,
-			"change_percent": realtimeData.ChangePercent,
-			"dividend_yield": realtimeData.DividendYield,
-			"volume":         realtimeData.Volume,
-			"market_cap":     realtimeData.MarketCap,
+			"name":           cfg.Name,
+			"current_price":  data.ClosePrice.InexactFloat64(),
+			"change":         change.InexactFloat64(),
+			"change_percent": changePercent.InexactFloat64(),
+			"volume":         data.Volume,
 			"strategy":       cfg.Strategy,
 			"focus":          cfg.Focus,
 			"expense_ratio":  cfg.ExpenseRatio,
 		}
 
 		if metrics != nil {
-			data["total_return"] = metrics.TotalReturn
-			data["volatility"] = metrics.Volatility
-			data["max_drawdown"] = metrics.MaxDrawdown
-			data["sharpe_ratio"] = metrics.SharpeRatio
+			result["total_return"] = metrics.TotalReturn
+			result["volatility"] = metrics.Volatility
+			result["max_drawdown"] = metrics.MaxDrawdown
+			result["sharpe_ratio"] = metrics.SharpeRatio
 		}
 
-		results = append(results, data)
+		results = append(results, result)
 	}
 
 	return results, nil

@@ -1,6 +1,8 @@
-# ETF-Insight
+# ETF-Insight (v2.0 Finage-Only)
 
 一个专业的 ETF 分析与对比平台，对标 Trackinsight、ETF Insider 等国际知名 ETF 分析工具。基于 Go + React 技术栈，提供深度的 ETF 数据洞察、多维度对比分析、持仓解构、风险评估和投资组合优化等一站式解决方案。
+
+**v2.0 架构更新**: 完全依赖 Finage 真实数据，删除所有硬编码mock，所有字段必须入库。
 
 ## 🎯 产品定位
 
@@ -40,7 +42,7 @@ ETF-Insight 致力于成为专业投资者和机构用户的 ETF 分析利器：
 ### ⚙️ ETF 配置管理
 - **CRUD 操作** - 增删改查 ETF 配置信息
 - **状态管理** - 启用/禁用 ETF 数据自动更新
-- **数据源配置** - 支持 Finage / Finnhub / Yahoo Finance 多数据源
+- **数据源配置** - **Finage 唯一真实数据源** (v2.0 架构)
 
 ### 📈 投资组合配置
 - **组合构建** - 自定义投资组合及权重分配
@@ -142,14 +144,16 @@ npm run dev
 HTTP_PROXY=http://127.0.0.1:7897
 HTTPS_PROXY=http://127.0.0.1:7897
 
-# Finage API Key (主要数据源) - 必须配置
+# Finage API Key (唯一数据源) - 必须配置，否则系统无法工作
 FINAGE_API_KEY=your_finage_api_key_here
 
-# Finnhub API Key (备用) - 可选
+# 注意：Finnhub API Key 已废弃，仅作为历史代码保留
 FINNHUB_API_KEY=your_finnhub_api_key_here
 ```
 
 > **⚠️ 安全提醒**: API Key 不得硬编码到代码中，统一通过环境变量配置。
+> **⚠️ 安全提醒**: API Key 不得硬编码到代码中，统一通过环境变量配置。
+> **v2.0 架构更新**: 完全依赖 Finage 真实数据，所有硬编码mock数据已删除。
 
 ### 后端配置文件
 
@@ -175,6 +179,75 @@ schedule:
 
 log:
   level: "info"
+```
+
+## 🏛️ 缓存架构 (OOP 设计)
+
+### 设计原则
+
+缓存系统采用面向对象设计，严格遵循 SOLID 原则：
+
+- **单一职责原则 (SRP)** - 每个组件只负责一个功能
+- **开闭原则 (OCP)** - 通过接口扩展，无需修改现有代码
+- **里氏替换原则 (LSP)** - 所有缓存实现可互相替换
+- **接口隔离原则 (ISP)** - 接口只包含必要的方法
+- **依赖倒置原则 (DIP)** - 依赖于抽象接口，而非具体实现
+
+### 缓存策略
+
+| 策略 | 描述 | 适用场景 |
+|------|------|---------|
+| **Memory** | 纯内存缓存 | 单机部署、开发测试 |
+| **Redis** | 纯 Redis 缓存 | 分布式部署、需要持久化 |
+| **Hybrid** | Redis + Memory 混合 | 生产环境、高性能要求 |
+
+### 核心组件
+
+```
+CacheService (业务层)
+    ↓
+CacheProvider Interface (抽象接口)
+    ↓
+┌─────────────┬─────────────┬─────────────┐
+│ MemoryCache │ RedisCache  │ HybridCache │
+└─────────────┴─────────────┴─────────────┘
+    ↓
+CacheFactory (工厂模式)
+```
+
+### 配置示例
+
+```yaml
+redis:
+  enabled: true          # 启用 Redis
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  timeout: 5s
+
+etf:
+  cache:
+    realtime_ttl: 5m     # 实时数据缓存时间
+    historical_ttl: 24h  # 历史数据缓存时间
+    metrics_ttl: 1h      # 指标数据缓存时间
+    comparison_ttl: 30m  # 对比数据缓存时间
+```
+
+### 使用示例
+
+```go
+// 创建缓存服务
+cacheService := services.NewCacheService(cacheCfg, redisCfg)
+
+// 使用缓存
+cacheService.Set("etf:SCHD", data, 5*time.Minute)
+value, found := cacheService.Get("etf:SCHD")
+
+// 获取缓存统计
+stats := cacheService.GetCacheStats()
+// Output: {"provider_type": "hybrid"}
 ```
 
 ## 📁 项目结构
@@ -357,13 +430,13 @@ cd frontend && npm run dev
 - **就绪检查**: http://localhost:8080/ready
 - **存活检查**: http://localhost:8080/live
 
-### ETF 数据更新
+### ETF 数据更新 (v2.0 Finage-Only)
 
 ```bash
 # 使用 Finage 聚合API 逐个更新 ETF 价格 (完整 OHLCV)
 cd backend && go run ./cmd/update_etf_prices/
 
-# 通过 API 触发实时数据更新 (Yahoo Finance)
+# 通过 API 触发实时数据更新 (Finage 聚合API)
 curl -X POST http://localhost:8080/api/etf/update-realtime
 
 # 数据同步命令行工具
@@ -395,13 +468,15 @@ cd backend && go run ./cmd/test_factory/
 cd backend && go run ./cmd/test_finage/
 ```
 
-### 数据获取策略
+### 数据获取策略 (v2.0 Finage-Only)
 
-- **Finage 聚合API** (`/agg/stock/{symbol}/1/day`) 优先，提供完整 OHLCV + Volume
-- 聚合API失败时降级到 Finage last API (仅 ask/bid，数据不完整不入库)
-- **Yahoo Finance** 用于实时数据缓存 (MarketCap、52周高低等)
-- **Fallback Provider** 仅在所有 API 不可用时使用
-- 涨跌计算始终基于前一日收盘价 (PreviousClose)，而非开盘价
+- **Finage 聚合API** (`/agg/stock/{symbol}/1/day`) 唯一数据源，提供完整 OHLCV + Volume
+- **不降级到 last API** - last API 数据不完整，不符合"所有字段入库"要求
+- **无 Yahoo Finance 依赖** - 所有数据从 Finage 获取并完整入库
+- **Fallback Provider** 仅在没有 Finage API Key 时提供基础演示，不返回模拟假数据
+- **所有字段必须入库** - OHLCV+Volume+DataSource 全部写入 etf_data 表
+- **涨跌计算** 基于前一日收盘价 (PreviousClose)，从数据库查询真实数据
+- **严格校验** - 数据不全则拒绝入库，避免脏数据污染数据库
 
 ### 常见问题
 

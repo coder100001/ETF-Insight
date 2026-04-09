@@ -87,7 +87,7 @@ interface ETFOption {
 }
 
 const PortfolioConfigPage: React.FC = () => {
-  const [configs, setConfigs] = useState<PortfolioConfig[]>(mockConfigs);
+  const [configs, setConfigs] = useState<PortfolioConfig[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingConfig, setEditingConfig] = useState<PortfolioConfig | null>(null);
   const [form] = Form.useForm();
@@ -110,6 +110,31 @@ const PortfolioConfigPage: React.FC = () => {
       console.error('Failed to load ETF options:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 加载组合配置 - 从API获取
+  const loadConfigs = async () => {
+    try {
+      const response = await fetch('/api/portfolio-configs/');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setConfigs(result.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            etfs: c.allocation ? Object.keys(JSON.parse(c.allocation)) : [],
+            allocation: c.allocation ? JSON.parse(c.allocation) : {},
+            total_investment: c.total_investment || 0,
+            created_at: c.created_at?.split('T')[0] || '',
+            updated_at: c.updated_at?.split('T')[0] || '',
+            is_default: c.is_default || false,
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load portfolio configs:', error);
     }
   };
 
@@ -255,6 +280,7 @@ const PortfolioConfigPage: React.FC = () => {
   
   useEffect(() => {
     loadEtfOptions();
+    loadConfigs();
   }, []);
 
   return (

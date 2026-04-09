@@ -16,6 +16,7 @@ import (
 	"etf-insight/middleware"
 	"etf-insight/models"
 	"etf-insight/services"
+	"etf-insight/services/datasource"
 	"etf-insight/tasks"
 	"etf-insight/utils"
 
@@ -56,12 +57,33 @@ func main() {
 	}
 	utils.Info("Default currency pairs initialized")
 
-	cacheService := services.NewCacheService(&cfg.ETF.Cache)
-	utils.Info("Cache service initialized", "type", "memory")
+	// 缓存服务已移除，不再需要初始化
+	utils.Info("Cache service removed, all data will be fetched directly from database/API")
 
-	analysisService := services.NewETFAnalysisService(cacheService, nil)
+	analysisService := services.NewETFAnalysisService(nil)
 	exchangeService := services.NewExchangeRateService()
-	scheduler := tasks.NewScheduler(&cfg.Schedule, cacheService, analysisService, exchangeService)
+
+	// 初始化 Finage 数据源（主要数据源）
+	finageProvider := datasource.NewFinageProvider()
+	utils.Info("Finage provider initialized",
+		"available", finageProvider.IsAvailable(context.Background()))
+
+	// 创建数据源工厂
+	providerFactory := datasource.NewProviderFactory()
+	providerFactory.Register("finage", finageProvider)
+	providerFactory.Register("fallback", datasource.NewFallbackProvider())
+
+	// 获取可用的数据源
+	ctx := context.Background()
+	defaultProvider, err := providerFactory.GetDefault(ctx)
+	if err != nil {
+		utils.Warn("No data source available, using fallback", "error", err)
+		defaultProvider = datasource.NewFallbackProvider()
+	} else {
+		utils.Info("Using data source", "provider", defaultProvider.GetName())
+	}
+
+	scheduler := tasks.NewScheduler(&cfg.Schedule, analysisService, exchangeService, defaultProvider)
 
 	if *runOnce {
 		scheduler.RunOnce()
@@ -85,7 +107,7 @@ func main() {
 	router.Use(middleware.SecurityHeaders())
 	router.Use(middleware.RateLimiter())
 
-	etfHandler := handlers.NewETFHandler(cacheService, analysisService)
+	etfHandler := handlers.NewETFHandler(analysisService, defaultProvider)
 	portfolioHandler := handlers.NewPortfolioHandler(analysisService)
 
 	router.GET("/health", handlers.HealthHandler)

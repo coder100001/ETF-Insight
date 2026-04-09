@@ -14,9 +14,7 @@ database:
   sslmode: ""
 
 etf:
-  cache:
-    type: "memory"
-    ttl: 3600
+  # 缓存已移除，所有数据直接从数据库/API获取
 
 schedule:
   update_interval: "1h"

@@ -3,11 +3,12 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Card, Button, Badge, Row, Col, Statistic, App } from 'antd';
-import { ArrowLeftOutlined, BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, BarChartOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
 import type { ETFData } from '../types';
+import PriceChart from '../components/PriceChart';
 
 const PageHeader = styled.div`
   display: flex;
@@ -110,10 +111,17 @@ const InfoItem = styled.div`
   }
 `;
 
+interface ChartData {
+  dates: string[];
+  prices: number[];
+  volumes: number[];
+}
+
 const ETFDetail: React.FC = () => {
   const { message } = App.useApp();
   const { symbol } = useParams<{ symbol: string }>();
   const [etf, setEtf] = useState<ETFData | null>(null);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -125,32 +133,50 @@ const ETFDetail: React.FC = () => {
   const fetchETFData = async (sym: string) => {
     setLoading(true);
     try {
-      const response = await etfAPI.getRealtimeData(sym);
-      if (response.success && response.data) {
-        const data = response.data;
+      // 同时获取实时数据、指标数据和历史数据
+      const [realtimeResponse, metricsResponse, historyResponse] = await Promise.all([
+        etfAPI.getRealtimeData(sym),
+        etfAPI.getMetrics(sym, '1y'),
+        etfAPI.getHistory(sym, '1y'),
+      ]);
+
+      if (realtimeResponse.success && realtimeResponse.data) {
+        const realtimeData = realtimeResponse.data;
+        const metricsData = metricsResponse.success && metricsResponse.data ? metricsResponse.data : {};
+
         setEtf({
-          symbol: data.symbol,
-          name: data.name,
-          current_price: data.current_price || 0,
-          previous_close: data.previous_close || 0,
-          change: data.change || 0,
-          change_percent: data.change_percent || 0,
-          open_price: data.open_price || 0,
-          high_price: data.high_price || 0,
-          low_price: data.low_price || 0,
-          volume: data.volume || 0,
-          dividend_yield: data.dividend_yield || 0,
-          volatility: data.volatility || 0,
-          total_return: data.total_return || 0,
-          max_drawdown: data.max_drawdown || 0,
-          sharpe_ratio: data.sharpe_ratio || 0,
-          expense_ratio: data.expense_ratio || 0,
+          symbol: realtimeData.symbol,
+          name: realtimeData.name,
+          current_price: realtimeData.current_price || 0,
+          previous_close: realtimeData.previous_close || 0,
+          change: realtimeData.change || 0,
+          change_percent: realtimeData.change_percent || 0,
+          open_price: realtimeData.open_price || 0,
+          high_price: realtimeData.high_price || 0,
+          low_price: realtimeData.low_price || 0,
+          volume: realtimeData.volume || 0,
+          dividend_yield: metricsData.dividend_yield || realtimeData.dividend_yield || 0,
+          volatility: metricsData.volatility || realtimeData.volatility || 0,
+          total_return: metricsData.total_return || realtimeData.total_return || 0,
+          max_drawdown: metricsData.max_drawdown || realtimeData.max_drawdown || 0,
+          sharpe_ratio: metricsData.sharpe_ratio || realtimeData.sharpe_ratio || 0,
+          expense_ratio: metricsData.expense_ratio || realtimeData.expense_ratio || 0,
           info: {
-            focus: data.focus || '',
-            strategy: data.strategy || '',
-            description: data.description || '',
+            focus: realtimeData.focus || '',
+            strategy: realtimeData.strategy || '',
+            description: realtimeData.description || '',
           },
         });
+
+        // 处理历史数据用于图表
+        if (historyResponse.success && historyResponse.data && Array.isArray(historyResponse.data)) {
+          const history = historyResponse.data;
+          setChartData({
+            dates: history.map((item: any) => item.date?.split('T')[0] || ''),
+            prices: history.map((item: any) => item.close_price || 0),
+            volumes: history.map((item: any) => item.volume || 0),
+          });
+        }
       } else {
         message.error('获取ETF数据失败');
       }
@@ -211,12 +237,16 @@ const ETFDetail: React.FC = () => {
         </PriceInfo>
       </ETFHeader>
 
-      <ChartPlaceholder>
-        <div style={{ textAlign: 'center' }}>
-          <LineChartOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-          <p>价格走势图 - 需要集成 Chart.js 或 ECharts</p>
-        </div>
-      </ChartPlaceholder>
+      {chartData && chartData.dates.length > 0 ? (
+        <PriceChart data={chartData} symbol={etf.symbol} />
+      ) : (
+        <ChartPlaceholder>
+          <div style={{ textAlign: 'center' }}>
+            <BarChartOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+            <p>暂无历史价格数据</p>
+          </div>
+        </ChartPlaceholder>
+      )}
 
       <Row gutter={[20, 20]}>
         <Col xs={24} lg={12}>

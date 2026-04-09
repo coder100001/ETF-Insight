@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import {
   Row, Col, Card, InputNumber, Slider, Button, Table,
@@ -119,91 +119,78 @@ const PresetButton = styled(Button)`
   margin-bottom: 8px;
 `;
 
-// 模拟投资组合数据
-const mockPortfolioResult: PortfolioResult = {
-  total_investment: 100000,
-  total_value: 108450.50,
-  total_return: 8450.50,
-  total_return_percent: 8.45,
-  annual_dividend_before_tax: 4850.25,
-  annual_dividend_after_tax: 4365.23,
-  dividend_tax: 485.02,
+// 空的投资组合结果用于初始化
+const initialPortfolioResult: PortfolioResult = {
+  total_investment: 0,
+  total_value: 0,
+  total_return: 0,
+  total_return_percent: 0,
+  annual_dividend_before_tax: 0,
+  annual_dividend_after_tax: 0,
+  dividend_tax: 0,
   tax_rate: 10,
-  weighted_dividend_yield: 4.85,
-  total_return_with_dividend: 12815.73,
-  total_return_with_dividend_percent: 12.82,
-  holdings: [
-    {
-      symbol: 'SCHD',
-      name: 'Schwab US Dividend Equity ETF',
-      weight: 40,
-      investment: 40000,
-      current_price: 30.44,
-      shares: 1314.06,
-      current_value: 40000,
-      capital_gain: 0,
-      capital_gain_percent: 0,
-      total_return: 12.5,
-      volatility: 15.2,
-      dividend_yield: 3.45,
-      annual_dividend_before_tax: 1380,
-      annual_dividend_after_tax: 1242,
-    },
-    {
-      symbol: 'SPYD',
-      name: 'SPDR S&P 500 High Dividend ETF',
-      weight: 30,
-      investment: 30000,
-      current_price: 47.85,
-      shares: 626.96,
-      current_value: 30000,
-      capital_gain: 0,
-      capital_gain_percent: 0,
-      total_return: 8.3,
-      volatility: 16.8,
-      dividend_yield: 4.12,
-      annual_dividend_before_tax: 1236,
-      annual_dividend_after_tax: 1112.40,
-    },
-    {
-      symbol: 'JEPQ',
-      name: 'JPMorgan Nasdaq Equity Premium Income ETF',
-      weight: 30,
-      investment: 30000,
-      current_price: 57.20,
-      shares: 524.48,
-      current_value: 30000,
-      capital_gain: 0,
-      capital_gain_percent: 0,
-      total_return: 15.8,
-      volatility: 18.5,
-      dividend_yield: 11.2,
-      annual_dividend_before_tax: 3360,
-      annual_dividend_after_tax: 3024,
-    },
-  ],
+  weighted_dividend_yield: 0,
+  total_return_with_dividend: 0,
+  total_return_with_dividend_percent: 0,
+  holdings: [],
 };
 
 const PortfolioAnalysis: React.FC = () => {
   const { message } = App.useApp();
   const [calculating, setCalculating] = useState(false);
-  const [portfolio, setPortfolio] = useState<PortfolioResult>(mockPortfolioResult);
+  const [portfolio, setPortfolio] = useState<PortfolioResult>(initialPortfolioResult);
 
   // 配置状态
   const [config, setConfig] = useState<UserConfig>({
     total_investment: 100000,
-    allocation: {
-      SCHD: 0.4,
-      SPYD: 0.3,
-      JEPQ: 0.3,
-      JEPI: 0,
-      VYM: 0,
-    },
+    allocation: {},
     tax_rate: 10,
   });
 
   // 计算总配比
   const totalAllocation = Object.values(config.allocation).reduce((sum, val) => sum + val, 0);
+
+  // 组件加载时获取数据库中的ETF列表并更新配置
+  useEffect(() => {
+    const fetchETFList = async () => {
+      try {
+        const response = await etfAPI.getList();
+        if (response.success && response.data) {
+          // 获取数据库中的所有ETF符号
+          const dbETFs = response.data.map(etf => etf.symbol);
+          
+          // 更新配置中的ETF分配，保留现有配置，添加新ETF
+          const newAllocation: Record<string, number> = {};
+          Object.keys(config.allocation).forEach(symbol => {
+            if (dbETFs.includes(symbol)) {
+              newAllocation[symbol] = config.allocation[symbol];
+            }
+          });
+          
+          // 添加数据库中但不在当前配置中的ETF（默认配比为0）
+          dbETFs.forEach(symbol => {
+            if (!(symbol in newAllocation)) {
+              newAllocation[symbol] = 0;
+            }
+          });
+          
+          setConfig(prev => ({
+            ...prev,
+            allocation: newAllocation,
+          }));
+          
+          // 加载完成后自动计算一次默认配置
+          setTimeout(() => {
+            handleCalculate();
+          }, 500);
+        }
+      } catch (error) {
+        message.error('获取ETF列表失败: ' + (error as Error).message);
+      }
+    };
+    
+    fetchETFList();
+  }, []);
 
   const handleAllocationChange = (symbol: string, value: number) => {
     setConfig(prev => ({
@@ -234,17 +221,18 @@ const PortfolioAnalysis: React.FC = () => {
       const response = await etfAPI.getPortfolioAnalysis(
         allocation,
         config.total_investment,
-        config.tax_rate / 100
+        config.tax_rate / 100  // 将百分比转换为小数
       );
 
       if (response.success && response.data) {
         // 转换后端数据为前端格式
         const backendData = response.data;
         const annualDividendBeforeTax = backendData.annual_dividend_before_tax || 0;
-        const taxRate = backendData.tax_rate / 100 || (config.tax_rate / 100);
-        const dividendTax = backendData.dividend_tax || (annualDividendBeforeTax * taxRate);
-        const annualDividendAfterTax = backendData.annual_dividend || (annualDividendBeforeTax - dividendTax);
-        
+        // 后端返回的税率已经是百分比（如10表示10%）
+        const taxRate = backendData.tax_rate || config.tax_rate;
+        const dividendTax = backendData.dividend_tax || (annualDividendBeforeTax * (taxRate / 100));
+        const annualDividendAfterTax = backendData.annual_dividend_after_tax || (annualDividendBeforeTax - dividendTax);
+
         setPortfolio({
           total_investment: config.total_investment,
           total_value: backendData.total_value || config.total_investment,
@@ -253,10 +241,10 @@ const PortfolioAnalysis: React.FC = () => {
           annual_dividend_before_tax: annualDividendBeforeTax,
           annual_dividend_after_tax: annualDividendAfterTax,
           dividend_tax: dividendTax,
-          tax_rate: taxRate * 100,
+          tax_rate: taxRate,
           weighted_dividend_yield: backendData.dividend_yield || 0,
-          total_return_with_dividend: backendData.after_tax_return || 0,
-          total_return_with_dividend_percent: (backendData.after_tax_return || 0) / config.total_investment * 100,
+          total_return_with_dividend: backendData.total_return_with_dividend || backendData.after_tax_return || 0,
+          total_return_with_dividend_percent: backendData.total_return_with_dividend_percent || (backendData.after_tax_return || 0) / config.total_investment * 100,
           holdings: (backendData.holdings || []).map((h: PortfolioHolding) => ({
             symbol: h.symbol,
             name: h.name || h.symbol + ' ETF',
@@ -286,12 +274,31 @@ const PortfolioAnalysis: React.FC = () => {
   };
 
   const applyPreset = (preset: string) => {
-    const presets: { [key: string]: { [key: string]: number } } = {
-      '433': { SCHD: 0.4, SPYD: 0.3, JEPQ: 0.3, JEPI: 0, VYM: 0 },
-      '442': { SCHD: 0.4, SPYD: 0.4, JEPQ: 0.2, JEPI: 0, VYM: 0 },
-      'balanced': { SCHD: 0.3, SPYD: 0.2, JEPQ: 0.15, JEPI: 0.2, VYM: 0.15 },
-      'conservative': { SCHD: 0.4, SPYD: 0.2, JEPQ: 0.1, JEPI: 0.2, VYM: 0.1 },
-    };
+    // 根据当前可用的ETF动态生成预设
+    const availableETFs = Object.keys(config.allocation);
+    if (availableETFs.length === 0) {
+      message.warning('请先等待ETF列表加载');
+      return;
+    }
+
+    // 动态分配预设（基于可用ETF平均分配）
+    const presets: { [key: string]: { [key: string]: number } } = {};
+    const count = availableETFs.length;
+    const evenWeight = parseFloat((1 / count).toFixed(4));
+    
+    presets['even'] = Object.fromEntries(availableETFs.map(s => [s, evenWeight]));
+    
+    // 如果有足够的ETF，创建一个偏向前3个的配置
+    if (count >= 3) {
+      const top3 = availableETFs.slice(0, 3);
+      const rest = availableETFs.slice(3);
+      const topWeight = 0.25;
+      const restWeight = rest.length > 0 ? (1 - topWeight * 3) / rest.length : 0;
+      presets['focused'] = Object.fromEntries([
+        ...top3.map(s => [s, topWeight]),
+        ...rest.map(s => [s, restWeight]),
+      ]);
+    }
 
     if (presets[preset]) {
       setConfig(prev => ({
@@ -406,6 +413,12 @@ const PortfolioAnalysis: React.FC = () => {
                 </PresetButton>
                 <PresetButton onClick={() => applyPreset('conservative')}>
                   稳健型
+                </PresetButton>
+                <PresetButton onClick={() => applyPreset('tech-heavy')}>
+                  科技型
+                </PresetButton>
+                <PresetButton onClick={() => applyPreset('real-estate')}>
+                  地产型
                 </PresetButton>
               </div>
             </div>
