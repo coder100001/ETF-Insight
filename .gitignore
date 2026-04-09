@@ -3,16 +3,61 @@
 *.dll
 *.so
 *.dylib
-.history
-.github
-.idea
-.env
 backend/app
 backend/syncetf
 backend/update_etf_prices
 backend/etf-insight
 backend/test_build
+backend/etf-app
 backend/cmd/syncetf/syncetf
 backend/cmd/update_etf_prices/update_etf_prices
 backend/cmd/generate_history/generate_history
 backend/cmd/test_factory/test_factory
+
+# IDE and Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.history/
+
+# Environment files
+.env
+backend/.env
+
+# Logs
+*.log
+logs/
+backend/*.log
+
+# Database files (local development)
+*.db
+backend/*.db
+backend/cmd/syncetf/*.db
+
+# Temporary files
+.tmp/
+temp/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+
+# Node modules (if any at root)
+node_modules/
+
+# Test coverage
+coverage/
+*.cover
+
+# AI/Assistant generated files
+.codebuddy/
+.workbuddy/
+IMPLEMENTATION_SUMMARY.md
+OPTIMIZATION_SUMMARY.md
+DEPLOYMENT_GUIDE.md
