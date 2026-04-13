@@ -10,26 +10,72 @@
 - **数据持久化**: 支持 MySQL 和 SQLite
 - **Redis 缓存**: 高性能缓存支持
 - **定时任务**: 内置定时任务调度器
-- **汇率服务**: 支持多货币转换
+- **汇率服务**: 支持多货币转换和多数据源故障转移
 
 ## 项目结构
 
 ```
 backend/
-├── config/         # 配置管理
-├── models/         # 数据模型 (GORM)
-├── services/       # 业务服务
-│   ├── yahoo_finance.go  # Yahoo Finance 数据获取
-│   ├── etf_analysis.go   # ETF 分析服务
-│   ├── cache.go          # 缓存服务
-│   └── exchange_rate.go  # 汇率服务
-├── handlers/       # HTTP 处理器
-├── routers/        # 路由配置
-├── tasks/          # 定时任务
-├── middleware/     # 中间件
-├── utils/          # 工具函数
-├── main.go         # 入口文件
-└── go.mod          # Go 模块配置
+├── config/                 # 配置管理
+│   ├── config.go          # 配置结构定义与加载
+│   └── config_test.go     # 配置测试
+├── models/                # 数据模型 (GORM)
+│   ├── models.go          # ETFConfig, ETFData, OperationLog, PortfolioConfig
+│   ├── db.go              # 数据库初始化与迁移
+│   ├── exchange_rate.go   # ExchangeRate, ExchangeRateSyncLog, CurrencyPair
+│   └── a_share_dividend_etf.go  # AShareDividendETF, AShareETFPortfolio
+├── handlers/              # HTTP 处理器
+│   ├── etf_handler.go     # ETF 行情/历史/指标/预测接口
+│   ├── etf_config_handler.go    # ETF 配置 CRUD 接口
+│   ├── portfolio_handler.go     # 投资组合分析/配置接口
+│   ├── a_share_portfolio_handler.go  # A股红利ETF组合接口
+│   ├── exchange_rate.go   # 汇率管理接口
+│   ├── health_handler.go  # 健康检查 (health/ready/live)
+│   └── middleware.go      # 日志与 CORS 中间件
+├── services/              # 业务逻辑层
+│   ├── datasource/        # 数据源微服务层
+│   │   ├── provider.go    # 数据源接口定义 + ProviderFactory
+│   │   ├── errors.go      # 标准错误定义
+│   │   ├── finage_provider.go   # Finage API 实现
+│   │   ├── finnhub_provider.go  # Finnhub API 实现
+│   │   └── fallback_provider.go # 后备数据源
+│   ├── exchange_rate/     # 汇率服务微服务层
+│   │   ├── datasource/    # 汇率数据源管理
+│   │   │   ├── provider.go # 汇率数据源接口
+│   │   │   ├── manager.go  # 数据源管理器 (含故障转移)
+│   │   │   ├── openexchange.go # Open Exchange Rates 实现
+│   │   │   ├── currencyapi.go  # CurrencyAPI 实现
+│   │   │   ├── frankfurter.go  # Frankfurter 实现
+│   │   │   └── fallback.go     # 后备数据源
+│   │   ├── monitor/       # 健康监控
+│   │   ├── sync/          # 数据同步
+│   │   └── service.go     # 汇率服务主逻辑
+│   ├── sync/              # 同步服务层
+│   │   ├── service.go     # 同步业务逻辑 + 入库校验 + 操作日志
+│   │   └── config.go      # ETF配置数据 + 预设组合
+│   ├── etf_analysis.go    # ETF分析服务 (指标/组合/预测/对比)
+│   ├── yahoo_finance.go   # Yahoo Finance 客户端
+│   └── finnhub.go         # Finnhub 独立客户端
+├── middleware/            # 中间件
+│   ├── security.go        # 安全头 + 速率限制 (100/min)
+│   └── security_test.go
+├── tasks/                 # 定时任务
+│   ├── scheduler.go       # 主调度器 (ETF更新/汇率更新)
+│   └── exchange_rate_task.go  # 汇率同步任务 (5min/10:30daily)
+├── utils/                 # 工具包
+│   ├── logger.go          # 日志工具
+│   └── logger_test.go
+├── cmd/                   # 命令行工具
+│   ├── syncetf/           # ETF数据同步工具
+│   ├── update_etf_prices/ # ETF价格批量更新工具 (Finage聚合API)
+│   ├── generate_history/  # 生成模拟历史数据
+│   ├── initetf/           # ETF初始数据导入
+│   ├── syncrates/         # 汇率数据同步
+│   ├── updateashare/      # A股红利ETF数据更新
+│   ├── test_factory/      # 数据源工厂测试
+│   └── test_finage/       # Finage API 测试
+├── main.go                # 入口文件
+└── go.mod                 # Go 模块配置
 ```
 
 ## 快速开始
@@ -48,152 +94,155 @@ go mod tidy
 export DB_DRIVER=sqlite  # 或 mysql
 export DB_DSN=etf_insight.db
 
-# Redis 配置 (可选)
-export REDIS_HOST=localhost
-export REDIS_PORT=6379
+# Finage API Key (必须配置)
+export FINAGE_API_KEY=your_finage_api_key_here
 
-# 服务器配置
-export SERVER_HOST=0.0.0.0
+# 后端服务配置
 export SERVER_PORT=8080
-```
+export SERVER_HOST=localhost
 
-### 3. 初始化数据库
-
-```bash
-go run main.go -init-db
-```
-
-### 4. 启动服务
-
-```bash
-go run main.go
-```
-
-服务将在 http://localhost:8080 启动
-
-## API 文档
-
-### ETF 相关
-
-- `GET /api/etf/list` - 获取ETF列表
-- `GET /api/etf/comparison?period=1y` - 获取ETF对比数据
-- `GET /api/etf/:symbol/realtime` - 获取实时数据
-- `GET /api/etf/:symbol/metrics?period=1y` - 获取指标数据
-- `GET /api/etf/:symbol/history?period=1y` - 获取历史数据
-- `GET /api/etf/:symbol/forecast` - 获取收益预测
-- `POST /api/etf/update-realtime` - 更新实时数据
-
-### 投资组合
-
-- `GET /api/portfolio-configs/` - 获取配置列表
-- `POST /api/portfolio-configs/` - 创建配置
-- `GET /api/portfolio-configs/:id` - 获取配置详情
-- `PUT /api/portfolio-configs/:id` - 更新配置
-- `DELETE /api/portfolio-configs/:id` - 删除配置
-- `POST /api/portfolio-configs/:id/toggle-status` - 切换状态
-- `POST /api/portfolio-configs/:id/analyze` - 分析配置
-
-### 汇率
-
-- `GET /api/exchange-rates/` - 获取汇率列表
-- `GET /api/exchange-rates/history` - 获取汇率历史
-- `GET /api/exchange-rates/convert` - 货币转换
-- `POST /api/exchange-rates/update` - 更新汇率
-
-### 工作流
-
-- `GET /api/workflows/` - 获取工作流列表
-- `POST /api/workflows/` - 创建工作流
-- `GET /api/workflows/:id` - 获取工作流详情
-- `PUT /api/workflows/:id` - 更新工作流
-- `DELETE /api/workflows/:id` - 删除工作流
-- `POST /api/workflows/:id/start` - 启动工作流
-
-### 工作流实例
-
-- `GET /api/instances/` - 获取实例列表
-- `GET /api/instances/:id` - 获取实例详情
-- `POST /api/instances/:id/retry` - 重试实例
-
-### 管理
-
-- `GET /api/admin/stats` - 获取系统统计
-- `GET /api/admin/logs` - 获取操作日志
-- `POST /api/admin/clear-cache` - 清除缓存
-
-## 定时任务
-
-- **汇率更新**: 每天 10:30
-- **ETF盘前更新**: 每天 9:30
-- **ETF收盘后更新**: 每天 16:30
-- **每小时检查**: 每小时执行
-
-## 与前端集成
-
-前端项目已更新 `src/services/api.ts`，会自动连接到 Go 后端。
-
-确保前端 `.env` 文件中设置了正确的 API 地址：
-
-```
-VITE_API_BASE_URL=http://localhost:8080/api
-```
-
-## 性能对比
-
-相比原 Python/Django 实现：
-
-- **响应时间**: 提升 3-5 倍
-- **并发处理**: 提升 10 倍以上
-- **内存占用**: 降低 50%+
-- **启动时间**: 从秒级降至毫秒级
-
-## 部署
-
-### Docker 部署
-
-```dockerfile
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o main .
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/main .
-CMD ["./main"]
-```
-
-### 生产环境配置
-
-```bash
-# 使用 MySQL
-export DB_DRIVER=mysql
-export DB_HOST=localhost
-export DB_PORT=3306
-export DB_USER=root
-export DB_PASSWORD=your_password
-export DB_NAME=etf_insight
-
-# 启用 Redis
+# 缓存配置
+export REDIS_ENABLED=false
 export REDIS_HOST=localhost
 export REDIS_PORT=6379
+export REDIS_PASSWORD=
 
-# 生产模式
+# 日志级别
 export LOG_LEVEL=info
 ```
 
-## 开发计划
+### 3. 启动服务
 
-- [x] 项目结构搭建
-- [x] 数据模型迁移
-- [x] ETF 数据获取服务
-- [x] ETF 分析服务
-- [x] 汇率服务
-- [x] 缓存服务
-- [x] 定时任务
-- [x] REST API
-- [x] 前端 API 对接
-- [ ] 工作流引擎完整实现
-- [ ] 单元测试
-- [ ] 性能优化
+```bash
+# 开发模式
+go run main.go
+
+# 生产模式
+go build -o etf-insight
+./etf-insight
+```
+
+## API 接口
+
+### ETF 相关接口
+- `GET /api/etf/list` - 获取 ETF 列表
+- `GET /api/etf/detail/:symbol` - 获取 ETF 详情
+- `GET /api/etf/history/:symbol` - 获取 ETF 历史数据
+- `GET /api/etf/compare` - ETF 对比分析
+
+### 投资组合接口
+- `GET /api/portfolio/analysis` - 投资组合分析
+- `POST /api/portfolio/config` - 配置投资组合
+- `GET /api/portfolio/returns` - 组合收益率计算
+
+### 汇率接口
+- `GET /api/exchange-rate` - 获取汇率数据
+- `GET /api/exchange-rate/sync-log` - 获取同步日志
+
+### 健康检查
+- `GET /health` - 服务健康状态
+- `GET /ready` - 服务就绪状态
+- `GET /live` - 服务存活状态
+
+## 数据源配置
+
+### ETF 数据源
+- **主数据源**: Finage API (唯一真实数据源)
+- **同步频率**: 定时任务自动更新
+- **数据质量**: 实时数据、完整字段、入库校验
+
+### 汇率数据源
+- **主数据源**: Open Exchange Rates
+- **备用数据源**: CurrencyAPI、Frankfurter
+- **故障转移**: 自动切换、健康检查
+- **同步策略**: 5分钟间隔、数据一致性保证
+
+## 开发指南
+
+### 代码规范
+- 遵循 Go 官方代码规范
+- 使用 `gofmt` 格式化代码
+- 重要函数和复杂逻辑必须注释
+- 新功能必须包含单元测试
+
+### 数据模型
+- 使用 GORM ORM 框架
+- 所有字段必须入库
+- 数据一致性校验
+- 操作日志记录
+
+### 错误处理
+- 统一的错误码和错误信息
+- 详细的日志记录
+- 友好的错误提示
+
+## 部署说明
+
+### 开发环境
+```bash
+# 使用 SQLite 数据库
+go run main.go
+```
+
+### 生产环境
+```bash
+# 使用 PostgreSQL 数据库
+export DB_DRIVER=postgres
+export DB_DSN="host=localhost user=etf dbname=etf_insight sslmode=disable"
+
+# 启用 Redis 缓存
+export REDIS_ENABLED=true
+export REDIS_HOST=redis-server
+export REDIS_PORT=6379
+
+# 构建并运行
+go build -o etf-insight
+./etf-insight
+```
+
+## 监控和日志
+
+### 日志配置
+- 日志级别: DEBUG, INFO, WARN, ERROR
+- 日志文件: `logs/app.log`
+- 汇率同步日志: `logs/exchange_rate.log`
+
+### 健康监控
+- 服务健康状态: `GET /health`
+- 数据源可用性检查
+- 数据库连接状态
+
+## 故障排除
+
+### 常见问题
+1. **数据源连接失败**: 检查网络连接和 API Key 配置
+2. **数据库连接失败**: 检查数据库配置和连接状态
+3. **汇率数据不一致**: 系统会自动故障转移，检查日志确认当前数据源
+
+### 日志查看
+```bash
+# 查看应用日志
+tail -f logs/app.log
+
+# 查看汇率同步日志
+tail -f logs/exchange_rate.log
+
+# 查看错误日志
+grep "ERROR" logs/app.log
+```
+
+## 版本更新
+
+### v2.3 更新内容
+- ✅ 汇率服务多数据源故障转移
+- ✅ 竞态条件修复和性能优化
+- ✅ 代码质量全面优化
+
+### 未来计划
+- 🔄 智能分析引擎开发
+- 🔄 回测框架集成
+- 🔄 微服务架构准备
+
+---
+
+**更多信息请参考**: [项目主文档](../README.md) | [核心上下文文档](../agents.md)

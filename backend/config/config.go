@@ -11,11 +11,18 @@ import (
 
 // Config 应用配置
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	ETF      ETFConfig      `yaml:"etf"`
-	Schedule ScheduleConfig `yaml:"schedule"`
-	Log      LogConfig      `yaml:"log"`
+	Server       ServerConfig       `yaml:"server"`
+	Database     DatabaseConfig     `yaml:"database"`
+	ETF          ETFConfig          `yaml:"etf"`
+	Schedule     ScheduleConfig     `yaml:"schedule"`
+	Log          LogConfig          `yaml:"log"`
+	ExchangeRate ExchangeRateConfig `yaml:"exchange_rate"`
+}
+
+// ExchangeRateConfig 汇率数据源配置
+type ExchangeRateConfig struct {
+	OpenExchangeAPIKey string `yaml:"openexchange_api_key"`
+	CurrencyAPIKey     string `yaml:"currencyapi_key"`
 }
 
 // ServerConfig 服务器配置
@@ -155,6 +162,10 @@ func DefaultConfig() *Config {
 			MarketCloseUpdate: "16:30",
 			Timezone:          "America/New_York",
 			ExchangeRateTime:  "10:30",
+		},
+		ExchangeRate: ExchangeRateConfig{
+			OpenExchangeAPIKey: getEnv("OPENEXCHANGE_API_KEY", ""),
+			CurrencyAPIKey:     getEnv("CURRENCYAPI_KEY", ""),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),

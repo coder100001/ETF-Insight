@@ -17,6 +17,7 @@ import (
 	"etf-insight/models"
 	"etf-insight/services"
 	"etf-insight/services/datasource"
+	erdatasource "etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
 	"etf-insight/utils"
 
@@ -93,8 +94,12 @@ func main() {
 	scheduler.Start()
 	defer scheduler.Stop()
 
-	// 启动汇率同步定时任务
-	exchangeRateTask := tasks.NewExchangeRateTask()
+	// 启动汇率同步定时任务（使用新的多数据源故障转移系统）
+	exchangeRateConfig := &erdatasource.DataSourceConfig{
+		OpenExchangeAPIKey: cfg.ExchangeRate.OpenExchangeAPIKey,
+		CurrencyAPIKey:     cfg.ExchangeRate.CurrencyAPIKey,
+	}
+	exchangeRateTask := tasks.NewExchangeRateTask(exchangeRateConfig)
 	exchangeRateTask.Start()
 	defer exchangeRateTask.Stop()
 
@@ -150,13 +155,14 @@ func main() {
 	router.GET("/api/a-share/dividend/:frequency", aShareHandler.CalculateDividendByFrequency)
 
 	// 汇率管理路由
-	exchangeRateHandler := handlers.NewExchangeRateHandler()
+	exchangeRateHandler := handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask)
 	router.GET("/api/exchange-rates", exchangeRateHandler.GetExchangeRates)
 	router.GET("/api/exchange-rates/:from/:to", exchangeRateHandler.GetExchangeRate)
 	router.POST("/api/exchange-rates/convert", exchangeRateHandler.ConvertCurrency)
 	router.POST("/api/exchange-rates/sync", exchangeRateHandler.TriggerSync)
 	router.GET("/api/exchange-rates/summary", exchangeRateHandler.GetExchangeRatesSummary)
 	router.GET("/api/exchange-rates/currencies", exchangeRateHandler.GetSupportedCurrencies)
+	router.GET("/api/exchange-rates/datasource-status", exchangeRateHandler.GetDataSourceStatus)
 	router.GET("/api/currency-pairs", exchangeRateHandler.GetCurrencyPairs)
 
 	router.Static("/assets", "../frontend/dist/assets")

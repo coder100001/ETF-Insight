@@ -13,7 +13,7 @@ ETF-Insight 是一个专业的 ETF 分析与对比平台，提供实时行情、
 - **投资组合分析** - 创建和分析投资组合，计算年化收益、夏普比率等
 - **历史数据查询** - 查看 ETF 的历史价格走势和技术指标
 - **A 股组合分析** - 支持 A 股投资组合的分红和收益分析
-- **汇率查询** - 提供实时汇率数据
+- **汇率查询** - 提供实时汇率数据和多数据源故障转移支持
 
 ## 🔧 环境要求
 
@@ -50,249 +50,201 @@ VITE_API_BASE_URL=http://localhost:8080
 VITE_APP_TITLE=ETF-Insight
 ```
 
-## 🚀 启动项目
-
-### 开发模式
+### 4. 启动开发服务器
 
 ```bash
 npm run dev
 ```
 
-启动后访问：http://localhost:5173
+应用将在 http://localhost:5173 启动
 
-### 生产构建
-
-```bash
-npm run build
-```
-
-构建产物输出到 `dist/` 目录
-
-### 预览生产构建
-
-```bash
-npm run preview
-```
-
-### 代码检查
-
-```bash
-# ESLint 检查
-npm run lint
-
-# 类型检查
-npm run type-check
-```
-
-## 📁 项目结构
+## 🏗️ 项目结构
 
 ```
 frontend/
 ├── src/
-│   ├── pages/              # 页面组件
-│   │   ├── ETFComparison.tsx      # ETF 对比页面
-│   │   ├── ETFDetail.tsx          # ETF 详情页面
-│   │   ├── PortfolioAnalysis.tsx  # 投资组合分析
-│   │   ├── ASharePortfolio.tsx    # A 股组合页面
-│   │   ├── ExchangeRate.tsx       # 汇率页面
-│   │   └── InvestmentStrategy.tsx # 投资策略页面
-│   ├── components/         # 通用组件
-│   ├── services/           # API 服务
-│   ├── hooks/              # 自定义 Hooks
-│   ├── utils/              # 工具函数
-│   ├── types/              # TypeScript 类型定义
-│   ├── App.tsx             # 应用根组件
-│   └── main.tsx            # 应用入口
-├── public/                 # 静态资源
-├── package.json            # 依赖配置
-├── tsconfig.json           # TypeScript 配置
-├── vite.config.ts          # Vite 配置
-└── .eslintrc.js            # ESLint 配置
-```
-
-## 🎯 页面说明
-
-### ETF 对比页面 (`/etf-comparison`)
-
-展示多只 ETF 的对比数据，包括：
-- 基本信息（名称、代码、费率、交易所）
-- 实时行情（价格、涨跌幅、成交量）
-- 技术指标（波动率、夏普比率、最大回撤）
-- 股息数据（股息率、年度收益）
-
-### ETF 详情页面 (`/etf-detail/:symbol`)
-
-单只 ETF 的详细信息页面，包含：
-- 实时价格图表
-- 历史走势分析
-- 基本信息卡片
-- 技术指标展示
-
-### 投资组合分析 (`/portfolio`)
-
-创建和分析投资组合：
-- 自定义 ETF 配置比例
-- 计算总投资价值
-- 分析年度股息收益
-- 计算税后收益
-
-### A 股组合页面 (`/a-share-portfolio`)
-
-A 股投资组合分析：
-- 持仓列表展示
-- 分红数据统计
-- 收益率计算
-
-### 汇率页面 (`/exchange-rate`)
-
-汇率查询功能：
-- 主要货币对汇率
-- 汇率走势图表
-- 实时汇率更新
-
-## 🔌 API 集成
-
-项目使用 Axios 进行 HTTP 请求，所有 API 服务位于 `src/services/` 目录。
-
-### 主要 API 端点
-
-```typescript
-// ETF 相关
-GET  /api/etf/list              // 获取 ETF 列表
-GET  /api/etf/comparison        // 获取 ETF 对比数据
-GET  /api/etf/:symbol/realtime  // 获取实时行情
-GET  /api/etf/:symbol/history   // 获取历史数据
-POST /api/etf/update-realtime   // 更新实时数据
-
-// 投资组合
-POST /api/etf/portfolio         // 分析投资组合
-
-// A 股组合
-GET  /api/a-share-portfolio/list     // 获取组合列表
-POST /api/a-share-portfolio          // 创建组合
-PUT  /api/a-share-portfolio/:id      // 更新组合
-DELETE /api/a-share-portfolio/:id    // 删除组合
-
-// 汇率
-GET /api/exchange-rate/pairs    // 获取货币对列表
-GET /api/exchange-rate/latest   // 获取最新汇率
-```
-
-### 使用示例
-
-```typescript
-import { etfService } from '@/services/etf';
-
-// 获取 ETF 列表
-const etfList = await etfService.getETFList();
-
-// 获取实时行情
-const realtimeData = await etfService.getETFRealtime('SCHD');
-
-// 获取对比数据
-const comparison = await etfService.getETFComparison(['SCHD', 'SPYD', 'VYM']);
+│   ├── pages/              # 页面组件 (14个)
+│   │   ├── Dashboard.tsx          # 仪表盘
+│   │   ├── ETFDashboard.tsx       # ETF 市场总览
+│   │   ├── ETFComparison.tsx      # ETF 对比分析
+│   │   ├── ETFComparisonReport.tsx # ETF 对比报告
+│   │   ├── ETFDetail.tsx          # ETF 详情页
+│   │   ├── ETFConfig.tsx          # ETF 配置管理
+│   │   ├── PortfolioAnalysis.tsx   # 投资组合分析
+│   │   ├── PortfolioConfig.tsx     # 组合配置管理
+│   │   ├── ASharePortfolio.tsx     # A股红利ETF组合
+│   │   ├── ExchangeRate.tsx        # 汇率管理
+│   │   ├── InvestmentStrategy.tsx  # 投资策略
+│   │   ├── OperationLogs.tsx       # 操作日志
+│   │   ├── WorkflowList.tsx        # 工作流列表
+│   │   └── InstanceList.tsx        # 实例列表
+│   ├── components/         # 公共组件
+│   │   ├── Layout.tsx             # 布局
+│   │   ├── PriceChart.tsx         # 价格图表
+│   │   ├── ComparisonRadarChart.tsx # 对比雷达图
+│   │   ├── ETFFilter.tsx          # ETF 筛选
+│   │   ├── HoldingPieChart.tsx    # 持仓饼图
+│   │   ├── SectorBarChart.tsx     # 行业柱状图
+│   │   ├── StatCard.tsx           # 统计卡片
+│   │   └── StockCard.tsx          # 股票卡片
+│   ├── services/api.ts     # API 服务 (含请求合并+重试, 类型安全)
+│   ├── utils/api.ts        # API 工具函数 (类型安全, ETFHistoryDataItem/ETFConfig)
+│   ├── types/index.ts      # TypeScript 类型定义 (含ETFHistoryDataItem/ETFForecastResult)
+│   └── styles/theme.ts     # 主题配置
+├── package.json
+└── vite.config.ts
 ```
 
 ## 🎨 技术栈
 
-- **React 18** - 前端框架
-- **TypeScript 5.x** - 类型系统
-- **Vite 6.x** - 构建工具
-- **Ant Design 5.x** - UI 组件库
-- **Axios** - HTTP 客户端
-- **Recharts** - 图表库
-- **Day.js** - 日期处理
-- **ESLint + Prettier** - 代码规范
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| **React** | ^19.2.4 | UI 框架 |
+| **TypeScript** | ^5.x | 类型安全 |
+| **Vite** | latest | 构建工具 |
+| **Ant Design** | ^6.3.4 | UI 组件库 |
+| **ECharts** | ^6.0.0 | 数据可视化 |
+| **Recharts** | ^3.8.1 | 图表组件 |
+| **React Router** | ^7.13.2 | 路由管理 |
 
-## 📝 开发规范
+## 📊 页面功能
 
-### 代码风格
+### 仪表盘 (Dashboard)
+- 系统概览和关键指标展示
+- 快速访问常用功能
 
-- 使用 TypeScript 编写所有代码
-- 组件采用函数式编程风格
-- 使用 ESLint 和 Prettier 保持代码一致性
-- 遵循 React Hooks 最佳实践
+### ETF 市场总览 (ETF Dashboard)
+- ETF 列表和实时行情
+- 筛选和排序功能
+- 快速查看关键指标
 
-### 命名规范
+### ETF 对比分析 (ETF Comparison)
+- 多只 ETF 并排对比
+- 雷达图可视化对比
+- 详细指标对比表格
 
-- 组件文件：PascalCase (如 `ETFComparison.tsx`)
-- 工具函数：camelCase (如 `formatPrice.ts`)
-- 类型定义：PascalCase (如 `ETFData.ts`)
-- 常量：UPPER_SNAKE_CASE (如 `API_BASE_URL`)
+### ETF 详情页 (ETF Detail)
+- 详细 ETF 信息展示
+- 历史价格图表
+- 持仓分析和风险指标
 
-### Git 提交规范
+### 投资组合分析 (Portfolio Analysis)
+- 投资组合构建和管理
+- 收益分析和风险评估
+- 资产配置优化建议
 
-```bash
-# 功能开发
-git commit -m "feat: add ETF comparison feature"
+### 汇率管理 (Exchange Rate)
+- 实时汇率数据展示
+- 多数据源状态监控
+- 货币转换功能
 
-# Bug 修复
-git commit -m "fix: resolve ETF price display issue"
+## 🔧 开发指南
 
-# 文档更新
-git commit -m "docs: update README.md"
+### 代码规范
+- **TypeScript**: 严格类型检查，禁用 `any` 类型
+- **React**: 函数式组件，Hooks 规范使用
+- **命名规范**: 驼峰命名法，语义化命名
+- **组件规范**: 单一职责原则，可复用性设计
 
-# 代码重构
-git commit -m "refactor: optimize API service structure"
-```
+### 状态管理
+- 使用 React Hooks 进行状态管理
+- 复杂状态使用 Context API
+- 避免不必要的全局状态
 
-## 🔍 常见问题
+### API 调用
+- 统一使用 `services/api.ts` 进行 API 调用
+- 支持请求合并和重试机制
+- 完整的错误处理
 
-### Q: 开发服务器启动失败？
+### 样式规范
+- 使用 Ant Design 组件库
+- 自定义样式使用 CSS Modules
+- 响应式设计支持
 
-**A**: 检查 Node.js 版本是否满足要求，并确认端口 5173 未被占用。
+## 🚀 构建和部署
 
-```bash
-node -v  # 检查 Node.js 版本
-lsof -ti:5173 | xargs kill  # 释放端口
-```
-
-### Q: API 请求失败？
-
-**A**: 确认后端服务已启动（端口 8080），并检查 `.env` 中的 `VITE_API_BASE_URL` 配置。
-
-```bash
-# 检查后端服务
-curl http://localhost:8080/health
-```
-
-### Q: TypeScript 类型错误？
-
-**A**: 运行类型检查查看详细错误，并确保类型定义完整。
-
-```bash
-npm run type-check
-```
-
-### Q: 构建产物过大？
-
-**A**: 检查是否有不必要的依赖，使用动态导入优化代码分割。
+### 开发构建
 
 ```bash
-npm run build -- --sourcemap
-npx vite-bundle-visualizer
+# 开发模式
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 预览生产构建
+npm run preview
 ```
 
-### Q: 缓存导致数据不更新？
+### 生产部署
 
-**A**: 清除浏览器缓存或使用强制刷新（Ctrl+Shift+R / Cmd+Shift+R）。
+构建后的文件位于 `dist/` 目录，可以部署到任何静态文件服务器。
 
-## 📄 许可证
+```bash
+# 构建生产版本
+npm run build
 
-MIT License
+# 部署到 Nginx
+cp -r dist/* /usr/share/nginx/html/
+```
+
+## 📈 性能优化
+
+### 代码分割
+- 路由级别的代码分割
+- 组件懒加载
+- 按需引入第三方库
+
+### 缓存策略
+- API 响应缓存
+- 组件 memoization
+- 图片懒加载
+
+### 构建优化
+- Vite 构建优化
+- Tree shaking
+- 压缩和混淆
+
+## 🐛 故障排除
+
+### 常见问题
+
+1. **API 连接失败**
+   - 检查后端服务是否启动
+   - 确认 API 地址配置正确
+   - 检查网络连接
+
+2. **类型错误**
+   - 检查 TypeScript 类型定义
+   - 确认 API 响应数据结构
+   - 更新相关类型定义
+
+3. **样式问题**
+   - 检查 CSS Modules 导入
+   - 确认 Ant Design 主题配置
+   - 验证响应式设计
+
+### 调试工具
+
+- **React Developer Tools**: 组件状态调试
+- **Redux DevTools**: 状态管理调试
+- **浏览器开发者工具**: 网络请求和性能分析
 
 ## 🤝 贡献指南
 
-1. Fork 本项目
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+欢迎提交 Issue 和 Pull Request！请确保：
 
-## 📞 联系方式
+1. 遵循项目代码规范
+2. 新功能包含单元测试
+3. 更新相关文档
+4. 通过代码审查
 
-如有问题或建议，请提交 Issue 或联系开发团队。
+## 📄 许可证
+
+本项目采用 MIT 许可证。
 
 ---
 
-**最后更新**: 2026-04-08
+**立即体验**: [http://localhost:5173](http://localhost:5173)  
+**后端 API**: [http://localhost:8080](http://localhost:8080)  
+**项目文档**: [../README.md](../README.md)

@@ -77,7 +77,17 @@ interface ExchangeRate {
   previous_rate: number;
   change_percent: number;
   updated_at: string;
-  source: string;
+  data_source: string;
+  source_type: string;
+}
+
+interface DataSourceStatus {
+  name: string;
+  available: boolean;
+  response_time: string;
+  success_rate: string;
+  rate_limit: number;
+  api_key: string;
 }
 
 const ExchangeRatePage: React.FC = () => {
@@ -85,11 +95,16 @@ const ExchangeRatePage: React.FC = () => {
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [dataSourceStatus, setDataSourceStatus] = useState<DataSourceStatus | null>(null);
 
   useEffect(() => {
     fetchRates();
+    fetchDataSourceStatus();
     // 每5分钟自动刷新一次
-    const interval = setInterval(fetchRates, 5 * 60 * 1000);
+    const interval = setInterval(() => {
+      fetchRates();
+      fetchDataSourceStatus();
+    }, 5 * 60 * 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -109,6 +124,47 @@ const ExchangeRatePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchDataSourceStatus = async () => {
+    try {
+      const response = await axios.get('/api/exchange-rates/datasource-status');
+      if (response.data.success && response.data.data) {
+        setDataSourceStatus(response.data.data.current);
+      }
+    } catch (error) {
+      console.error('获取数据源状态失败:', error);
+    }
+  };
+
+  // 获取指定货币对的汇率显示
+  const getRateDisplay = (from: string, to: string): string => {
+    const rate = rates.find(r =>
+      r.from_currency === from && r.to_currency === to
+    );
+    if (rate) {
+      const change = rate.change_percent;
+      const sign = change >= 0 ? '+' : '';
+      return `${rate.rate.toFixed(4)} (${sign}${change.toFixed(2)}%)`;
+    }
+    return '暂无数据';
+  };
+
+  // 获取数据源显示名称
+  const getDataSourceDisplay = (name: string): string => {
+    const displayNames: Record<string, string> = {
+      'openexchange': 'Open Exchange Rates',
+      'currencyapi': 'CurrencyAPI',
+      'frankfurter': 'Frankfurter',
+      'fallback': '本地缓存'
+    };
+    return displayNames[name] || name;
+  };
+
+  const handleRefresh = () => {
+    fetchRates();
+    fetchDataSourceStatus();
+    message.success('汇率数据已更新');
   };
 
   const handleRefresh = () => {
@@ -148,9 +204,17 @@ const ExchangeRatePage: React.FC = () => {
     },
     {
       title: '数据源',
-      dataIndex: 'source',
-      key: 'source',
+      dataIndex: 'data_source',
+      key: 'data_source',
       align: 'center' as const,
+      render: (source: string) => (
+        <Badge
+          count={source || 'unknown'}
+          style={{
+            backgroundColor: source === 'demo' ? '#ff4d4f' : source === 'fallback' ? '#faad14' : '#52c41a'
+          }}
+        />
+      ),
     },
     {
       title: '更新时间',
@@ -174,10 +238,21 @@ const ExchangeRatePage: React.FC = () => {
   return (
     <Layout>
       <PageHeader>
-        <h2>
-          <SwapOutlined />
-          外汇管理
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <h2 style={{ margin: 0 }}>
+            <SwapOutlined />
+            外汇管理
+          </h2>
+          {dataSourceStatus && (
+            <Badge
+              count={`数据源: ${getDataSourceDisplay(dataSourceStatus.name)}`}
+              style={{
+                backgroundColor: dataSourceStatus.available ? '#52c41a' : '#ff4d4f',
+                fontSize: '12px'
+              }}
+            />
+          )}
+        </div>
         <Button type="primary" icon={<ReloadOutlined />} onClick={handleRefresh}>
           刷新汇率
         </Button>
@@ -186,19 +261,19 @@ const ExchangeRatePage: React.FC = () => {
       <StatsRow>
         <StatCard $borderColor={theme.colors.primary}>
           <h3>USD/CNY</h3>
-          <p>7.2345 (+0.26%)</p>
+          <p>{getRateDisplay('USD', 'CNY')}</p>
         </StatCard>
         <StatCard $borderColor={theme.colors.success}>
           <h3>EUR/CNY</h3>
-          <p>7.8234 (-0.28%)</p>
+          <p>{getRateDisplay('EUR', 'CNY')}</p>
         </StatCard>
         <StatCard $borderColor={theme.colors.warning}>
           <h3>GBP/CNY</h3>
-          <p>9.1234 (+0.20%)</p>
+          <p>{getRateDisplay('GBP', 'CNY')}</p>
         </StatCard>
         <StatCard $borderColor={theme.colors.info}>
           <h3>JPY/CNY</h3>
-          <p>0.0478 (-0.62%)</p>
+          <p>{getRateDisplay('JPY', 'CNY')}</p>
         </StatCard>
       </StatsRow>
 

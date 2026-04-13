@@ -6,21 +6,22 @@ import (
 	"time"
 
 	"etf-insight/models"
-	"etf-insight/services"
+	exchangerate "etf-insight/services/exchange_rate"
+	"etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ExchangeRateHandler struct {
-	exchangeSvc *services.ExchangeRateService
+	exchangeSvc *exchangerate.ExchangeRateService
 	syncTask    *tasks.ExchangeRateTask
 }
 
-func NewExchangeRateHandler() *ExchangeRateHandler {
+func NewExchangeRateHandler(config *datasource.DataSourceConfig, syncTask *tasks.ExchangeRateTask) *ExchangeRateHandler {
 	return &ExchangeRateHandler{
-		exchangeSvc: services.NewExchangeRateService(),
-		syncTask:    tasks.NewExchangeRateTask(),
+		exchangeSvc: exchangerate.NewExchangeRateService(config),
+		syncTask:    syncTask,
 	}
 }
 
@@ -236,5 +237,14 @@ func (h *ExchangeRateHandler) GetExchangeRatesSummary(c *gin.Context) {
 		"success": true,
 		"data":    responses,
 		"count":   len(responses),
+	})
+}
+
+// GetDataSourceStatus 获取数据源状态
+func (h *ExchangeRateHandler) GetDataSourceStatus(c *gin.Context) {
+	status := h.exchangeSvc.GetDataSourceStatus()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    status,
 	})
 }
