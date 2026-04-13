@@ -62,6 +62,7 @@ func main() {
 	utils.Info("Cache service removed, all data will be fetched directly from database/API")
 
 	analysisService := services.NewETFAnalysisService(nil)
+	optimizer := services.NewPortfolioOptimizer(analysisService)
 	exchangeService := services.NewExchangeRateService()
 
 	// 初始化 Finage 数据源（主要数据源）
@@ -114,6 +115,7 @@ func main() {
 
 	etfHandler := handlers.NewETFHandler(analysisService, defaultProvider)
 	portfolioHandler := handlers.NewPortfolioHandler(analysisService)
+	optimizerHandler := handlers.NewPortfolioOptimizerHandler(optimizer)
 
 	router.GET("/health", handlers.HealthHandler)
 	router.GET("/ready", handlers.ReadyHandler)
@@ -135,6 +137,10 @@ func main() {
 	router.DELETE("/api/portfolio-configs/:id", portfolioHandler.DeletePortfolioConfig)
 	router.POST("/api/portfolio-configs/:id/toggle-status", portfolioHandler.TogglePortfolioConfigStatus)
 	router.POST("/api/portfolio-configs/:id/analyze", portfolioHandler.AnalyzePortfolioConfig)
+
+	// 投资组合优化路由
+	router.POST("/api/portfolio/optimize", optimizerHandler.OptimizePortfolio)
+	router.POST("/api/portfolio/efficient-frontier", optimizerHandler.GetEfficientFrontier)
 
 	// ETF配置路由
 	etfConfigHandler := handlers.NewETFConfigHandler()
