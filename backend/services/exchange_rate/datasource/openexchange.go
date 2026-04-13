@@ -17,17 +17,17 @@ import (
 // OpenExchangeProvider Open Exchange Rates数据源实现
 // 免费额度：每月1000次请求，支持200+货币，每小时更新
 type OpenExchangeProvider struct {
-	client         *http.Client
-	apiKey         string
-	name           string
-	baseURL        string
-	rateLimit      int                      // 每分钟请求限制
-	requestCount   atomic.Int32             // 请求计数器
-	responseTime   atomic.Int64             // 平均响应时间（纳秒）
-	successCount   atomic.Int32             // 成功计数器
-	errorCount     atomic.Int32             // 错误计数器
-	lastRequest    atomic.Pointer[time.Time] // 最后请求时间
-	supportedCurrencies []string             // 支持的货币列表
+	client              *http.Client
+	apiKey              string
+	name                string
+	baseURL             string
+	rateLimit           int                       // 每分钟请求限制
+	requestCount        atomic.Int32              // 请求计数器
+	responseTime        atomic.Int64              // 平均响应时间（纳秒）
+	successCount        atomic.Int32              // 成功计数器
+	errorCount          atomic.Int32              // 错误计数器
+	lastRequest         atomic.Pointer[time.Time] // 最后请求时间
+	supportedCurrencies []string                  // 支持的货币列表
 }
 
 // OpenExchangeResponse Open Exchange Rates API响应结构
@@ -213,15 +213,15 @@ func (p *OpenExchangeProvider) GetRates(ctx context.Context, baseCurrency string
 			"url", url)
 
 		return &BatchRateResult{
-			Success:     false,
-			Error:       fmt.Sprintf("API返回状态码: %d", resp.StatusCode),
-			DataSource:  p.name,
-			RequestTime: time.Since(startTime),
-		}, &ProviderError{
-			Code:    "API_ERROR",
-			Message: fmt.Sprintf("API返回错误: %d", resp.StatusCode),
-			Source:  p.name,
-		}
+				Success:     false,
+				Error:       fmt.Sprintf("API返回状态码: %d", resp.StatusCode),
+				DataSource:  p.name,
+				RequestTime: time.Since(startTime),
+			}, &ProviderError{
+				Code:    "API_ERROR",
+				Message: fmt.Sprintf("API返回错误: %d", resp.StatusCode),
+				Source:  p.name,
+			}
 	}
 
 	// 解析JSON响应
@@ -240,15 +240,15 @@ func (p *OpenExchangeProvider) GetRates(ctx context.Context, baseCurrency string
 	if apiResp.Error {
 		p.errorCount.Add(1)
 		return &BatchRateResult{
-			Success:     false,
-			Error:       apiResp.Description,
-			DataSource:  p.name,
-			RequestTime: time.Since(startTime),
-		}, &ProviderError{
-			Code:    "API_ERROR",
-			Message: apiResp.Description,
-			Source:  p.name,
-		}
+				Success:     false,
+				Error:       apiResp.Description,
+				DataSource:  p.name,
+				RequestTime: time.Since(startTime),
+			}, &ProviderError{
+				Code:    "API_ERROR",
+				Message: apiResp.Description,
+				Source:  p.name,
+			}
 	}
 
 	// 转换响应数据

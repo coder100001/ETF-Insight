@@ -335,8 +335,8 @@ type mockFailingProvider struct {
 	name string
 }
 
-func (m *mockFailingProvider) GetName() string                                          { return m.name }
-func (m *mockFailingProvider) GetBaseCurrency() string                                  { return "USD" }
+func (m *mockFailingProvider) GetName() string         { return m.name }
+func (m *mockFailingProvider) GetBaseCurrency() string { return "USD" }
 func (m *mockFailingProvider) GetRate(ctx context.Context, from, to string) (decimal.Decimal, error) {
 	return decimal.Zero, &ProviderError{Code: "MOCK_ERROR", Message: "模拟失败", Source: m.name}
 }
@@ -344,10 +344,10 @@ func (m *mockFailingProvider) GetRates(ctx context.Context, base string) (*Batch
 	return &BatchRateResult{Success: false, Error: "模拟失败", DataSource: m.name},
 		&ProviderError{Code: "MOCK_ERROR", Message: "模拟失败", Source: m.name}
 }
-func (m *mockFailingProvider) IsAvailable(ctx context.Context) bool  { return false }
-func (m *mockFailingProvider) GetRateLimit() int                     { return 0 }
-func (m *mockFailingProvider) GetResponseTime() time.Duration        { return 0 }
-func (m *mockFailingProvider) GetSuccessRate() float64               { return 0 }
-func (m *mockFailingProvider) GetAPIKey() string                     { return "" }
-func (m *mockFailingProvider) GetSupportedCurrencies() []string      { return nil }
+func (m *mockFailingProvider) IsAvailable(ctx context.Context) bool    { return false }
+func (m *mockFailingProvider) GetRateLimit() int                       { return 0 }
+func (m *mockFailingProvider) GetResponseTime() time.Duration          { return 0 }
+func (m *mockFailingProvider) GetSuccessRate() float64                 { return 0 }
+func (m *mockFailingProvider) GetAPIKey() string                       { return "" }
+func (m *mockFailingProvider) GetSupportedCurrencies() []string        { return nil }
 func (m *mockFailingProvider) ValidateAPIKey(ctx context.Context) bool { return false }

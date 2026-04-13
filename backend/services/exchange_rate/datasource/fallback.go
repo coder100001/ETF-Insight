@@ -16,14 +16,14 @@ import (
 // 当所有外部数据源都不可用时使用本地缓存或默认值
 type FallbackProvider struct {
 	name                string
-	cache               sync.Map                  // 内存缓存 key=currency_pair, value= CachedRate
-	lastUpdateTime      sync.Map                  // 最后更新时间
+	cache               sync.Map                   // 内存缓存 key=currency_pair, value= CachedRate
+	lastUpdateTime      sync.Map                   // 最后更新时间
 	defaultRates        map[string]decimal.Decimal // 默认汇率表
-	requestCount        atomic.Int32              // 请求计数器
-	successCount        atomic.Int32              // 成功计数器
-	errorCount          atomic.Int32              // 错误计数器
-	cacheTTL            time.Duration             // 缓存有效期
-	supportedCurrencies []string                  // 支持的货币列表
+	requestCount        atomic.Int32               // 请求计数器
+	successCount        atomic.Int32               // 成功计数器
+	errorCount          atomic.Int32               // 错误计数器
+	cacheTTL            time.Duration              // 缓存有效期
+	supportedCurrencies []string                   // 支持的货币列表
 }
 
 // CachedRate 缓存汇率结构

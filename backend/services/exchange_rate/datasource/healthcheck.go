@@ -10,13 +10,13 @@ import (
 
 // HealthChecker 健康检查器
 type HealthChecker struct {
-	checkInterval     time.Duration             // 检查间隔
-	timeout           time.Duration             // 检查超时时间
-	failureThreshold  int                       // 连续失败阈值
-	successThreshold  int                       // 连续成功阈值
-	healthStatus      map[string]*HealthStatus  // 健康状态
-	stopChan          chan struct{}             // 停止通道
-	mu                sync.RWMutex              // 并发控制锁
+	checkInterval    time.Duration            // 检查间隔
+	timeout          time.Duration            // 检查超时时间
+	failureThreshold int                      // 连续失败阈值
+	successThreshold int                      // 连续成功阈值
+	healthStatus     map[string]*HealthStatus // 健康状态
+	stopChan         chan struct{}            // 停止通道
+	mu               sync.RWMutex             // 并发控制锁
 }
 
 // HealthStatus 数据源健康状态
@@ -273,12 +273,12 @@ func (h *HealthChecker) GetAvailabilityStats() map[string]interface{} {
 	}
 
 	stats["summary"] = map[string]interface{}{
-		"total_sources":      totalSources,
-		"available_sources":  availableSources,
-		"availability_rate":  float64(availableSources) / float64(totalSources),
-		"check_interval":     h.checkInterval.String(),
-		"failure_threshold":  h.failureThreshold,
-		"success_threshold":  h.successThreshold,
+		"total_sources":     totalSources,
+		"available_sources": availableSources,
+		"availability_rate": float64(availableSources) / float64(totalSources),
+		"check_interval":    h.checkInterval.String(),
+		"failure_threshold": h.failureThreshold,
+		"success_threshold": h.successThreshold,
 	}
 
 	return stats

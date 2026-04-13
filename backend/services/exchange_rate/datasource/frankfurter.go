@@ -20,22 +20,22 @@ type FrankfurterProvider struct {
 	client              *http.Client
 	name                string
 	baseURL             string
-	rateLimit           int                      // 每分钟请求限制（理论上无限）
-	requestCount        atomic.Int32             // 请求计数器
-	responseTime        atomic.Int64             // 平均响应时间（纳秒）
-	successCount        atomic.Int32             // 成功计数器
-	errorCount          atomic.Int32             // 错误计数器
+	rateLimit           int                       // 每分钟请求限制（理论上无限）
+	requestCount        atomic.Int32              // 请求计数器
+	responseTime        atomic.Int64              // 平均响应时间（纳秒）
+	successCount        atomic.Int32              // 成功计数器
+	errorCount          atomic.Int32              // 错误计数器
 	lastRequest         atomic.Pointer[time.Time] // 最后请求时间
-	supportedCurrencies []string                 // 支持的货币列表
+	supportedCurrencies []string                  // 支持的货币列表
 }
 
 // FrankfurterResponse Frankfurter API响应结构
 type FrankfurterResponse struct {
-	Amount  float64            `json:"amount"`
-	Base    string             `json:"base"`
-	Date    string             `json:"date"`
-	Rates   map[string]float64 `json:"rates"`
-	Error   string             `json:"error,omitempty"`
+	Amount float64            `json:"amount"`
+	Base   string             `json:"base"`
+	Date   string             `json:"date"`
+	Rates  map[string]float64 `json:"rates"`
+	Error  string             `json:"error,omitempty"`
 }
 
 // createProxyTransport 创建带代理支持的 Transport
@@ -207,27 +207,27 @@ func (p *FrankfurterProvider) GetRates(ctx context.Context, baseCurrency string)
 		var errorResp FrankfurterResponse
 		if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil && errorResp.Error != "" {
 			return &BatchRateResult{
+					Success:     false,
+					Error:       errorResp.Error,
+					DataSource:  p.name,
+					RequestTime: time.Since(startTime),
+				}, &ProviderError{
+					Code:    "API_ERROR",
+					Message: errorResp.Error,
+					Source:  p.name,
+				}
+		}
+
+		return &BatchRateResult{
 				Success:     false,
-				Error:       errorResp.Error,
+				Error:       fmt.Sprintf("API返回状态码: %d", resp.StatusCode),
 				DataSource:  p.name,
 				RequestTime: time.Since(startTime),
 			}, &ProviderError{
 				Code:    "API_ERROR",
-				Message: errorResp.Error,
+				Message: fmt.Sprintf("API返回错误: %d", resp.StatusCode),
 				Source:  p.name,
 			}
-		}
-
-		return &BatchRateResult{
-			Success:     false,
-			Error:       fmt.Sprintf("API返回状态码: %d", resp.StatusCode),
-			DataSource:  p.name,
-			RequestTime: time.Since(startTime),
-		}, &ProviderError{
-			Code:    "API_ERROR",
-			Message: fmt.Sprintf("API返回错误: %d", resp.StatusCode),
-			Source:  p.name,
-		}
 	}
 
 	// 解析JSON响应
@@ -337,7 +337,7 @@ func (p *FrankfurterProvider) checkRateLimit() bool {
 	// Frankfurter是免费公共服务，需要避免滥用
 	// 设置本地限制：每分钟最多100次请求
 	requestCount := p.requestCount.Load()
-	
+
 	// 检查最近1分钟的请求频率
 	if lastReq := p.lastRequest.Load(); lastReq != nil {
 		if time.Since(*lastReq) < time.Minute {

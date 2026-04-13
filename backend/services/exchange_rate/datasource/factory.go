@@ -108,12 +108,12 @@ func GetProviderStatus(manager *DataSourceManager) map[string]interface{} {
 	primary := manager.GetPrimaryProvider()
 	if primary != nil {
 		status["primary"] = map[string]interface{}{
-			"name":           primary.GetName(),
-			"available":      primary.IsAvailable(ctx),
-			"rate_limit":     primary.GetRateLimit(),
-			"response_time":  primary.GetResponseTime().String(),
-			"success_rate":   fmt.Sprintf("%.2f%%", primary.GetSuccessRate()*100),
-			"api_key":        primary.GetAPIKey(),
+			"name":          primary.GetName(),
+			"available":     primary.IsAvailable(ctx),
+			"rate_limit":    primary.GetRateLimit(),
+			"response_time": primary.GetResponseTime().String(),
+			"success_rate":  fmt.Sprintf("%.2f%%", primary.GetSuccessRate()*100),
+			"api_key":       primary.GetAPIKey(),
 		}
 	}
 

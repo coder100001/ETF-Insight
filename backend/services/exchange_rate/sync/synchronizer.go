@@ -44,16 +44,16 @@ func NewSynchronizer(manager *datasource.DataSourceManager) *Synchronizer {
 
 // SyncResult 同步结果
 type SyncResult struct {
-	BatchID      string                   // 批次ID
-	SyncType     string                   // 同步类型: full / incremental
-	DataSource   string                   // 使用的数据源
-	Status       string                   // success / failed / partial
-	TotalCount   int                      // 总数
-	SuccessCount int                      // 成功数
-	FailedCount  int                      // 失败数
-	DurationMs   int64                    // 耗时(毫秒)
-	Details      []SyncDetail             // 同步详情
-	Errors       []string                 // 错误信息
+	BatchID      string       // 批次ID
+	SyncType     string       // 同步类型: full / incremental
+	DataSource   string       // 使用的数据源
+	Status       string       // success / failed / partial
+	TotalCount   int          // 总数
+	SuccessCount int          // 成功数
+	FailedCount  int          // 失败数
+	DurationMs   int64        // 耗时(毫秒)
+	Details      []SyncDetail // 同步详情
+	Errors       []string     // 错误信息
 }
 
 // SyncDetail 同步详情
@@ -73,47 +73,47 @@ type SyncDetail struct {
 // BatchSyncConfig 批处理配置
 type BatchSyncConfig struct {
 	// 并发控制
-	MaxParallelFetches  int // 最大并行获取数（默认：4）
-	MaxParallelCalcs    int // 最大并行计算数（默认：CPU核心数）
-	DBBatchSize         int // 数据库批量写入大小（默认：100）
+	MaxParallelFetches int // 最大并行获取数（默认：4）
+	MaxParallelCalcs   int // 最大并行计算数（默认：CPU核心数）
+	DBBatchSize        int // 数据库批量写入大小（默认：100）
 
 	// 超时控制
-	FetchTimeout        time.Duration // 获取超时（默认：30秒）
-	CalcTimeout         time.Duration // 计算超时（默认：10秒）
-	TotalTimeout        time.Duration // 总超时（默认：60秒）
+	FetchTimeout time.Duration // 获取超时（默认：30秒）
+	CalcTimeout  time.Duration // 计算超时（默认：10秒）
+	TotalTimeout time.Duration // 总超时（默认：60秒）
 
 	// 错误处理
-	ContinueOnError     bool          // 遇到错误继续处理（默认：true）
-	MaxRetries          int           // 最大重试次数（默认：2）
+	ContinueOnError bool // 遇到错误继续处理（默认：true）
+	MaxRetries      int  // 最大重试次数（默认：2）
 }
 
 // DefaultBatchSyncConfig 返回默认配置
 func DefaultBatchSyncConfig() *BatchSyncConfig {
 	return &BatchSyncConfig{
 		MaxParallelFetches: 4,
-		MaxParallelCalcs:  runtime.NumCPU(),
-		DBBatchSize:       100,
-		FetchTimeout:      30 * time.Second,
-		CalcTimeout:       10 * time.Second,
-		TotalTimeout:      60 * time.Second,
+		MaxParallelCalcs:   runtime.NumCPU(),
+		DBBatchSize:        100,
+		FetchTimeout:       30 * time.Second,
+		CalcTimeout:        10 * time.Second,
+		TotalTimeout:       60 * time.Second,
 		ContinueOnError:    true,
-		MaxRetries:        2,
+		MaxRetries:         2,
 	}
 }
 
 // BatchSyncResult 批处理同步结果
 type BatchSyncResult struct {
-	BatchID            string                     // 批次ID
-	TotalPairs         int                        // 总货币对数
-	SuccessCount       int32                      // 成功数（原子操作）
-	FailedCount        int32                      // 失败数（原子操作）
-	SkippedCount       int32                      // 跳过数（原子操作）
-	Duration           time.Duration              // 总耗时
-	DataSource         string                     // 使用的数据源
-	Status             string                     // success / partial / failed
-	Errors             []string                   // 错误列表
-	RateLimitHit       bool                       // 是否触发速率限制
-	Details            []*BatchSyncDetail         // 详细信息
+	BatchID      string             // 批次ID
+	TotalPairs   int                // 总货币对数
+	SuccessCount int32              // 成功数（原子操作）
+	FailedCount  int32              // 失败数（原子操作）
+	SkippedCount int32              // 跳过数（原子操作）
+	Duration     time.Duration      // 总耗时
+	DataSource   string             // 使用的数据源
+	Status       string             // success / partial / failed
+	Errors       []string           // 错误列表
+	RateLimitHit bool               // 是否触发速率限制
+	Details      []*BatchSyncDetail // 详细信息
 }
 
 // BatchSyncDetail 批处理详情
@@ -243,13 +243,13 @@ func (s *Synchronizer) BatchSync(ctx context.Context, config *BatchSyncConfig) (
 
 // calcResult 计算结果
 type calcResult struct {
-	FromCurrency   string
-	ToCurrency     string
-	NewRate        decimal.Decimal
-	OldRate        decimal.Decimal
-	ChangePercent  float64
-	Status         string
-	Error          string
+	FromCurrency  string
+	ToCurrency    string
+	NewRate       decimal.Decimal
+	OldRate       decimal.Decimal
+	ChangePercent float64
+	Status        string
+	Error         string
 }
 
 // ---------------------------------------------------------------------------
@@ -258,11 +258,11 @@ type calcResult struct {
 
 // baseRateResult 基准货币汇率结果
 type baseRateResult struct {
-	BaseCurrency string                         // 基准货币
-	Rates        map[string]decimal.Decimal      // 汇率数据
-	DataSource   string                         // 数据源
-	Success      bool                           // 是否成功
-	Error        string                         // 错误信息
+	BaseCurrency string                     // 基准货币
+	Rates        map[string]decimal.Decimal // 汇率数据
+	DataSource   string                     // 数据源
+	Success      bool                       // 是否成功
+	Error        string                     // 错误信息
 }
 
 // parallelFetchBaseRates 并行获取多个基准货币的汇率
@@ -299,8 +299,8 @@ func (s *Synchronizer) parallelFetchBaseRates(ctx context.Context, config *Batch
 			case <-fetchCtx.Done():
 				results <- &baseRateResult{
 					BaseCurrency: baseCurrency,
-					Success:     false,
-					Error:       "超时",
+					Success:      false,
+					Error:        "超时",
 				}
 			}
 		}(base)
@@ -337,7 +337,7 @@ func (s *Synchronizer) parallelFetchBaseRates(ctx context.Context, config *Batch
 func (s *Synchronizer) fetchBaseRateWithRetry(ctx context.Context, baseCurrency string, maxRetries int) *baseRateResult {
 	result := &baseRateResult{
 		BaseCurrency: baseCurrency,
-		Rates:       make(map[string]decimal.Decimal),
+		Rates:        make(map[string]decimal.Decimal),
 	}
 
 	for i := 0; i <= maxRetries; i++ {
@@ -697,11 +697,11 @@ func (s *Synchronizer) ConsistencyCheck(ctx context.Context) (*ConsistencyReport
 
 // ConsistencyReport 一致性报告
 type ConsistencyReport struct {
-	CheckTime          time.Time
-	TotalCount         int
-	ConsistentCount    int
-	InconsistentCount  int
-	Items              []ConsistencyItem
+	CheckTime         time.Time
+	TotalCount        int
+	ConsistentCount   int
+	InconsistentCount int
+	Items             []ConsistencyItem
 }
 
 // ConsistencyItem 一致性检查项
@@ -791,12 +791,12 @@ func (s *Synchronizer) saveSyncLog(result *SyncResult) {
 	for _, detail := range result.Details {
 		syncDetail := models.ExchangeRateSyncDetail{
 			SyncLogID:     syncLog.ID,
-			FromCurrency: detail.FromCurrency,
-			ToCurrency:   detail.ToCurrency,
-			OldRate:      detail.OldRate,
-			NewRate:      detail.NewRate,
+			FromCurrency:  detail.FromCurrency,
+			ToCurrency:    detail.ToCurrency,
+			OldRate:       detail.OldRate,
+			NewRate:       detail.NewRate,
 			ChangePercent: decimal.NewFromFloat(detail.Change),
-			Status:       detail.Status,
+			Status:        detail.Status,
 		}
 		models.DB.Create(&syncDetail)
 	}

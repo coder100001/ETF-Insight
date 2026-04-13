@@ -53,8 +53,8 @@ func (m *Monitor) GetStatusReport() *StatusReport {
 
 // StatusReport 状态报告
 type StatusReport struct {
-	GeneratedAt    time.Time              `json:"generated_at"`
+	GeneratedAt    time.Time                           `json:"generated_at"`
 	HealthStatus   map[string]*datasource.HealthStatus `json:"health_status"`
-	FailoverStats  map[string]interface{} `json:"failover_stats"`
-	ProviderStatus map[string]interface{} `json:"provider_status"`
+	FailoverStats  map[string]interface{}              `json:"failover_stats"`
+	ProviderStatus map[string]interface{}              `json:"provider_status"`
 }

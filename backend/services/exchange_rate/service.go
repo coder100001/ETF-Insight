@@ -18,7 +18,7 @@ import (
 // ExchangeRateService 汇率服务
 // 集成了多数据源故障转移、健康检查和数据同步功能
 type ExchangeRateService struct {
-	manager     *datasource.DataSourceManager
+	manager      *datasource.DataSourceManager
 	synchronizer *syncpkg.Synchronizer
 }
 
@@ -36,7 +36,7 @@ func NewExchangeRateService(config *datasource.DataSourceConfig) *ExchangeRateSe
 	synchronizer := syncpkg.NewSynchronizer(manager)
 
 	service := &ExchangeRateService{
-		manager:     manager,
+		manager:      manager,
 		synchronizer: synchronizer,
 	}
 
