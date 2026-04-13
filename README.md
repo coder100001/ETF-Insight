@@ -1,4 +1,4 @@
-# ETF-Insight (v2.3)
+# ETF-Insight (v2.3.2)
 
 一个专业的 ETF 分析与对比平台，对标 Trackinsight、ETF Insider 等国际知名 ETF 分析工具。基于 Go + React 技术栈，提供深度的 ETF 数据洞察、多维度对比分析、持仓解构、风险评估和投资组合优化等一站式解决方案。
 
@@ -16,8 +16,13 @@
 - ✅ **健康监控**: 自动数据源可用性检查和故障切换
 - ✅ **性能优化**: 智能缓存策略、数据库查询优化
 
+**v2.3.2 Pre-commit钩子**:
+- ✅ **TypeScript类型检查**: 提交前自动检查
+- ✅ **ESLint代码检查**: 前端代码质量保证
+- ✅ **失败阻止提交**: 语法错误无法提交，避免CI构建失败
+
 > **📚 开发者必读**: 本项目使用 **agents.md** 作为核心上下文文档，包含架构设计、数据模型、编码规则等关键信息。
-> 
+>
 > 👉 [查看 agents.md](./agents.md) | 👉 [English README](./README_EN.md)
 
 ## 🎯 产品定位
@@ -163,6 +168,7 @@ npm run dev
 - **Go**: 遵循官方代码规范，使用 `gofmt` 格式化
 - **TypeScript**: 严格类型检查，禁用 `any` 类型
 - **React**: 函数式组件，Hooks 规范使用
+- **Pre-commit钩子**: 提交前自动执行TypeScript和ESLint检查
 
 ### 项目结构
 ```
@@ -225,5 +231,5 @@ tail -f backend/logs/exchange_rate.log
 
 ---
 
-**立即体验**: [http://localhost:8080](http://localhost:8080)  
+**立即体验**: [http://localhost:8080](http://localhost:8080)
 **API 文档**: [http://localhost:8080/docs](http://localhost:8080/docs)

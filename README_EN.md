@@ -1,4 +1,4 @@
-# ETF-Insight (v2.3)
+# ETF-Insight (v2.3.2)
 
 A professional ETF analysis and comparison platform, benchmarking against international tools like Trackinsight and ETF Insider. Built with Go + React stack, providing in-depth ETF data insights, multi-dimensional comparison analysis, holdings decomposition, risk assessment, and portfolio optimization.
 
@@ -15,6 +15,11 @@ A professional ETF analysis and comparison platform, benchmarking against intern
 - ✅ **Race condition fixes**: Resolved concurrent access issues in data source manager
 - ✅ **Health monitoring**: Automatic data source availability checks and failover switching
 - ✅ **Performance optimization**: Smart caching strategies, database query optimization
+
+**v2.3.2 Pre-commit Hooks**:
+- ✅ **TypeScript type check**: Automatic check before commit
+- ✅ **ESLint check**: Frontend code quality assurance
+- ✅ **Fail blocks commit**: Syntax errors cannot be committed, avoiding CI build failures
 
 > **📚 For Developers**: This project uses **agents.md** as the core context document, containing architecture design, data models, coding rules, and other critical information.
 >
@@ -245,5 +250,5 @@ This project is licensed under the MIT License.
 
 ---
 
-**Experience Now**: [http://localhost:8080](http://localhost:8080)  
+**Experience Now**: [http://localhost:8080](http://localhost:8080)
 **API Documentation**: [http://localhost:8080/docs](http://localhost:8080/docs)

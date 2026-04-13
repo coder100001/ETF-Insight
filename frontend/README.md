@@ -4,7 +4,7 @@ React + TypeScript + Vite 构建的现代化 ETF 分析与对比平台前端应�
 
 ## 📋 项目概述
 
-ETF-Insight 是一个专业的 ETF 分析与对比平台，提供实时行情、历史数据、投资组合分析等功能。前端采用 React 18 + TypeScript + Vite + Ant Design 技术栈，具有高性能、类型安全和优秀的用户体验。
+ETF-Insight 是一个专业的 ETF 分析与对比平台，提供实时行情、历史数据、投资组合分析等功能。前端采用 React 19 + TypeScript + Vite + Ant Design 技术栈，具有高性能、类型安全和优秀的用户体验。
 
 ### 主要功能
 
@@ -245,6 +245,6 @@ cp -r dist/* /usr/share/nginx/html/
 
 ---
 
-**立即体验**: [http://localhost:5173](http://localhost:5173)  
-**后端 API**: [http://localhost:8080](http://localhost:8080)  
+**立即体验**: [http://localhost:5173](http://localhost:5173)
+**后端 API**: [http://localhost:8080](http://localhost:8080)
 **项目文档**: [../README.md](../README.md)
