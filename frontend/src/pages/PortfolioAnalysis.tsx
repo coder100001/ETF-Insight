@@ -226,34 +226,28 @@ const PortfolioAnalysis: React.FC = () => {
       );
 
       if (response.success && response.data) {
-        // 转换后端数据为前端格式
         const backendData = response.data;
-        const annualDividendBeforeTax = backendData.annual_dividend_before_tax || 0;
-        // 后端返回的税率已经是百分比（如10表示10%）
-        const taxRate = backendData.tax_rate || config.tax_rate;
-        const dividendTax = backendData.dividend_tax || (annualDividendBeforeTax * (taxRate / 100));
-        const annualDividendAfterTax = backendData.annual_dividend_after_tax || (annualDividendBeforeTax - dividendTax);
 
         setPortfolio({
-          total_investment: config.total_investment,
+          total_investment: backendData.total_investment || config.total_investment,
           total_value: backendData.total_value || config.total_investment,
           total_return: backendData.total_return || 0,
           total_return_percent: backendData.total_return_pct || 0,
-          annual_dividend_before_tax: annualDividendBeforeTax,
-          annual_dividend_after_tax: annualDividendAfterTax,
-          dividend_tax: dividendTax,
-          tax_rate: taxRate,
+          annual_dividend_before_tax: backendData.annual_dividend_before_tax || 0,
+          annual_dividend_after_tax: backendData.annual_dividend_after_tax || 0,
+          dividend_tax: backendData.dividend_tax || 0,
+          tax_rate: backendData.tax_rate || config.tax_rate,
           weighted_dividend_yield: backendData.dividend_yield || 0,
           total_return_with_dividend: backendData.total_return_with_dividend || backendData.after_tax_return || 0,
-          total_return_with_dividend_percent: backendData.total_return_with_dividend_percent || (backendData.after_tax_return || 0) / config.total_investment * 100,
+          total_return_with_dividend_percent: backendData.total_return_with_dividend_percent || 0,
           holdings: (backendData.holdings || []).map((h: PortfolioHolding) => ({
             symbol: h.symbol,
             name: h.name || h.symbol + ' ETF',
-            weight: h.weight,
-            investment: h.investment,
+            weight: h.weight || 0,
+            investment: h.investment || 0,
             current_price: h.current_price || 0,
             shares: h.shares || 0,
-            current_value: h.current_value || h.investment,
+            current_value: h.current_value || h.investment || 0,
             capital_gain: h.capital_gain || 0,
             capital_gain_percent: h.capital_gain_percent || 0,
             total_return: h.total_return || 0,
