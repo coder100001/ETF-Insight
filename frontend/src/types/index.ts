@@ -67,6 +67,7 @@ export interface PortfolioResult {
 
 // 投资组合分析（API返回类型）
 export interface PortfolioAnalysisResult {
+  total_investment: number;
   total_value: number;
   total_return: number;
   total_return_pct: number;

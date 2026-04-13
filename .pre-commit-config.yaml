@@ -29,24 +29,18 @@ repos:
       stages: [commit-msg]
       additional_dependencies: ['@commitlint/config-conventional']
 
-- repo: https://github.com/pre-commit/mirrors-eslint
-  rev: v9.12.0
-  hooks:
-    - id: eslint
-      files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
-      types: [file]
-      args: [--quiet]
-      additional_dependencies:
-        - eslint@^9.0.0
-        - typescript@^5.0.0
-        - "@typescript-eslint/eslint-plugin@^8.0.0"
-        - "@typescript-eslint/parser@^8.0.0"
-
 - repo: local
   hooks:
     - id: tsc-type-check
       name: TypeScript Type Check
       entry: bash -c 'cd frontend && npx tsc --noEmit 2>&1'
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
+
+    - id: eslint-check
+      name: ESLint Check
+      entry: bash -c 'cd frontend && npx eslint src --quiet 2>&1'
       language: system
       pass_filenames: false
       stages: [pre-commit]
