@@ -181,10 +181,16 @@ func (s *ETFAnalysisService) CalculateMetrics(symbol string, prices []models.ETF
 	maxDrawdown := calculateMaxDrawdown(prices)
 
 	// 计算夏普比率 (假设无风险利率4%)
+	// 公式: Sharpe Ratio = (年化收益率 - 无风险利率) / 年化波动率
+	// 注意: avgDailyReturn 是百分比形式(如0.05表示5%)，需转换为小数计算
 	sharpeRatio := decimal.Zero
-	if volatility.IsPositive() {
-		excessReturn := avgDailyReturn.Mul(decimal.NewFromInt(252)).Sub(decimal.NewFromInt(4))
-		sharpeRatio = excessReturn.Div(volatility)
+	if volatility.GreaterThan(decimal.Zero) {
+		avgDailyReturnDecimal := avgDailyReturn.Div(decimal.NewFromInt(100))
+		annualizedReturn := avgDailyReturnDecimal.Mul(decimal.NewFromInt(252)).Mul(decimal.NewFromInt(100))
+		riskFreeRate := decimal.NewFromFloat(4.0)
+		excessReturn := annualizedReturn.Sub(riskFreeRate)
+		volatilityDecimal := volatility.Div(decimal.NewFromInt(100))
+		sharpeRatio = excessReturn.Div(volatilityDecimal)
 	}
 
 	avgVolume := int64(0)
@@ -348,6 +354,8 @@ func (s *ETFAnalysisService) AnalyzePortfolio(allocation map[string]float64, tot
 }
 
 // getDividendYieldByCategory 根据 ETF 类型返回合理的默认股息率
+// TODO: 此函数应从数据库 ETFConfig 或实时 API 获取真实股息率
+// 当前硬编码值仅用于演示，实际生产环境应从 Finage API 获取
 func getDividendYieldByCategory(symbol string, category string) decimal.Decimal {
 	// 高股息 ETF
 	if symbol == "SCHD" || symbol == "VYM" || symbol == "SPYD" || symbol == "HDV" || symbol == "DGRO" {
@@ -394,9 +402,8 @@ func (s *ETFAnalysisService) ForecastETFGrowth(symbol string, initialInvestment 
 	// }
 	// dividendYield := decimal.NewFromFloat(realtimeData.DividendYield).Div(decimal.NewFromInt(100))
 
-	// 默认股息率
+	// TODO: 从数据库或API获取真实股息率，目前使用默认值
 	dividendYield := decimal.NewFromFloat(0.03) // 3% 默认股息率
-	// TODO: 从数据库获取真实股息率数据
 
 	// 如果没有提供年化收益率，使用默认值
 	if annualReturnRate == nil {
@@ -503,6 +510,8 @@ func (s *ETFAnalysisService) calculateYearlyForecast(
 }
 
 // calculateMaxDrawdown 计算最大回撤
+// 返回负数百分比，表示从峰值到谷底的下跌幅度
+// 例如：返回 -8.5 表示从峰值下跌了 8.5%
 func calculateMaxDrawdown(prices []models.ETFData) decimal.Decimal {
 	if len(prices) == 0 {
 		return decimal.Zero
