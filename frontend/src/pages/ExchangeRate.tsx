@@ -167,11 +167,6 @@ const ExchangeRatePage: React.FC = () => {
     message.success('汇率数据已更新');
   };
 
-  const handleRefresh = () => {
-    fetchRates();
-    message.success('汇率数据已更新');
-  };
-
   const columns: import('antd').TableProps<ExchangeRate>['columns'] = [
     {
       title: '货币对',
