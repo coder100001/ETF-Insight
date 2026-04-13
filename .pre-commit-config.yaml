@@ -41,3 +41,12 @@ repos:
         - typescript@^5.0.0
         - "@typescript-eslint/eslint-plugin@^8.0.0"
         - "@typescript-eslint/parser@^8.0.0"
+
+- repo: local
+  hooks:
+    - id: tsc-type-check
+      name: TypeScript Type Check
+      entry: bash -c 'cd frontend && npx tsc --noEmit 2>&1'
+      language: system
+      pass_filenames: false
+      stages: [pre-commit]
