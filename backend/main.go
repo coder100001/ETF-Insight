@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"etf-insight/config"
+	"etf-insight/docs"
 	"etf-insight/handlers"
 	"etf-insight/middleware"
 	"etf-insight/models"
@@ -175,6 +176,9 @@ func main() {
 	router.GET("/api/exchange-rates/currencies", exchangeRateHandler.GetSupportedCurrencies)
 	router.GET("/api/exchange-rates/datasource-status", exchangeRateHandler.GetDataSourceStatus)
 	router.GET("/api/currency-pairs", exchangeRateHandler.GetCurrencyPairs)
+
+	// Swagger API 文档路由
+	docs.RegisterSwaggerRoutes(router)
 
 	router.Static("/assets", "../frontend/dist/assets")
 	router.StaticFile("/favicon.svg", "../frontend/dist/favicon.svg")
