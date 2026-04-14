@@ -28,8 +28,20 @@ type AShareDividendETF struct {
 	ManagementFee     decimal.Decimal   `json:"management_fee" gorm:"type:decimal(5,4)"`     // 管理费率(%)
 	Description       string            `json:"description" gorm:"size:500"`                 // 产品描述
 	Status            int               `json:"status" gorm:"default:1"`                     // 状态：1-正常，0-停用
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
+
+	// 实时价格信息
+	CurrentPrice   decimal.Decimal `json:"current_price" gorm:"type:decimal(10,3)"`   // 当前价格
+	PreviousClose  decimal.Decimal `json:"previous_close" gorm:"type:decimal(10,3)"`  // 昨日收盘价
+	PriceChange    decimal.Decimal `json:"price_change" gorm:"type:decimal(10,3)"`    // 价格变动
+	PriceChangePct decimal.Decimal `json:"price_change_pct" gorm:"type:decimal(5,2)"` // 涨跌幅(%)
+	Volume         int64           `json:"volume"`                                    // 成交量
+	Turnover       decimal.Decimal `json:"turnover" gorm:"type:decimal(15,2)"`        // 成交额
+	NAV            decimal.Decimal `json:"nav" gorm:"type:decimal(10,3)"`             // 净值
+	PremiumRate    decimal.Decimal `json:"premium_rate" gorm:"type:decimal(5,2)"`     // 溢价率(%)
+	PriceUpdatedAt time.Time       `json:"price_updated_at"`                          // 价格更新时间
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // AShareETFPortfolio A股ETF组合配置

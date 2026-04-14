@@ -16,7 +16,7 @@ import {
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { aSharePortfolioAPI } from '../services/api';
-import type { AShareDividendCalculation, AShareHoldingDetail } from '../types';
+import type { AShareDividendCalculation, AShareHoldingDetail, AShareETFPrice } from '../types';
 import { App } from 'antd';
 
 const { TabPane } = Tabs;
@@ -40,7 +40,7 @@ const PageHeader = styled.div`
 const SummaryCard = styled(Card)`
   margin-bottom: 20px;
   box-shadow: ${theme.shadows.card};
-  
+
   .ant-card-body {
     padding: 20px;
   }
@@ -50,11 +50,11 @@ const SummaryGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  
+
   @media (max-width: ${theme.breakpoints.xl}) {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   @media (max-width: ${theme.breakpoints.md}) {
     grid-template-columns: 1fr;
   }
@@ -65,19 +65,19 @@ const SummaryItem = styled.div<{ $color?: string }>`
   border-radius: ${theme.borderRadius.md};
   padding: 16px;
   border-left: 4px solid ${props => props.$color || theme.colors.primary};
-  
+
   .label {
     font-size: ${theme.fonts.size.sm};
     color: ${theme.colors.textSecondary};
     margin-bottom: 8px;
   }
-  
+
   .value {
     font-size: ${theme.fonts.size['2xl']};
     font-weight: ${theme.fonts.weight.bold};
     color: ${props => props.$color || theme.colors.textPrimary};
   }
-  
+
   .unit {
     font-size: ${theme.fonts.size.sm};
     color: ${theme.colors.textSecondary};
@@ -88,7 +88,7 @@ const SummaryItem = styled.div<{ $color?: string }>`
 const ChartCard = styled(Card)`
   margin-bottom: 20px;
   box-shadow: ${theme.shadows.card};
-  
+
   .ant-card-head {
     background: ${theme.colors.background};
     border-bottom: 1px solid ${theme.colors.border};
@@ -110,7 +110,7 @@ const EditableCell = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  
+
   .ant-input-number {
     width: 120px;
   }
@@ -171,20 +171,67 @@ export default function ASharePortfolioPage() {
   const [portfolioData, setPortfolioData] = useState<AShareDividendCalculation | null>(null);
   const [investments, setInvestments] = useState<Record<string, number>>(DEFAULT_INVESTMENTS);
   const [editing, setEditing] = useState(false);
+  const [prices, setPrices] = useState<Record<string, AShareETFPrice>>({});
+  const [priceLoading, setPriceLoading] = useState(false);
+
+  // 加载ETF价格数据
+  const loadPrices = async () => {
+    setPriceLoading(true);
+    try {
+      const response = await aSharePortfolioAPI.getPrices();
+      if (response.success && response.data) {
+        const priceMap: Record<string, AShareETFPrice> = {};
+        response.data.forEach(price => {
+          priceMap[price.symbol] = price;
+        });
+        setPrices(priceMap);
+      }
+    } catch {
+      message.error('加载价格数据失败');
+    } finally {
+      setPriceLoading(false);
+    }
+  };
+
+  // 刷新价格
+  const handleRefreshPrices = async () => {
+    setPriceLoading(true);
+    try {
+      await aSharePortfolioAPI.refreshPrices();
+      await loadPrices();
+      message.success('价格刷新成功');
+    } catch {
+      message.error('刷新价格失败');
+    } finally {
+      setPriceLoading(false);
+    }
+  };
 
   // 加载默认组合数据
   const loadPortfolio = async () => {
     setLoading(true);
     try {
-      const response = await aSharePortfolioAPI.getDefaultPortfolio();
-      if (response.success && response.data) {
-        setPortfolioData(response.data);
+      const [portfolioResponse, pricesResponse] = await Promise.all([
+        aSharePortfolioAPI.getDefaultPortfolio(),
+        aSharePortfolioAPI.getPrices()
+      ]);
+
+      if (portfolioResponse.success && portfolioResponse.data) {
+        setPortfolioData(portfolioResponse.data);
         // 同步投资金额
         const newInvestments: Record<string, number> = {};
-        response.data.holdings.forEach(h => {
+        portfolioResponse.data.holdings.forEach(h => {
           newInvestments[h.symbol] = h.investment;
         });
         setInvestments(newInvestments);
+      }
+
+      if (pricesResponse.success && pricesResponse.data) {
+        const priceMap: Record<string, AShareETFPrice> = {};
+        pricesResponse.data.forEach(price => {
+          priceMap[price.symbol] = price;
+        });
+        setPrices(priceMap);
       }
     } catch {
       message.error('加载组合数据失败');
@@ -213,7 +260,7 @@ export default function ASharePortfolioPage() {
   // 更新投资金额
   const handleInvestmentChange = (symbol: string, value: number | null) => {
     if (value === null) return;
-    
+
     const newInvestments = { ...investments, [symbol]: value };
     setInvestments(newInvestments);
     analyzePortfolio(newInvestments);
@@ -232,20 +279,66 @@ export default function ASharePortfolioPage() {
       title: 'ETF代码',
       dataIndex: 'symbol',
       key: 'symbol',
-      width: 100,
+      width: 90,
       render: (text) => <strong>{text as string}</strong>,
     },
     {
       title: 'ETF名称',
       dataIndex: 'name',
       key: 'name',
-      width: 180,
+      width: 160,
+    },
+    {
+      title: '当前价格',
+      key: 'current_price',
+      width: 100,
+      render: (_value, record) => {
+        const r = record as AShareHoldingDetail;
+        const price = prices[r.symbol];
+        if (!price) return '-';
+        return (
+          <span style={{ fontWeight: 'bold' }}>
+            ¥{price.current_price.toFixed(3)}
+          </span>
+        );
+      },
+    },
+    {
+      title: '涨跌幅',
+      key: 'price_change_pct',
+      width: 90,
+      render: (_value, record) => {
+        const r = record as AShareHoldingDetail;
+        const price = prices[r.symbol];
+        if (!price) return '-';
+        const changePct = price.price_change_pct;
+        const color = changePct > 0 ? '#f5222d' : changePct < 0 ? '#52c41a' : '#999';
+        const sign = changePct > 0 ? '+' : '';
+        return (
+          <span style={{ color, fontWeight: 'bold' }}>
+            {sign}{changePct.toFixed(2)}%
+          </span>
+        );
+      },
+    },
+    {
+      title: '成交量',
+      key: 'volume',
+      width: 100,
+      render: (_value, record) => {
+        const r = record as AShareHoldingDetail;
+        const price = prices[r.symbol];
+        if (!price) return '-';
+        // 格式化成交量（万手）
+        const volumeWan = (price.volume / 10000).toFixed(0);
+        return <span>{volumeWan}万</span>;
+      },
     },
     {
       title: '投资金额',
       dataIndex: 'investment',
       key: 'investment',
-      width: 150,
+      width: 130,
       render: (value, record) => {
         const r = record as AShareHoldingDetail;
         return editing ? (
@@ -268,14 +361,14 @@ export default function ASharePortfolioPage() {
       title: '占比',
       dataIndex: 'weight',
       key: 'weight',
-      width: 100,
+      width: 80,
       render: (value) => formatPercent(value as number),
     },
     {
       title: '股息率',
       dataIndex: 'dividend_yield',
       key: 'dividend_yield',
-      width: 100,
+      width: 80,
       render: (value) => (
         <span style={{ color: theme.colors.success }}>{formatPercent(value as number)}</span>
       ),
@@ -350,6 +443,13 @@ export default function ASharePortfolioPage() {
           >
             {editing ? '完成编辑' : '调整金额'}
           </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefreshPrices}
+            loading={priceLoading}
+          >
+            刷新价格
+          </Button>
           <Button icon={<ReloadOutlined />} onClick={handleReset}>
             重置默认
           </Button>
@@ -376,7 +476,7 @@ export default function ASharePortfolioPage() {
               {formatMoney(portfolioData.total_investment)}
             </div>
           </SummaryItem>
-          
+
           <SummaryItem $color="#52c41a">
             <div className="label">
               <MoneyCollectOutlined /> 预期年分红
@@ -385,7 +485,7 @@ export default function ASharePortfolioPage() {
               {formatMoney(portfolioData.expected_annual_dividend)}
             </div>
           </SummaryItem>
-          
+
           <SummaryItem $color="#fa8c16">
             <div className="label">
               <PercentageOutlined /> 平均股息率
@@ -394,7 +494,7 @@ export default function ASharePortfolioPage() {
               {formatPercent(portfolioData.average_dividend_yield)}
             </div>
           </SummaryItem>
-          
+
           <SummaryItem $color="#722ed1">
             <div className="label">
               <CalendarOutlined /> 月均分红
@@ -438,9 +538,9 @@ export default function ASharePortfolioPage() {
                 <RechartsTooltip
                   formatter={(value, name) => [`${formatMoney(Number(value))}`, name]}
                 />
-                <Legend 
-                  layout="vertical" 
-                  verticalAlign="middle" 
+                <Legend
+                  layout="vertical"
+                  verticalAlign="middle"
                   align="right"
                   wrapperStyle={{ fontSize: '12px' }}
                 />
@@ -448,7 +548,7 @@ export default function ASharePortfolioPage() {
             </ResponsiveContainer>
           </ChartCard>
         </Col>
-        
+
         <Col span={12}>
           <ChartCard
             title={

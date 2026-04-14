@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"etf-insight/models"
+	"etf-insight/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -378,6 +379,107 @@ func (h *ASharePortfolioHandler) AnalyzePortfolio(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    result,
+	})
+}
+
+// ETFPriceResponse ETF价格响应
+type ETFPriceResponse struct {
+	Symbol         string  `json:"symbol"`           // ETF代码
+	Name           string  `json:"name"`             // ETF名称
+	CurrentPrice   float64 `json:"current_price"`    // 当前价格
+	PreviousClose  float64 `json:"previous_close"`   // 昨日收盘价
+	PriceChange    float64 `json:"price_change"`     // 价格变动
+	PriceChangePct float64 `json:"price_change_pct"` // 涨跌幅(%)
+	Volume         int64   `json:"volume"`           // 成交量
+	Turnover       float64 `json:"turnover"`         // 成交额
+	NAV            float64 `json:"nav"`              // 净值
+	PremiumRate    float64 `json:"premium_rate"`     // 溢价率(%)
+	PriceUpdatedAt string  `json:"price_updated_at"` // 价格更新时间
+}
+
+// GetETFPrices 获取所有ETF价格
+func (h *ASharePortfolioHandler) GetETFPrices(c *gin.Context) {
+	var etfs []models.AShareDividendETF
+	result := models.DB.Where("status = ?", 1).Find(&etfs)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "获取ETF数据失败",
+		})
+		return
+	}
+
+	var response []ETFPriceResponse
+	for _, etf := range etfs {
+		response = append(response, ETFPriceResponse{
+			Symbol:         etf.Symbol,
+			Name:           etf.Name,
+			CurrentPrice:   etf.CurrentPrice.InexactFloat64(),
+			PreviousClose:  etf.PreviousClose.InexactFloat64(),
+			PriceChange:    etf.PriceChange.InexactFloat64(),
+			PriceChangePct: etf.PriceChangePct.InexactFloat64(),
+			Volume:         etf.Volume,
+			Turnover:       etf.Turnover.InexactFloat64(),
+			NAV:            etf.NAV.InexactFloat64(),
+			PremiumRate:    etf.PremiumRate.InexactFloat64(),
+			PriceUpdatedAt: etf.PriceUpdatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
+}
+
+// GetETFPriceBySymbol 获取单个ETF价格
+func (h *ASharePortfolioHandler) GetETFPriceBySymbol(c *gin.Context) {
+	symbol := c.Param("symbol")
+
+	var etf models.AShareDividendETF
+	result := models.DB.Where("symbol = ? AND status = ?", symbol, 1).First(&etf)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "ETF不存在",
+		})
+		return
+	}
+
+	response := ETFPriceResponse{
+		Symbol:         etf.Symbol,
+		Name:           etf.Name,
+		CurrentPrice:   etf.CurrentPrice.InexactFloat64(),
+		PreviousClose:  etf.PreviousClose.InexactFloat64(),
+		PriceChange:    etf.PriceChange.InexactFloat64(),
+		PriceChangePct: etf.PriceChangePct.InexactFloat64(),
+		Volume:         etf.Volume,
+		Turnover:       etf.Turnover.InexactFloat64(),
+		NAV:            etf.NAV.InexactFloat64(),
+		PremiumRate:    etf.PremiumRate.InexactFloat64(),
+		PriceUpdatedAt: etf.PriceUpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
+}
+
+// RefreshETFPrices 刷新ETF价格
+func (h *ASharePortfolioHandler) RefreshETFPrices(c *gin.Context) {
+	priceService := services.NewASharePriceService()
+	if err := priceService.UpdateAllETFPrices(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "刷新价格失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "价格刷新成功",
 	})
 }
 

@@ -54,14 +54,14 @@ const requestCoalescer = new RequestCoalescer();
 
 // 重试请求函数
 async function requestWithRetry<T>(
-  url: string, 
+  url: string,
   options?: RequestInit,
   config: RetryConfig = {}
 ): Promise<T> {
   const { maxRetries = 3, baseDelay = 1000, maxDelay = 10000 } = config;
-  
+
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(`${API_BASE_URL}${url}`, {
@@ -80,7 +80,7 @@ async function requestWithRetry<T>(
       return await response.json();
     } catch (error) {
       lastError = error as Error;
-      
+
       // 如果不是最后一次尝试，等待后重试（指数退避）
       if (attempt < maxRetries) {
         const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
@@ -95,8 +95,8 @@ async function requestWithRetry<T>(
 // 通用请求函数（带合并和重试）
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const cacheKey = `${url}-${JSON.stringify(options)}`;
-  
-  return requestCoalescer.getOrSet(cacheKey, () => 
+
+  return requestCoalescer.getOrSet(cacheKey, () =>
     requestWithRetry<T>(url, options)
   );
 }
@@ -439,7 +439,7 @@ export const healthCheck = () => {
 };
 
 // A股红利ETF组合API
-import type { AShareDividendETF, AShareDividendCalculation } from '../types';
+import type { AShareDividendETF, AShareDividendCalculation, AShareETFPrice } from '../types';
 
 export const aSharePortfolioAPI = {
   // 获取A股红利ETF列表
@@ -483,5 +483,22 @@ export const aSharePortfolioAPI = {
       period_dividend: number;
       annual_dividend: number;
     }[]>>(`/a-share/dividend/${frequency}`);
+  },
+
+  // 获取所有ETF价格
+  getPrices: () => {
+    return request<ApiResponse<AShareETFPrice[]>>(`/a-share/prices`);
+  },
+
+  // 获取单个ETF价格
+  getPriceBySymbol: (symbol: string) => {
+    return request<ApiResponse<AShareETFPrice>>(`/a-share/prices/${symbol}`);
+  },
+
+  // 刷新ETF价格
+  refreshPrices: () => {
+    return request<ApiResponse<{ message: string }>>(`/a-share/prices/refresh`, {
+      method: 'POST',
+    });
   },
 };

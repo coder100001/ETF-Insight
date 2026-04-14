@@ -160,6 +160,11 @@ func main() {
 	router.POST("/api/a-share/portfolio/holding/:symbol", aShareHandler.UpdateHolding)
 	router.GET("/api/a-share/dividend/:frequency", aShareHandler.CalculateDividendByFrequency)
 
+	// A股ETF价格路由
+	router.GET("/api/a-share/prices", aShareHandler.GetETFPrices)
+	router.GET("/api/a-share/prices/:symbol", aShareHandler.GetETFPriceBySymbol)
+	router.POST("/api/a-share/prices/refresh", aShareHandler.RefreshETFPrices)
+
 	// 汇率管理路由
 	exchangeRateHandler := handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask)
 	router.GET("/api/exchange-rates", exchangeRateHandler.GetExchangeRates)

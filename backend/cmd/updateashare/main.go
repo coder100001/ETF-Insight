@@ -1,15 +1,26 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 
 	"etf-insight/models"
+	"etf-insight/services"
+	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 )
 
 func main() {
+	// 解析命令行参数
+	updatePrice := flag.Bool("price", false, "仅更新价格")
+	updateAll := flag.Bool("all", false, "更新所有数据（基础+价格）")
+	flag.Parse()
+
+	// 初始化日志
+	utils.InitLogger("info")
+
 	// 初始化数据库
 	if err := models.InitDB("etf_insight.db"); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -17,13 +28,31 @@ func main() {
 
 	fmt.Println("开始更新A股红利ETF数据...")
 
-	// 更新ETF基础数据（根据用户提供的真实数据）
-	updateETFData()
+	if *updatePrice || *updateAll {
+		// 更新ETF价格
+		fmt.Println("\n=== 更新ETF价格 ===")
+		updateETFPrices()
+	}
 
-	// 更新投资组合配置
-	updatePortfolioConfig()
+	if !*updatePrice || *updateAll {
+		// 更新ETF基础数据（根据用户提供的真实数据）
+		fmt.Println("\n=== 更新ETF基础数据 ===")
+		updateETFData()
 
-	fmt.Println("A股红利ETF数据更新完成!")
+		// 更新投资组合配置
+		fmt.Println("\n=== 更新投资组合配置 ===")
+		updatePortfolioConfig()
+	}
+
+	fmt.Println("\n✅ A股红利ETF数据更新完成!")
+}
+
+// updateETFPrices 更新ETF价格
+func updateETFPrices() {
+	priceService := services.NewASharePriceService()
+	if err := priceService.UpdateAllETFPrices(); err != nil {
+		log.Printf("更新价格失败: %v", err)
+	}
 }
 
 func updateETFData() {
@@ -199,8 +228,7 @@ func updatePortfolioConfig() {
 			IsDefault:       true,
 		}
 		if err := models.DB.Create(&portfolio).Error; err != nil {
-			log.Printf("创建投资组合失败: %v", err)
-			return
+			log.Fatalf("创建投资组合失败: %v", err)
 		}
 		fmt.Printf("✓ 创建投资组合: %s (ID: %d)\n", portfolio.Name, portfolio.ID)
 	} else {
@@ -209,8 +237,7 @@ func updatePortfolioConfig() {
 		portfolio.Description = "精选8只A股及港股红利ETF，总投入50万"
 		portfolio.TotalInvestment = decimal.NewFromFloat(500000)
 		if err := models.DB.Save(&portfolio).Error; err != nil {
-			log.Printf("更新投资组合失败: %v", err)
-			return
+			log.Fatalf("更新投资组合失败: %v", err)
 		}
 		fmt.Printf("✓ 更新投资组合: %s (ID: %d)\n", portfolio.Name, portfolio.ID)
 
@@ -218,7 +245,7 @@ func updatePortfolioConfig() {
 		models.DB.Where("portfolio_id = ?", portfolio.ID).Delete(&models.ASharePortfolioHolding{})
 	}
 
-	// 创建新的持仓记录
+	// 创建持仓明细
 	for symbol, amount := range portfolioConfig {
 		var etf models.AShareDividendETF
 		if err := models.DB.Where("symbol = ?", symbol).First(&etf).Error; err != nil {
