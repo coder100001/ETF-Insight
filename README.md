@@ -12,13 +12,14 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 
 ## 📢 最新动态
 
-**v2.4 安全与功能升级**:
+**v2.4 安全与API文档升级**:
 - ✅ **JWT身份认证**: 完整的认证中间件，支持Token生成/验证/角色控制
 - ✅ **审计日志**: 异步写入，敏感信息自动脱敏，Request ID追踪
 - ✅ **数据验证**: 通用验证中间件，支持string/number/email多种类型
 - ✅ **API分页**: 通用分页响应结构，支持page/pageSize参数
 - ✅ **速率限制**: IP级别的请求频率限制
 - ✅ **股票代码验证**: 防止非法字符注入
+- ✅ **Swagger API文档**: OpenAPI 3.0规范，交互式API测试
 
 **v2.3 汇率服务升级**:
 - ✅ **多数据源故障转移**: 支持 Open Exchange Rates、CurrencyAPI、Frankfurter 三个数据源
@@ -26,6 +27,7 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **健康监控**: 自动数据源可用性检查和故障切换
 
 > **📚 开发者必读**: [agents.md](./agents.md) - 架构设计、数据模型、编码规则等核心文档
+> **📖 API文档**: http://localhost:8080/swagger - 交互式API文档
 
 ## 🎯 开源定位
 
@@ -196,24 +198,35 @@ ETF-Insight/
 
 ### 核心文档
 - **[agents.md](./agents.md)** - 项目架构、数据模型、开发规范
-- **[docs/openapi.yaml](./docs/openapi.yaml)** - API 接口文档
+- **[docs/security/](./docs/security/)** - 安全文档和改进指南
+- **[docs/reviews/](./docs/reviews/)** - 代码审查报告
+- **[docs/roadmap/](./docs/roadmap/)** - 演进路线图
+- **[docs/guides/](./docs/guides/)** - 使用指南
+- **API 文档**: http://localhost:8080/swagger - OpenAPI 3.0 交互式文档
 
 ## 🎯 演进路线图
 
-### v2.3 (当前版本)
-- ✅ 汇率服务多数据源故障转移
-- ✅ 竞态条件修复和性能优化
-- ✅ 代码质量全面优化
+### v2.4 (当前版本) ✅
+- ✅ 安全功能全面升级（JWT、审计、限流）
+- ✅ Swagger/OpenAPI 3.0 API文档
+- ✅ 代码质量优化
 
-### v2.5 (计划中)
-- 🔄 智能分析引擎开发
-- 🔄 回测框架集成
-- 🔄 微服务架构准备
+### v2.5 (进行中) 🔄
+- 🔄 测试覆盖率提升至80%
+- 🔄 技术指标库（RSI/MACD/布林带）
+- 🔄 风险模型（VaR/CVaR）
 
-### v3.0 (长期规划)
-- 🔄 云原生转型
-- 🔄 开放平台建设
-- 🔄 商业模式探索
+### v2.6-2.8 (3-6个月) 📋
+- 📋 回测引擎开发
+- 📋 策略框架实现
+- 📋 性能监控集成
+
+### v3.0 (6-12个月) 🚀
+- 🚀 插件系统架构
+- 🚀 开源生态建设
+- 🚀 学术合作支持
+
+> 详细路线图: [docs/roadmap/PROFESSIONAL_ENHANCEMENT.md](./docs/roadmap/PROFESSIONAL_ENHANCEMENT.md)
 
 ## 📞 技术支持
 
@@ -246,4 +259,4 @@ tail -f backend/logs/exchange_rate.log
 ---
 
 **立即体验**: [http://localhost:8080](http://localhost:8080)
-**API 文档**: [http://localhost:8080/docs](http://localhost:8080/docs)
+**API 文档**: [http://localhost:8080/swagger](http://localhost:8080/swagger)
