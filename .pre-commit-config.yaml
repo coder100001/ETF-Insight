@@ -16,6 +16,11 @@ repos:
   rev: v0.5.1
   hooks:
     - id: go-fmt
+    - id: go-imports
+    - id: go-cyclo
+      args: [-over=15]
+    - id: golangci-lint
+      args: [--timeout=5m]
 
 - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
   rev: v9.13.0
@@ -33,9 +38,11 @@ repos:
       pass_filenames: false
       stages: [pre-commit]
 
-    - id: eslint-check
-      name: ESLint Check
-      entry: bash -c 'cd frontend && npx eslint src --quiet 2>&1'
-      language: system
-      pass_filenames: false
-      stages: [pre-commit]
+#    - id: eslint-check
+#      name: ESLint Check
+#      entry: bash -c 'cd frontend && npx eslint src --max-warnings 0 2>&1'
+#      language: system
+#      pass_filenames: false
+#      stages: [pre-commit]
+# TODO: ESLint 9.x has compatibility issues with Node.js v24 (structuredClone error)
+# Track: https://github.com/eslint/eslint/issues/18881
