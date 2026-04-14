@@ -467,7 +467,203 @@ P3 - 优化改进 → 纳入迭代计划
 
 ---
 
-## � 安全规范
+## 📊 金融算法标准
+
+### 算法规范总则
+
+| 项目 | 要求 |
+|------|------|
+| **精度** | 使用decimal.Decimal，避免浮点数精度问题 |
+| **单位** | 收益率统一使用百分比，波动率使用年化值 |
+| **边界** | 除零保护，返回零值或明确错误 |
+
+---
+
+### 1. 夏普比率 (Sharpe Ratio)
+
+#### 标准公式
+```
+SR = (Rp - Rf) / σp
+
+其中:
+- Rp: 投资组合年化收益率
+- Rf: 年化无风险利率 (默认4%)
+- σp: 年化波动率
+```
+
+#### 实现规范
+```go
+// ✅ 正确：完整注释说明
+// SharpeRatio 计算夏普比率
+// 公式: (年化收益率 - 无风险利率) / 年化波动率
+// 参数:
+//   - avgDailyReturn: 平均日收益率（百分比形式，如5表示5%）
+//   - volatility: 年化波动率（百分比形式，如15表示15%）
+//   - riskFreeRate: 年化无风险利率（默认4%）
+// 返回: 夏普比率（无纲量）
+// 注意: 当波动率为0时返回0
+func CalculateSharpeRatio(avgDailyReturn, volatility, riskFreeRate decimal.Decimal) decimal.Decimal {
+    if volatility.IsZero() {
+        return decimal.Zero
+    }
+    // avgDailyReturn 是百分比，需要转换为小数
+    avgDailyReturnDecimal := avgDailyReturn.Div(decimal.NewFromInt(100))
+    // 年化收益率 = 日均收益率 * 252（交易天数）
+    annualizedReturn := avgDailyReturnDecimal.Mul(decimal.NewFromInt(252)).Mul(decimal.NewFromInt(100))
+    // 计算超额收益
+    excessReturn := annualizedReturn.Sub(riskFreeRate)
+    // 波动率转换为小数
+    volatilityDecimal := volatility.Div(decimal.NewFromInt(100))
+    return excessReturn.Div(volatilityDecimal)
+}
+```
+
+#### 验证方法
+| 测试用例 | 输入 | 预期输出 |
+|----------|------|----------|
+| 正常情况 | avgReturn=5%, vol=15%, rf=4% | SR ≈ 0.42 |
+| 零波动率 | vol=0 | 返回0 |
+| 负超额收益 | avgReturn=2%, vol=15%, rf=4% | SR < 0 |
+
+---
+
+### 2. 最大回撤 (Maximum Drawdown)
+
+#### 标准公式
+```
+MDD = (Trough - Peak) / Peak × 100%
+
+返回负数百分比，表示从峰值到谷底的最大跌幅
+```
+
+#### 实现规范
+```go
+// ✅ 正确：清晰注释
+// calculateMaxDrawdown 计算最大回撤
+// 返回负数百分比，表示从峰值到谷底的下跌幅度
+// 例如：返回 -8.5 表示从峰值下跌了 8.5%
+func calculateMaxDrawdown(prices []models.ETFData) decimal.Decimal {
+    if len(prices) == 0 {
+        return decimal.Zero
+    }
+
+    maxDrawdown := decimal.Zero
+    peak := prices[0].ClosePrice
+
+    for _, price := range prices {
+        // 更新峰值
+        if price.ClosePrice.GreaterThan(peak) {
+            peak = price.ClosePrice
+        }
+
+        // 计算回撤
+        if peak.IsPositive() {
+            drawdown := peak.Sub(price.ClosePrice).Div(peak).Mul(decimal.NewFromInt(100))
+            if drawdown.GreaterThan(maxDrawdown) {
+                maxDrawdown = drawdown
+            }
+        }
+    }
+
+    return maxDrawdown.Neg() // 返回负值表示回撤
+}
+```
+
+#### 验证方法
+| 测试用例 | 数据特征 | 预期输出 |
+|----------|----------|----------|
+| 正常回撤 | 10%跌幅后回升 | MDD ≈ -10% |
+| 无回撤 | 持续上涨 | MDD = 0 |
+| 完全回撤 | 跌至0 | MDD = -100% |
+
+---
+
+### 3. 其他指标
+
+| 指标 | 公式 | 精度要求 |
+|------|------|----------|
+| **Calmar** | 年化收益 / \|MDD\| | 保留4位小数 |
+| **Sortino** | (Rp-Rf) / 下行标准差 | 保留4位小数 |
+| **Profit Factor** | 总盈利 / 总亏损 | 保留2位小数 |
+| **Win Rate** | 盈利交易数 / 总交易数 | 保留2位小数 |
+
+---
+
+### 算法测试覆盖率要求
+
+| 模块 | 覆盖率目标 |
+|------|-----------|
+| **夏普比率** | 100% (包括边界) |
+| **最大回撤** | 100% (包括边界) |
+| **其他指标** | ≥ 90% |
+
+---
+
+## 🔒 安全要求
+
+### 1. 安全边界
+
+| 边界类型 | 要求 |
+|----------|------|
+| **输入验证** | 所有用户输入必须验证 |
+| **SQL注入** | 使用参数化查询 |
+| **XSS攻击** | React默认转义+ CSP头 |
+| **CSRF** | Token验证 |
+| **权限控制** | RBAC，最小权限原则 |
+
+---
+
+### 2. 数据加密标准
+
+| 数据类型 | 加密方式 |
+|----------|----------|
+| **密码** | bcrypt, cost ≥ 12 |
+| **API Key** | 环境变量，代码中不出现 |
+| **敏感日志** | 脱敏处理 |
+| **数据库** | TLS传输 |
+
+---
+
+### 3. 访问控制策略
+
+```go
+// 角色定义
+const (
+    RoleAdmin  Role = "admin"  // 管理员：全部权限
+    RoleUser   Role = "user"   // 普通用户：自身数据
+    RoleGuest  Role = "guest"  // 访客：只读
+)
+
+// 权限检查
+func RequireRole(roles ...Role) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        userRole := c.GetString("user_role")
+        for _, role := range roles {
+            if Role(userRole) == role {
+                c.Next()
+                return
+            }
+        }
+        c.JSON(403, gin.H{"error": "权限不足"})
+        c.Abort()
+    }
+}
+```
+
+---
+
+### 4. 安全审计
+
+| 审计项 | 频率 | 记录 |
+|--------|------|------|
+| **登录日志** | 每次 | 用户ID、IP、时间 |
+| **操作日志** | 每次 | 用户、动作、资源 |
+| **错误日志** | 每次 | 错误类型、堆栈 |
+| **安全扫描** | 每周 | 漏洞报告 |
+
+---
+
+## 🔒 安全规范
 
 ### 1. API Key 管理
 ```go
@@ -555,6 +751,54 @@ utils.Info("API request", "url", reqURL)
 
 ---
 
+## 🤖 AI 助手规范
+
+### 1. 交互流程
+
+```
+用户请求 → 理解意图 → 查阅上下文 → 执行任务 → 验证结果 → 响应用户
+    ↓           ↓            ↓           ↓           ↓           ↓
+  自然语言    提取关键信息   agents.md   工具调用    测试验证    清晰反馈
+```
+
+### 2. 响应格式
+
+| 场景 | 响应格式 |
+|------|----------|
+| **代码修改** | 说明 + 代码引用 + 验证结果 |
+| **任务完成** | 完成状态 + 关键结果 + 后续建议 |
+| **问题诊断** | 原因分析 + 解决方案 + 预防措施 |
+| **进度汇报** | 当前状态 + 完成项 + 待办项 |
+
+### 3. 错误处理
+
+```go
+// 错误处理优先级
+1. 立即修复: 语法错误、类型错误、明显bug
+2. 记录问题: 非关键问题，记录待后续处理
+3. 忽略忽略: 与任务无关的警告（不阻断执行）
+```
+
+### 4. 用户数据保护
+
+| 保护项 | 要求 |
+|--------|------|
+| **API Key** | 绝不记录或暴露，仅使用环境变量 |
+| **密码** | 不记录，不在日志中输出 |
+| **敏感配置** | 脱敏处理后记录 |
+| **用户数据** | 仅在必要时访问，不存储副本 |
+
+### 5. 任务执行标准
+
+| 标准 | 要求 |
+|------|------|
+| **完整性** | 一次请求完成全部相关任务 |
+| **准确性** | 验证后再报告成功 |
+| **可追溯性** | 保留修改记录，关联issue |
+| **文档同步** | 代码修改同步更新相关文档 |
+
+---
+
 ## 🔒 强制上下文确认 (MANDATORY CONTEXT CONFIRMATION)
 
 ### 对话开始确认
@@ -607,5 +851,5 @@ utils.Info("API request", "url", reqURL)
 
 ---
 
-*本文档最后更新: 2026-04-13 (v2.4 开发流程规范化版)*
+*本文档最后更新: 2026-04-13 (v2.5 金融算法安全增强版)*
 *强制上下文绑定版本: v2.0*

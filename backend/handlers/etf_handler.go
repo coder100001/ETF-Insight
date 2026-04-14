@@ -57,17 +57,43 @@ func NewETFHandler(analysisService *services.ETFAnalysisService, provider dataso
 
 // GetETFList 获取 ETF 列表 - 数据全部从数据库/Finage获取，不使用缓存
 func (h *ETFHandler) GetETFList(c *gin.Context) {
-	// 获取所有启用的 ETF 配置
+	page := 1
+	pageSize := 10
+
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+		if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
+			pageSize = ps
+		}
+	}
+
+	var totalCount int64
 	var etfConfigs []models.ETFConfig
-	if err := models.DB.Where("status = ?", 1).Find(&etfConfigs).Error; err != nil || len(etfConfigs) == 0 {
+	models.DB.Model(&models.ETFConfig{}).Where("status = ?", 1).Count(&totalCount)
+
+	offset := (page - 1) * pageSize
+	if err := models.DB.Where("status = ?", 1).
+		Offset(offset).
+		Limit(pageSize).
+		Find(&etfConfigs).Error; err != nil || len(etfConfigs) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"data":    []interface{}{},
+			"pagination": gin.H{
+				"page":       page,
+				"pageSize":   pageSize,
+				"total":      totalCount,
+				"totalPages": (totalCount + int64(pageSize) - 1) / int64(pageSize),
+			},
 		})
 		return
 	}
 
-	// 并行获取数据
 	type ETFResult struct {
 		Symbol string
 		Data   map[string]interface{}
@@ -95,6 +121,12 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 	response := gin.H{
 		"success": true,
 		"data":    etfList,
+		"pagination": gin.H{
+			"page":       page,
+			"pageSize":   pageSize,
+			"total":      totalCount,
+			"totalPages": (totalCount + int64(pageSize) - 1) / int64(pageSize),
+		},
 	}
 
 	c.JSON(http.StatusOK, response)

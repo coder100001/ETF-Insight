@@ -45,7 +45,23 @@ paths:
       tags:
         - ETF
       summary: 获取 ETF 列表
-      description: 获取所有 ETF 列表，包含实时数据
+      description: 获取所有 ETF 列表，包含实时数据，支持分页
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: 页码，从1开始
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: 每页数量，最大100
       responses:
         '200':
           description: 成功返回 ETF 列表
@@ -61,6 +77,21 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ETF'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        description: 当前页码
+                      pageSize:
+                        type: integer
+                        description: 每页数量
+                      total:
+                        type: integer
+                        description: 总记录数
+                      totalPages:
+                        type: integer
+                        description: 总页数
 
   /api/etf/comparison:
     get:
