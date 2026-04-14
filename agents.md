@@ -30,6 +30,11 @@ OPENEXCHANGE_API_KEY=your_key_here       # 主数据源
 CURRENCYAPI_KEY=your_key_here            # 备份数据源
 # Frankfurter 免费无需 API Key
 
+# ========== JWT安全配置 ==========
+JWT_SECRET_KEY=your-jwt-secret-key-min-32-characters-long
+JWT_EXPIRY_HOURS=24
+JWT_REFRESH_EXPIRY_HOURS=168
+
 # ========== 安全配置 ==========
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 CSRF_SECRET=your-random-secret-key-min-32-chars
@@ -109,6 +114,36 @@ LOG_LEVEL=info
 ---
 
 ## 🔧 最新技术更新
+
+### v2.4 更新内容
+
+#### 安全功能升级
+- ✅ **JWT身份认证**: 完整的认证中间件，支持Token生成/验证/角色控制
+  - `middleware/auth.go` - JWT认证中间件
+  - 支持 `AuthRequired()` / `OptionalAuth()` / `RequireRole()` 三种模式
+  - Token 过期时间可配置（默认24小时）
+- ✅ **审计日志**: 异步写入，敏感信息自动脱敏
+  - `middleware/audit.go` - 审计日志中间件
+  - 自动记录所有API请求（method/path/IP/statusCode）
+  - 敏感字段脱敏（password/token/secret/api_key）
+  - Request ID 追踪，支持分布式日志追踪
+- ✅ **数据验证**: 通用验证中间件，支持多种类型
+  - `middleware/validation.go` - 输入验证中间件
+  - 支持 string/number/email 类型验证
+  - 支持 Min/Max/Pattern/Enum 约束
+  - `ValidateSymbol()` - 股票代码格式验证，防止注入攻击
+- ✅ **速率限制**: IP级别的请求频率限制
+  - `RateLimiterHandler()` - 滑动窗口限流算法
+  - 防止暴力破解和DDoS攻击
+- ✅ **API分页**: 通用分页响应结构
+  - `models/pagination.go` - 分页模型
+  - 支持 page/pageSize 参数，最大100条/页
+  - 返回 total/totalPages/hasNext/hasPrev
+
+#### A股红利ETF价格功能
+- ✅ **实时价格获取**: 支持A股ETF实时价格查询
+- ✅ **价格刷新接口**: 手动刷新ETF价格数据
+- ✅ **前端价格展示**: 当前价格、涨跌幅、成交量
 
 ### v2.3 更新内容
 
@@ -252,6 +287,40 @@ bugfix/fix-sharpe-ratio-20260413
 | **Go** | gofmt格式化、错误处理、注释完整 |
 | **TypeScript** | 严格类型、禁用any、Hooks规范 |
 | **React** | 函数组件、Hooks规范、组件分离 |
+
+#### 3.2.1 中间件使用规范
+```go
+// JWT认证使用示例
+authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
+
+// 需要认证的路由
+router.Use(authMiddleware.AuthRequired())
+
+// 可选认证（登录用户有额外功能）
+router.Use(authMiddleware.OptionalAuth())
+
+// 角色权限控制
+router.Use(authMiddleware.RequireRole("admin", "editor"))
+
+// 审计日志（自动记录所有请求）
+router.Use(middleware.AuditLogger())
+
+// 数据验证
+router.POST("/api/etf",
+    middleware.ValidateInput([]middleware.ValidationRule{
+        {Field: "symbol", Type: "string", Required: true, Min: 1, Max: 20},
+        {Field: "name", Type: "string", Required: true, Min: 1, Max: 100},
+        {Field: "price", Type: "number", Required: true, Min: 0},
+    }),
+    handler.CreateETF,
+)
+
+// 速率限制（每IP每分钟100请求）
+router.Use(middleware.RateLimiterHandler(100, time.Minute))
+
+// 股票代码验证（防止注入）
+router.GET("/api/etf/:symbol", middleware.ValidateSymbol(), handler.GetETF)
+```
 
 #### 3.3 代码审查 (Code Review)
 | 项目 | 内容 |
