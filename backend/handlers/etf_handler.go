@@ -816,36 +816,27 @@ func (h *ETFHandler) UpdateRealtimeData(c *gin.Context) {
 	})
 }
 
-// getDefaultDividendYield 根据 ETF 类型返回合理的默认股息率（百分比）
 func getDefaultDividendYield(symbol string) float64 {
-	// 高股息 ETF
-	if symbol == "SCHD" || symbol == "VYM" || symbol == "SPYD" || symbol == "HDV" || symbol == "DGRO" {
-		return 3.5 // 3.5%
+	type dividendYield struct {
+		symbols []string
+		yield   float64
 	}
-	// 覆盖收益型 ETF
-	if symbol == "JEPI" || symbol == "JEPQ" || symbol == "QYLD" || symbol == "XYLD" {
-		return 7.0 // 7%
+
+	yieldTable := []dividendYield{
+		{[]string{"SCHD", "VYM", "SPYD", "HDV", "DGRO"}, 3.5},
+		{[]string{"JEPI", "JEPQ", "QYLD", "XYLD"}, 7.0},
+		{[]string{"BND", "AGG", "TLT", "VNQ"}, 4.0},
+		{[]string{"GLD"}, 0.0},
+		{[]string{"QQQ", "VOO", "VTI", "SPY"}, 0.5},
+		{[]string{"VEA", "VWO", "VXUS"}, 3.0},
 	}
-	// 债券 ETF
-	if symbol == "BND" || symbol == "AGG" || symbol == "TLT" {
-		return 4.0 // 4%
+
+	for _, y := range yieldTable {
+		for _, s := range y.symbols {
+			if symbol == s {
+				return y.yield
+			}
+		}
 	}
-	// 房地产 ETF
-	if symbol == "VNQ" {
-		return 4.0 // 4%
-	}
-	// 黄金 ETF
-	if symbol == "GLD" {
-		return 0.0 // 0%
-	}
-	// 宽基指数 ETF
-	if symbol == "QQQ" || symbol == "VOO" || symbol == "VTI" || symbol == "SPY" {
-		return 0.5 // 0.5%
-	}
-	// 国际市场 ETF
-	if symbol == "VEA" || symbol == "VWO" || symbol == "VXUS" {
-		return 3.0 // 3%
-	}
-	// 默认
-	return 1.0 // 1%
+	return 1.0
 }
