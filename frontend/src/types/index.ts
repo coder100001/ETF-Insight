@@ -87,11 +87,12 @@ export interface PortfolioConfig {
   id: number;
   name: string;
   description?: string;
-  allocation: Record<string, number>;
+  allocation: string | Record<string, number>;
   total_investment: number;
   status: number;
   created_at: string;
   updated_at: string;
+  is_default?: boolean;
 }
 
 // 预测数据

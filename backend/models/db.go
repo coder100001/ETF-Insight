@@ -112,6 +112,59 @@ func InitDefaultData() error {
 		}
 	}
 
+	// 初始化默认投资组合配置
+	if err := initDefaultPortfolioConfigs(); err != nil {
+		log.Printf("Failed to init default portfolio configs: %v", err)
+	}
+
+	return nil
+}
+
+// initDefaultPortfolioConfigs 初始化默认投资组合配置
+func initDefaultPortfolioConfigs() error {
+	// 检查是否已有配置
+	var count int64
+	DB.Model(&PortfolioConfig{}).Count(&count)
+	if count > 0 {
+		return nil // 已有配置，跳过
+	}
+
+	defaultConfigs := []PortfolioConfig{
+		{
+			Name:            "稳健型组合",
+			Description:     "低风险稳健投资，适合保守型投资者",
+			Allocation:      `{"BND": 40, "VTI": 30, "VXUS": 20, "SCHD": 10}`,
+			TotalInvestment: decimal.NewFromInt(100000),
+			TaxRate:         decimal.NewFromFloat(0.10),
+			Status:          1,
+			IsDefault:       true,
+		},
+		{
+			Name:            "平衡型组合",
+			Description:     "股债平衡，适合中长期投资者",
+			Allocation:      `{"VTI": 40, "QQQ": 20, "BND": 20, "VXUS": 20}`,
+			TotalInvestment: decimal.NewFromInt(100000),
+			TaxRate:         decimal.NewFromFloat(0.10),
+			Status:          1,
+			IsDefault:       false,
+		},
+		{
+			Name:            "成长型组合",
+			Description:     "高增长潜力，适合激进型投资者",
+			Allocation:      `{"QQQ": 50, "VGT": 30, "ARKK": 20}`,
+			TotalInvestment: decimal.NewFromInt(100000),
+			TaxRate:         decimal.NewFromFloat(0.10),
+			Status:          1,
+			IsDefault:       false,
+		},
+	}
+
+	for _, config := range defaultConfigs {
+		if err := DB.Create(&config).Error; err != nil {
+			log.Printf("Failed to create default portfolio config %s: %v", config.Name, err)
+		}
+	}
+
 	return nil
 }
 

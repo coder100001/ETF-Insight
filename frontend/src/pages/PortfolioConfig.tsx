@@ -4,7 +4,7 @@ import { Card, Table, Button, Badge, Space, Modal, Form, Input, InputNumber, Sel
 import { PieChartOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
-import { etfAPI } from '../services/api';
+import { etfAPI, portfolioAPI } from '../services/api';
 
 const PageHeader = styled.div`
   display: flex;
@@ -82,25 +82,27 @@ const PortfolioConfigPage: React.FC = () => {
   // 加载组合配置 - 从API获取
   const loadConfigs = async () => {
     try {
-      const response = await fetch('/api/portfolio-configs/');
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setConfigs(result.data.map((c: { id: number; name: string; description?: string; allocation?: string; total_investment?: number; created_at?: string; updated_at?: string; is_default?: boolean }) => ({
+      const result = await portfolioAPI.getConfigs();
+      if (result.success && result.data) {
+        setConfigs(result.data.map((c) => {
+          const allocationStr = typeof c.allocation === 'string' ? c.allocation : JSON.stringify(c.allocation);
+          const allocationObj = allocationStr ? JSON.parse(allocationStr) : {};
+          return {
             id: c.id,
             name: c.name,
             description: c.description || '',
-            etfs: c.allocation ? Object.keys(JSON.parse(c.allocation)) : [],
-            allocation: c.allocation ? JSON.parse(c.allocation) : {},
+            etfs: Object.keys(allocationObj),
+            allocation: allocationObj,
             total_investment: c.total_investment || 0,
             created_at: c.created_at?.split('T')[0] || '',
             updated_at: c.updated_at?.split('T')[0] || '',
             is_default: c.is_default || false,
-          })));
-        }
+          };
+        }));
       }
     } catch (error) {
       console.error('Failed to load portfolio configs:', error);
+      message.error('加载组合配置失败');
     }
   };
 
@@ -154,9 +156,9 @@ const PortfolioConfigPage: React.FC = () => {
       align: 'center' as const,
       render: (_text: string, record: PortfolioConfig) => (
         <Space>
-          <Button 
-            size="small" 
-            icon={<EditOutlined />} 
+          <Button
+            size="small"
+            icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
             编辑
@@ -200,7 +202,7 @@ const PortfolioConfigPage: React.FC = () => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
-      
+
       // 计算 ETF 权重
       const allocation: Record<string, number> = {};
       if (values.etfs && values.etfs.length > 0) {
@@ -218,8 +220,8 @@ const PortfolioConfigPage: React.FC = () => {
 
       if (editingConfig) {
         // 编辑模式
-        setConfigs(prev => prev.map(config => 
-          config.id === editingConfig.id 
+        setConfigs(prev => prev.map(config =>
+          config.id === editingConfig.id
             ? { ...config, ...configData, updated_at: new Date().toISOString().split('T')[0] }
             : config
         ));
@@ -243,7 +245,7 @@ const PortfolioConfigPage: React.FC = () => {
       console.error('Validation failed:', error);
     }
   };
-  
+
   useEffect(() => {
     loadEtfOptions();
     loadConfigs();
