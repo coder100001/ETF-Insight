@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { Card, Table, InputNumber, Slider, Tag, Row, Col, Statistic, Alert, Tabs, Space, Typography, Spin, App } from 'antd';
-import { 
-  SafetyCertificateOutlined, 
+import {
+  SafetyCertificateOutlined,
   RiseOutlined,
   InfoCircleOutlined,
   ThunderboltOutlined,
@@ -10,7 +10,7 @@ import {
   PieChartOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { 
+import {
   Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area, ReferenceLine
 } from 'recharts';
 import Layout from '../components/Layout';
@@ -27,7 +27,7 @@ const PageHeader = styled.div`
   margin-bottom: 24px;
   padding: 20px 0;
   border-bottom: 1px solid ${theme.colors.border};
-  
+
   h2 {
     margin: 0;
     font-size: ${theme.fonts.size['2xl']};
@@ -45,18 +45,18 @@ const StrategyCard = styled(Card)<{ $selected?: boolean }>`
   transition: all 0.3s ease;
   border: 2px solid ${props => props.$selected ? theme.colors.primary : 'transparent'};
   box-shadow: ${props => props.$selected ? `0 4px 20px ${theme.colors.primary}40` : theme.shadows.card};
-  
+
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 25px rgba(0,0,0,0.15);
   }
-  
+
   .strategy-header {
     display: flex;
     align-items: flex-start;
     gap: 12px;
     margin-bottom: 16px;
-    
+
     .icon-wrapper {
       width: 48px; height: 48px;
       border-radius: 12px;
@@ -65,22 +65,22 @@ const StrategyCard = styled(Card)<{ $selected?: boolean }>`
       background: ${props => props.color || theme.colors.primary}15;
       color: ${props => props.color || theme.colors.primary};
     }
-    
+
     h3 { margin: 0; font-size: 16px; }
     p { margin: 4px 0 0; color: ${theme.colors.textMuted}; font-size: 13px; }
   }
-  
+
   .metrics-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    
+
     .metric-item {
       text-align: center;
       padding: 10px;
       background: ${theme.colors.background};
       border-radius: 8px;
-      
+
       .value { font-size: 18px; font-weight: ${theme.fonts.weight.bold}; color: ${theme.colors.primary}; }
       .label { font-size: 11px; color: ${theme.colors.textMuted}; margin-top: 4px; }
     }
@@ -94,7 +94,7 @@ const AllocationBar = styled.div<{ $color?: string }>`
   display: flex;
   background: #f0f0f0;
   position: relative;
-  
+
   .segment {
     height: 100%;
     display: flex;
@@ -116,7 +116,7 @@ const RiskMeter = styled.div`
     background: linear-gradient(to right, #52c41a 0%, #faad14 50%, #f5222d 100%);
     position: relative;
     margin: 16px 0;
-    
+
     .indicator {
       position: absolute;
       top: -6px;
@@ -130,7 +130,7 @@ const RiskMeter = styled.div`
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
   }
-  
+
   .risk-labels {
     display: flex;
     justify-content: space-between;
@@ -144,31 +144,31 @@ const BacktestResultCard = styled.div`
   border-radius: ${theme.borderRadius.lg};
   padding: 24px;
   box-shadow: ${theme.shadows.card};
-  
+
   .result-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    
+
     h4 { margin: 0; font-size: 18px; }
   }
-  
+
   .stats-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 24px;
-    
+
     .stat-card {
       padding: 16px;
       background: ${theme.colors.background};
       border-radius: 12px;
       text-align: center;
-      
+
       .stat-value { font-size: 24px; font-weight: ${theme.fonts.weight.bold}; }
       .stat-label { font-size: 12px; color: ${theme.colors.textMuted}; margin-top: 4px; }
-      
+
       &.positive .stat-value { color: #f5222d; }
       &.negative .stat-value { color: #52c41a; }
     }
@@ -218,7 +218,11 @@ const InvestmentStrategy: React.FC = () => {
   const [etfData, setEtfData] = useState<ETFApiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('balanced');
-  const [customAllocation, setCustomAllocation] = useState<Record<string, number>>({});
+  const [customAllocation, setCustomAllocation] = useState<Record<string, number>>({
+    QQQ: 40,
+    SCHD: 35,
+    VTI: 25,
+  });
   const [investmentAmount, setInvestmentAmount] = useState<number>(100000);
   const [activeTab, setActiveTab] = useState('recommend');
 
@@ -253,13 +257,13 @@ const InvestmentStrategy: React.FC = () => {
   // 根据API数据动态生成策略
   const strategies = useMemo<StrategyConfig[]>(() => {
     if (etfData.length === 0) return [];
-    
+
     const symbols = etfData.map(e => e.symbol);
-    
+
     // 根据数据中可用的ETF构建策略配置
     const first3 = symbols.slice(0, 3);
     const [s1, s2, s3] = first3.length >= 3 ? first3 : [symbols[0], symbols[0], symbols[0]];
-    
+
     return [
       {
         id: 'conservative',
@@ -328,17 +332,17 @@ const InvestmentStrategy: React.FC = () => {
     const months = 36;
     const data = [];
     let portfolioValue = 100;
-    
+
     for (let i = 0; i < months; i++) {
       const date = new Date();
       date.setMonth(date.getMonth() - (months - i));
-      
+
       // 使用策略的加权平均年化收益率
       const annualReturn = currentStrategy.targetReturn / 100;
       const monthlyReturn = annualReturn / 12;
       const noise = (Math.random() - 0.48) * 0.03;
       portfolioValue *= (1 + monthlyReturn + noise);
-      
+
       data.push({
         date: date.toISOString().slice(0, 7),
         portfolio: parseFloat(portfolioValue.toFixed(2)),
@@ -350,11 +354,11 @@ const InvestmentStrategy: React.FC = () => {
 
   const metrics = useMemo(() => {
     if (!backtestData || backtestData.length === 0) return {};
-    
+
     const finalValue = backtestData[backtestData.length - 1].portfolio;
     const totalReturn = ((finalValue / 100 - 1) * 100);
     const annualizedReturn = (Math.pow(finalValue / 100, 12 / backtestData.length) - 1) * 100;
-    
+
     let maxDrawdown = 0;
     let peak = backtestData[0].portfolio;
     backtestData.forEach(d => {
@@ -362,19 +366,19 @@ const InvestmentStrategy: React.FC = () => {
       const dd = ((peak - d.portfolio) / peak) * 100;
       if (dd > maxDrawdown) maxDrawdown = dd;
     });
-    
+
     const returns = backtestData.slice(1).map((d, i) => (d.portfolio - backtestData[i].portfolio) / backtestData[i].portfolio);
     const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
     const stdDev = Math.sqrt(returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length);
     const sharpe = stdDev > 0 ? (avgReturn - 0.04 / 12) / stdDev * Math.sqrt(12) : 0;
 
     // 计算加权股息率
-    const monthlyDividend = currentStrategy ? 
+    const monthlyDividend = currentStrategy ?
       Object.entries(currentStrategy.allocation).reduce((sum, [sym, w]) => {
         const etf = etfData.find(e => e.symbol === sym);
         return sum + (investmentAmount * w / 100 * (etf?.dividend_yield || 0) / 100 / 12);
       }, 0) : 0;
-    
+
     return {
       totalReturn: totalReturn.toFixed(2),
       annualizedReturn: annualizedReturn.toFixed(2),
@@ -390,7 +394,7 @@ const InvestmentStrategy: React.FC = () => {
     if (value === null) return;
     setCustomAllocation(prev => ({ ...prev, [symbol]: value }));
   }, []);
-  
+
   const totalAllocation = Object.values(customAllocation).reduce((a, b) => a + b, 0);
   const isAllocationValid = Math.abs(totalAllocation - 100) < 0.1;
 
@@ -443,7 +447,7 @@ const InvestmentStrategy: React.FC = () => {
                       <p>{strategy.description}</p>
                     </div>
                   </div>
-                  
+
                   <div className="metrics-grid">
                     <div className="metric-item">
                       <div className="value" style={{ color: strategy.color }}>{strategy.targetReturn}%</div>
@@ -463,7 +467,7 @@ const InvestmentStrategy: React.FC = () => {
                       <div className="label">预期股息率</div>
                     </div>
                   </div>
-                  
+
                   <div style={{ marginTop: 16 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>资产配置：</Text>
                     <AllocationBar $color={strategy.color}>
@@ -473,7 +477,7 @@ const InvestmentStrategy: React.FC = () => {
                         </div>
                       ))}
                     </AllocationBar>
-                    
+
                     <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {strategy.features.map(f => <Tag key={f} color={strategy.color}>{f}</Tag>)}
                     </div>
@@ -489,15 +493,15 @@ const InvestmentStrategy: React.FC = () => {
                 <Paragraph>
                   <Text strong>适用人群：</Text>{currentStrategy?.suitableFor}
                 </Paragraph>
-                
+
                 <Title level={5}>核心优势</Title>
                 <ul>{currentStrategy?.pros.map(p => <li key={p}>{p}</li>)}</ul>
-                
+
                 <Title level={5}>注意事项</Title>
                 <ul>{currentStrategy?.cons.map(c => <li key={c}>{c}</li>)}</ul>
               </Card>
             </Col>
-            
+
             <Col span={12}>
               <Card title={<><SafetyCertificateOutlined /> 风险评估</>} size="small">
                 <RiskMeter>
@@ -510,7 +514,7 @@ const InvestmentStrategy: React.FC = () => {
                     <span>进取</span>
                   </div>
                 </RiskMeter>
-                
+
                 <Alert
                   message={`当前策略风险等级：${(currentStrategy?.riskLevel || 50) <= 40 ? '低' : (currentStrategy?.riskLevel || 50) <= 60 ? '中' : '高'}风险`}
                   description={
@@ -522,7 +526,7 @@ const InvestmentStrategy: React.FC = () => {
                   showIcon
                   style={{ marginBottom: 16 }}
                 />
-                
+
                 <Table
                   dataSource={etfData.map(etf => ({
                     ...etf,
@@ -628,7 +632,7 @@ const InvestmentStrategy: React.FC = () => {
           <Card>
             <Title level={4}>自定义资产配置</Title>
             <Paragraph type="secondary">拖动滑块调整各ETF的配置比例，实时查看预估效果</Paragraph>
-            
+
             <div style={{ maxWidth: 600, margin: '32px auto' }}>
               {etfData.map(etf => (
                 <div key={etf.symbol} style={{ marginBottom: 24 }}>
@@ -653,7 +657,7 @@ const InvestmentStrategy: React.FC = () => {
                   />
                 </div>
               ))}
-              
+
               <div style={{ textAlign: 'center', padding: '20px 0', borderTop: '1px solid #f0f0f0' }}>
                 <Text type="secondary">总配置：</Text>
                 <Text strong style={{ fontSize: 24, color: isAllocationValid ? '#52c41a' : '#f5222d' }}>
@@ -661,7 +665,7 @@ const InvestmentStrategy: React.FC = () => {
                 </Text>
                 {!isAllocationValid && <WarningOutlined style={{ marginLeft: 8, color: '#f5222d' }} />}
               </div>
-              
+
               {isAllocationValid && (
                 <>
                   <AllocationBar style={{ marginTop: 24, maxWidth: 500, margin: '24px auto' }}>
@@ -671,7 +675,7 @@ const InvestmentStrategy: React.FC = () => {
                       </div>
                     ))}
                   </AllocationBar>
-                  
+
                   <Card size="small" style={{ marginTop: 24, background: '#fafafa' }}>
                     <Row gutter={16}>
                       <Col span={6}><Statistic title="预期股息率" value={Object.entries(customAllocation).reduce((sum, [sym, w]) => sum + (etfData.find(e => e.symbol === sym)?.dividend_yield || 0) * w / 100, 0).toFixed(2)} suffix="%" /></Col>
