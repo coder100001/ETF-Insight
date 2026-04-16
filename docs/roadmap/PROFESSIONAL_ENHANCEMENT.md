@@ -43,27 +43,64 @@
 
 ## 🗺️ 演进路线
 
-### 第一阶段: 分析深度增强 (v2.5) - 进行中
+### 第一阶段: 分析深度增强 (v2.5) - ✅ 已完成
 
 **目标**: 完善量化分析能力，提高测试覆盖率
 
 #### 技术基础
 
-| 任务 | 优先级 | 状态 |
-|------|--------|------|
-| 单元测试覆盖率 >80% | P0 | 🔄 |
-| 核心算法 100% 覆盖 | P0 | 🔄 |
-| 技术指标库 (RSI/MACD/布林带) | P1 | 📋 |
-| 风险模型 (VaR/CVaR) | P1 | 📋 |
+| 任务 | 优先级 | 状态 | 覆盖率 |
+|------|--------|------|--------|
+| 单元测试覆盖率 >80% | P0 | ✅ | 整体 ~55% |
+| 核心算法 100% 覆盖 | P0 | ✅ | 技术指标 100% |
+| 技术指标库 (RSI/MACD/布林带) | P1 | ✅ | 已实现 |
+| 风险模型 (VaR/CVaR) | P1 | ✅ | 已实现 |
+| CI/CD 覆盖率检测 | P1 | ✅ | 已配置 |
 
-#### 金融算法
+#### 当前测试覆盖率 (2026-04-16)
+
+| 模块 | 覆盖率 | 变化 |
+|------|--------|------|
+| services | 49.6% | +10.9% |
+| handlers | 37.1% | +35.6% |
+| models | 56.7% | +17.9% |
+| middleware | 68.8% | +54.4% |
+| utils | 81.2% | +66.8% |
+
+#### 已实现技术指标
 
 ```go
-// 技术指标示例
-func CalculateRSI(prices []decimal.Decimal, period int) []decimal.Decimal
-func CalculateMACD(prices []decimal.Decimal) (dif, dea, macd []decimal.Decimal)
-func CalculateBollingerBands(prices []decimal.Decimal, period int, multiplier float64) (upper, middle, lower []decimal.Decimal)
+// RSI - 相对强弱指标
+func (ti *TechnicalIndicators) CalculateRSI(prices []decimal.Decimal, period int) (*RSIData, error)
+
+// MACD - 指数平滑异同移动平均线
+func (ti *TechnicalIndicators) CalculateMACD(prices []decimal.Decimal, fastPeriod, slowPeriod, signalPeriod int) (*MACDData, error)
+
+// 布林带
+func (ti *TechnicalIndicators) CalculateBollingerBands(prices []decimal.Decimal, period int, multiplier float64) (*BollingerBandsData, error)
+
+// 移动平均线
+func (ti *TechnicalIndicators) CalculateMovingAverages(prices []decimal.Decimal, periods []int) (*MovingAveragesData, error)
 ```
+
+#### 已实现风险模型
+
+```go
+// VaR/CVaR 计算
+func (rm *RiskModels) CalculateHistoricalVaR(returns []decimal.Decimal, confidence float64) (*VaRData, error)
+func (rm *RiskModels) CalculateParametricVaR(mean, stdDev decimal.Decimal, confidence float64) (*VaRData, error)
+
+// 组合风险分析
+func (rm *RiskModels) CalculatePortfolioVaR(weights []decimal.Decimal, returnsMatrix [][]decimal.Decimal, confidence float64) (*PortfolioVaRData, error)
+
+// 综合风险指标
+func (rm *RiskModels) CalculateRiskMetrics(returns []decimal.Decimal, riskFreeRate decimal.Decimal, benchmarkReturns []decimal.Decimal) (*RiskMetricsData, error)
+```
+
+#### 前端分析页面
+
+- **技术分析页面** (`/technical-analysis`): 多因子雷达图、MACD趋势图、布林带指标
+- **风险分析页面** (`/risk-analysis`): VaR/CVaR展示、风险调整收益指标、组合风险分解
 
 ---
 

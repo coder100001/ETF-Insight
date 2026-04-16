@@ -1,8 +1,9 @@
-# ETF-Insight (v2.4.0) 🚀
+# ETF-Insight (v2.5.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
 [![React Version](https://img.shields.io/badge/React-19.2.4-61DAFB)](https://reactjs.org/)
+[![Test Coverage](https://img.shields.io/badge/coverage-55%25-yellowgreen)](https://github.com/coder100001/ETF-Insight)
 
 **开源专业的 ETF 量化分析平台**
 
@@ -11,6 +12,14 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 > 🎯 **愿景**: 成为开源社区最专业的 ETF 量化分析工具，为投资者提供透明、可验证的分析能力
 
 ## 📢 最新动态
+
+**v2.5 量化分析与测试覆盖升级**:
+- ✅ **技术指标库**: RSI、MACD、布林带、移动平均线
+- ✅ **风险模型**: VaR/CVaR (历史法/参数法)、组合风险分析
+- ✅ **风险指标**: 夏普比率、索提诺比率、最大回撤、Beta/Alpha
+- ✅ **前端分析页面**: 技术分析(雷达图)、风险分析(VaR可视化)
+- ✅ **测试覆盖率**: middleware 68.8%, utils 81.2%
+- ✅ **CI/CD**: 覆盖率检测、Codecov集成
 
 **v2.4 安全与API文档升级**:
 - ✅ **JWT身份认证**: 完整的认证中间件，支持Token生成/验证/角色控制
@@ -21,13 +30,9 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **股票代码验证**: 防止非法字符注入
 - ✅ **Swagger API文档**: OpenAPI 3.0规范，交互式API测试
 
-**v2.3 汇率服务升级**:
-- ✅ **多数据源故障转移**: 支持 Open Exchange Rates、CurrencyAPI、Frankfurter 三个数据源
-- ✅ **竞态条件修复**: 数据源管理器中的并发访问问题已解决
-- ✅ **健康监控**: 自动数据源可用性检查和故障切换
-
 > **📚 开发者必读**: [agents.md](./agents.md) - 架构设计、数据模型、编码规则等核心文档
 > **📖 API文档**: http://localhost:8080/swagger - 交互式API文档
+> **📊 实现文档**: [docs/development/v2.5_phase1_implementation.md](./docs/development/v2.5_phase1_implementation.md) - v2.5详细实现文档
 
 ## 🎯 开源定位
 
@@ -49,6 +54,19 @@ ETF-Insight 坚持**开源、专业、透明**的理念：
 | **数据科学家** | ETF 数据分析、机器学习特征工程 |
 
 ## ✨ 核心特性
+
+### 📈 量化技术分析 (v2.5 新增)
+- **技术指标库** - RSI、MACD、布林带、移动平均线
+- **多因子雷达图** - 多维度技术指标可视化对比
+- **趋势分析** - MACD趋势图、布林带位置分析
+- **超买超卖提示** - RSI阈值预警
+
+### 🛡️ 风险分析 (v2.5 新增)
+- **VaR/CVaR计算** - 历史模拟法和参数法风险价值
+- **组合风险分解** - 成分VaR、边际VaR分析
+- **风险调整收益** - 夏普比率、索提诺比率、卡尔玛比率
+- **市场风险指标** - Beta、Alpha、最大回撤
+- **风险等级评估** - 保守/平衡/激进组合风险评级
 
 ### 📊 ETF 对比分析（ETF Comparison）
 - **并排对比** - 最多支持 5 只 ETF 同时对比
