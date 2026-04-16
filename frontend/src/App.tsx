@@ -14,6 +14,8 @@ import OperationLogs from './pages/OperationLogs';
 import ETFConfig from './pages/ETFConfig';
 import ExchangeRate from './pages/ExchangeRate';
 import ASharePortfolio from './pages/ASharePortfolio';
+import TechnicalAnalysis from './pages/TechnicalAnalysis';
+import RiskAnalysis from './pages/RiskAnalysis';
 import './App.css';
 
 // 配置Ant Design主题 - 匹配Django模板风格
@@ -48,27 +50,31 @@ const App: FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            
+
             {/* ETF相关路由 */}
             <Route path="/etf-dashboard" element={<ETFDashboard />} />
             <Route path="/etf-market" element={<ETFDashboard />} />
             <Route path="/etf-comparison" element={<ETFComparison />} />
             <Route path="/etf-detail/:symbol" element={<ETFDetail />} />
             <Route path="/etf-config" element={<ETFConfig />} />
-            
+
             {/* 投资组合路由 */}
             <Route path="/portfolio-analysis" element={<PortfolioAnalysis />} />
             <Route path="/portfolio-config" element={<PortfolioConfig />} />
             <Route path="/a-share-portfolio" element={<ASharePortfolio />} />
-            
+
             {/* 工作流路由 */}
             <Route path="/workflows" element={<WorkflowList />} />
             <Route path="/instances" element={<InstanceList />} />
-            
+
+            {/* 分析工具路由 */}
+            <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
+            <Route path="/risk-analysis" element={<RiskAnalysis />} />
+
             {/* 其他路由 */}
             <Route path="/operation-logs" element={<OperationLogs />} />
             <Route path="/exchange-rate" element={<ExchangeRate />} />
-            
+
             {/* 默认重定向 */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
