@@ -13,11 +13,13 @@ import (
 
 type PortfolioHandler struct {
 	analysisService *services.ETFAnalysisService
+	scenarioService *services.ScenarioAnalysisService
 }
 
 func NewPortfolioHandler(analysisService *services.ETFAnalysisService) *PortfolioHandler {
 	return &PortfolioHandler{
 		analysisService: analysisService,
+		scenarioService: services.NewScenarioAnalysisService(),
 	}
 }
 
@@ -95,6 +97,64 @@ func (h *PortfolioHandler) AnalyzePortfolio(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    response,
+	})
+}
+
+type ScenarioAnalysisRequest struct {
+	Portfolio        map[string]float64 `json:"portfolio"`
+	TotalInvestment  float64            `json:"total_investment" binding:"required"`
+	TimeHorizonYears int                `json:"time_horizon_years" binding:"required"`
+}
+
+func (h *PortfolioHandler) AnalyzeScenarios(c *gin.Context) {
+	var req ScenarioAnalysisRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	if req.TotalInvestment <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "总投资金额必须大于 0",
+		})
+		return
+	}
+
+	if req.TimeHorizonYears <= 0 || req.TimeHorizonYears > 30 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "投资年限必须在 1-30 年之间",
+		})
+		return
+	}
+
+	if len(req.Portfolio) == 0 {
+		req.Portfolio = map[string]float64{
+			"SCHD": 0.7,
+			"JEPQ": 0.3,
+		}
+	}
+
+	result, err := h.scenarioService.AnalyzePortfolio(
+		req.Portfolio,
+		req.TotalInvestment,
+		req.TimeHorizonYears,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
 	})
 }
 

@@ -1,685 +1,547 @@
-import { useState, useEffect } from 'react';
-import styled from 'styled-components';
+import React, { useState, useEffect } from 'react';
 import {
-  Row, Col, Card, InputNumber, Slider, Button, Table,
-  Progress, Statistic, Space, App, Tabs
+  Card,
+  Row,
+  Col,
+  Typography,
+  Select,
+  InputNumber,
+  Button,
+  Table,
+  Tag,
+  Statistic,
+  Divider,
+  Collapse,
+  message,
+  Space,
 } from 'antd';
 import {
-  PieChartOutlined, LineChartOutlined, CalculatorOutlined,
-  SyncOutlined, DollarOutlined, PercentageOutlined,
-  WalletOutlined
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
+import {
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  DashboardOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
-import Layout from '../components/Layout';
-import { theme } from '../styles/theme';
-import { etfAPI } from '../services/api';
-import type { PortfolioResult, PortfolioHolding, UserConfig } from '../types';
-import HoldingPieChart from '../components/HoldingPieChart';
 
-const PageHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
+const { Panel } = Collapse;
 
-  h2 {
-    margin: 0;
-    font-size: ${theme.fonts.size['2xl']};
-    color: ${theme.colors.textPrimary};
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-`;
+interface ScenarioAssumptions {
+  scenario: string;
+  annual_return: number;
+  volatility: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  description: string;
+  risk_free_rate: number;
+  market_condition: string;
+  dividend_yield: number;
+}
 
-const ConfigCard = styled(Card)`
-  margin-bottom: 20px;
-  box-shadow: ${theme.shadows.card};
+interface PortfolioProjection {
+  year: number;
+  start_date: string;
+  end_date: string;
+  start_value: number;
+  end_value: number;
+  annual_return: number;
+  cumulative_return: number;
+  volatility: number;
+  max_drawdown: number;
+  sharpe_ratio: number;
+  dividend_income: number;
+  total_value: number;
+}
 
-  .ant-card-head {
-    background: ${theme.colors.background};
-    border-bottom: 1px solid ${theme.colors.border};
-  }
-`;
+interface ScenarioResult {
+  assumptions: ScenarioAssumptions;
+  projections: PortfolioProjection[];
+  final_value: number;
+  total_return: number;
+  avg_annual_return: number;
+  best_year: number;
+  worst_year: number;
+}
 
-const AllocationItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+interface ComparisonMetrics {
+  best_scenario: string;
+  worst_scenario: string;
+  value_difference: number;
+  return_spread: number;
+  risk_adjusted_winner: string;
+}
 
-  .symbol {
-    width: 60px;
-    font-weight: ${theme.fonts.weight.semibold};
-    color: ${theme.colors.textPrimary};
-  }
-
-  .slider {
-    flex: 1;
-  }
-
-  .input {
-    width: 80px;
-  }
-`;
-
-const SummaryRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
-
-  @media (max-width: ${theme.breakpoints.xl}) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  @media (max-width: ${theme.breakpoints.md}) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-`;
-
-const SummaryCard = styled.div<{ $color?: string }>`
-  background: ${theme.colors.surface};
-  border-radius: ${theme.borderRadius.md};
-  padding: 16px;
-  box-shadow: ${theme.shadows.card};
-  border-left: 4px solid ${props => props.$color || theme.colors.primary};
-
-  .label {
-    font-size: ${theme.fonts.size.sm};
-    color: ${theme.colors.textSecondary};
-    margin-bottom: 4px;
-  }
-
-  .value {
-    font-size: ${theme.fonts.size.xl};
-    font-weight: ${theme.fonts.weight.bold};
-    color: ${props => props.$color || theme.colors.textPrimary};
-  }
-
-  .change {
-    font-size: ${theme.fonts.size.sm};
-    margin-top: 4px;
-    color: ${theme.colors.textMuted};
-  }
-`;
-
-const StyledTable = styled(Table)`
-  .ant-table-thead > tr > th {
-    background: ${theme.colors.background};
-    font-weight: ${theme.fonts.weight.semibold};
-  }
-
-  .ant-table-tbody > tr:hover > td {
-    background: #f8f9fa;
-  }
-` as typeof Table;
-
-const PresetButton = styled(Button)`
-  margin-right: 8px;
-  margin-bottom: 8px;
-`;
-
-// 空的投资组合结果用于初始化
-const initialPortfolioResult: PortfolioResult = {
-  total_investment: 0,
-  total_value: 0,
-  total_return: 0,
-  total_return_percent: 0,
-  annual_dividend_before_tax: 0,
-  annual_dividend_after_tax: 0,
-  dividend_tax: 0,
-  tax_rate: 10,
-  weighted_dividend_yield: 0,
-  total_return_with_dividend: 0,
-  total_return_with_dividend_percent: 0,
-  holdings: [],
-};
+interface ScenarioAnalysisResult {
+  portfolio: Record<string, number>;
+  total_investment: number;
+  time_horizon_years: number;
+  scenarios: Record<string, ScenarioResult>;
+  comparison_metrics: ComparisonMetrics;
+  methodology: string;
+  assumptions: string;
+  limitations: string;
+}
 
 const PortfolioAnalysis: React.FC = () => {
-  const { message } = App.useApp();
-  const [calculating, setCalculating] = useState(false);
-  const [portfolio, setPortfolio] = useState<PortfolioResult>(initialPortfolioResult);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ScenarioAnalysisResult | null>(null);
+  const [totalInvestment, setTotalInvestment] = useState(100000);
+  const [timeHorizon, setTimeHorizon] = useState(10);
+  const [schdWeight, setSchdWeight] = useState(70);
+  const [jepqWeight, setJepqWeight] = useState(30);
+  const [activeScenario, setActiveScenario] = useState<string>('all');
 
-  // 配置状态
-  const [config, setConfig] = useState<UserConfig>({
-    total_investment: 100000,
-    allocation: {},
-    tax_rate: 10,
-  });
-
-  // 计算总配比
-  const totalAllocation = Object.values(config.allocation).reduce((sum, val) => sum + val, 0);
-
-  // 组件加载时获取数据库中的ETF列表并更新配置
-  useEffect(() => {
-    const fetchETFList = async () => {
-      try {
-        const response = await etfAPI.getList();
-        if (response.success && response.data) {
-          // 获取数据库中的所有ETF符号
-          const dbETFs = response.data.map(etf => etf.symbol);
-          
-          // 更新配置中的ETF分配，保留现有配置，添加新ETF
-          const newAllocation: Record<string, number> = {};
-          Object.keys(config.allocation).forEach(symbol => {
-            if (dbETFs.includes(symbol)) {
-              newAllocation[symbol] = config.allocation[symbol];
-            }
-          });
-          
-          // 添加数据库中但不在当前配置中的ETF（默认配比为0）
-          dbETFs.forEach(symbol => {
-            if (!(symbol in newAllocation)) {
-              newAllocation[symbol] = 0;
-            }
-          });
-          
-          setConfig(prev => ({
-            ...prev,
-            allocation: newAllocation,
-          }));
-          
-          // 加载完成后自动计算一次默认配置
-          setTimeout(() => {
-            handleCalculate();
-          }, 500);
-        }
-      } catch (error) {
-        message.error('获取ETF列表失败: ' + (error as Error).message);
-      }
-    };
-    
-    fetchETFList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleAllocationChange = (symbol: string, value: number) => {
-    setConfig(prev => ({
-      ...prev,
-      allocation: {
-        ...prev.allocation,
-        [symbol]: value / 100,
-      },
-    }));
-  };
-
-  const handleCalculate = async () => {
-    if (Math.abs(totalAllocation - 1) > 0.001) {
-      message.warning('配比总和必须等于100%');
+  const handleAnalyze = async () => {
+    if (schdWeight + jepqWeight !== 100) {
+      message.error('权重总和必须为 100%');
       return;
     }
 
-    setCalculating(true);
+    setLoading(true);
     try {
-      // 调用后端 API
-      const allocation: Record<string, number> = {};
-      Object.entries(config.allocation).forEach(([symbol, weight]) => {
-        if (weight > 0) {
-          allocation[symbol] = Math.round(weight * 100);
-        }
+      const response = await fetch('/api/portfolio/scenarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          portfolio: {
+            SCHD: schdWeight / 100,
+            JEPQ: jepqWeight / 100,
+          },
+          total_investment: totalInvestment,
+          time_horizon_years: timeHorizon,
+        }),
       });
 
-      const response = await etfAPI.getPortfolioAnalysis(
-        allocation,
-        config.total_investment,
-        config.tax_rate / 100  // 将百分比转换为小数
-      );
-
-      if (response.success && response.data) {
-        const backendData = response.data;
-
-        setPortfolio({
-          total_investment: backendData.total_investment || config.total_investment,
-          total_value: backendData.total_value || config.total_investment,
-          total_return: backendData.total_return || 0,
-          total_return_percent: backendData.total_return_pct || 0,
-          annual_dividend_before_tax: backendData.annual_dividend_before_tax || 0,
-          annual_dividend_after_tax: backendData.annual_dividend_after_tax || 0,
-          dividend_tax: backendData.dividend_tax || 0,
-          tax_rate: backendData.tax_rate || config.tax_rate,
-          weighted_dividend_yield: backendData.dividend_yield || 0,
-          total_return_with_dividend: backendData.total_return_with_dividend || backendData.after_tax_return || 0,
-          total_return_with_dividend_percent: backendData.total_return_with_dividend_percent || 0,
-          holdings: (backendData.holdings || []).map((h: PortfolioHolding) => ({
-            symbol: h.symbol,
-            name: h.name || h.symbol + ' ETF',
-            weight: h.weight || 0,
-            investment: h.investment || 0,
-            current_price: h.current_price || 0,
-            shares: h.shares || 0,
-            current_value: h.current_value || h.investment || 0,
-            capital_gain: h.capital_gain || 0,
-            capital_gain_percent: h.capital_gain_percent || 0,
-            total_return: h.total_return || 0,
-            volatility: h.volatility || 0,
-            dividend_yield: h.dividend_yield || 0,
-            annual_dividend_before_tax: h.annual_dividend_before_tax || 0,
-            annual_dividend_after_tax: h.annual_dividend_after_tax || 0,
-          })),
-        });
-        message.success('计算完成');
+      const data = await response.json();
+      if (data.success) {
+        setResult(data.data);
+        message.success('分析完成');
       } else {
-        message.error('获取数据失败');
+        message.error(data.error || '分析失败');
       }
     } catch (error) {
-      message.error('计算失败: ' + (error as Error).message);
+      message.error('请求失败');
     } finally {
-      setCalculating(false);
+      setLoading(false);
     }
   };
 
-  const applyPreset = (preset: string) => {
-    // 根据当前可用的ETF动态生成预设
-    const availableETFs = Object.keys(config.allocation);
-    if (availableETFs.length === 0) {
-      message.warning('请先等待ETF列表加载');
-      return;
+  const getScenarioColor = (scenario: string): string => {
+    switch (scenario) {
+      case 'optimistic':
+        return 'green';
+      case 'pessimistic':
+        return 'red';
+      default:
+        return 'blue';
     }
+  };
 
-    // 动态分配预设（基于可用ETF平均分配）
-    const presets: { [key: string]: { [key: string]: number } } = {};
-    const count = availableETFs.length;
-    const evenWeight = parseFloat((1 / count).toFixed(4));
-    
-    presets['even'] = Object.fromEntries(availableETFs.map(s => [s, evenWeight]));
-    
-    // 如果有足够的ETF，创建一个偏向前3个的配置
-    if (count >= 3) {
-      const top3 = availableETFs.slice(0, 3);
-      const rest = availableETFs.slice(3);
-      const topWeight = 0.25;
-      const restWeight = rest.length > 0 ? (1 - topWeight * 3) / rest.length : 0;
-      presets['focused'] = Object.fromEntries([
-        ...top3.map(s => [s, topWeight]),
-        ...rest.map(s => [s, restWeight]),
-      ]);
+  const getScenarioName = (scenario: string): string => {
+    switch (scenario) {
+      case 'optimistic':
+        return '乐观';
+      case 'pessimistic':
+        return '悲观';
+      default:
+        return '中性';
     }
+  };
 
-    if (presets[preset]) {
-      setConfig(prev => ({
-        ...prev,
-        allocation: presets[preset],
-      }));
-      message.success('已应用预设配置');
-    }
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('zh-CN', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const formatPercent = (value: number): string => {
+    return `${value.toFixed(2)}%`;
+  };
+
+  const comparisonColumns = [
+    {
+      title: '指标',
+      dataIndex: 'metric',
+      key: 'metric',
+    },
+    {
+      title: '悲观',
+      dataIndex: 'pessimistic',
+      key: 'pessimistic',
+      render: (value: number) => (
+        <Text type="danger">{formatPercent(value)}</Text>
+      ),
+    },
+    {
+      title: '中性',
+      dataIndex: 'neutral',
+      key: 'neutral',
+      render: (value: number) => <Text>{formatPercent(value)}</Text>,
+    },
+    {
+      title: '乐观',
+      dataIndex: 'optimistic',
+      key: 'optimistic',
+      render: (value: number) => (
+        <Text type="success">{formatPercent(value)}</Text>
+      ),
+    },
+  ];
+
+  const projectionColumns = [
+    {
+      title: '年份',
+      dataIndex: 'year',
+      key: 'year',
+      width: 80,
+    },
+    {
+      title: '期初价值',
+      dataIndex: 'start_value',
+      key: 'start_value',
+      render: (value: number) => formatCurrency(value),
+    },
+    {
+      title: '期末价值',
+      dataIndex: 'end_value',
+      key: 'end_value',
+      render: (value: number) => formatCurrency(value),
+    },
+    {
+      title: '年度收益',
+      dataIndex: 'annual_return',
+      key: 'annual_return',
+      render: (value: number) => (
+        <Tag color={value >= 0 ? 'green' : 'red'}>
+          {value >= 0 ? '+' : ''}
+          {formatPercent(value)}
+        </Tag>
+      ),
+    },
+    {
+      title: '累计收益',
+      dataIndex: 'cumulative_return',
+      key: 'cumulative_return',
+      render: (value: number) => (
+        <Tag color={value >= 0 ? 'green' : 'red'}>
+          {value >= 0 ? '+' : ''}
+          {formatPercent(value)}
+        </Tag>
+      ),
+    },
+    {
+      title: '股息收入',
+      dataIndex: 'dividend_income',
+      key: 'dividend_income',
+      render: (value: number) => formatCurrency(value),
+    },
+  ];
+
+  const generateComparisonData = () => {
+    if (!result) return [];
+
+    const scenarios = ['pessimistic', 'neutral', 'optimistic'];
+    return scenarios.map((scenario) => {
+      const data: Record<string, unknown> = { metric: scenario };
+      const scenarioResult = result.scenarios[scenario];
+      if (scenarioResult) {
+        data.avg_annual_return = scenarioResult.avg_annual_return;
+        data.volatility = scenarioResult.assumptions.volatility * 100;
+        data.sharpe_ratio = scenarioResult.assumptions.sharpe_ratio;
+        data.max_drawdown = scenarioResult.assumptions.max_drawdown * 100;
+        data.total_return = scenarioResult.total_return;
+      }
+      return data;
+    });
+  };
+
+  const generateProjectionChartData = () => {
+    if (!result) return [];
+
+    const scenarios = ['pessimistic', 'neutral', 'optimistic'];
+    const years = result.time_horizon_years;
+
+    return Array.from({ length: years }, (_, i) => {
+      const data: Record<string, unknown> = { year: i + 1 };
+      scenarios.forEach((scenario) => {
+        const scenarioResult = result.scenarios[scenario];
+        if (scenarioResult && scenarioResult.projections[i]) {
+          data[scenario] = scenarioResult.projections[i].end_value;
+        }
+      });
+      return data;
+    });
   };
 
   return (
-    <Layout>
-      <PageHeader>
-        <h2>
-          <WalletOutlined />
-          投资组合分析
-        </h2>
+    <div style={{ padding: '24px' }}>
+      <Title level={2}>
+        <DashboardOutlined /> 投资组合情景分析
+      </Title>
+      <Paragraph type="secondary">
+        基于历史表现和蒙特卡洛模拟，分析不同市场情景下的投资组合表现
+      </Paragraph>
+
+      <Card title="投资参数设置" style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]}>
+          <Col span={6}>
+            <Text>总投资金额 (USD)</Text>
+            <InputNumber
+              style={{ width: '100%', marginTop: 8 }}
+              value={totalInvestment}
+              onChange={(value) => setTotalInvestment(value || 100000)}
+              min={1000}
+              step={10000}
+              formatter={(value) =>
+                `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+              }
+              parser={(value) =>
+                value ? parseFloat(value.replace(/\$\s?|(,*)/g, '')) : 0
+              }
+            />
+          </Col>
+          <Col span={6}>
+            <Text>投资年限</Text>
+            <InputNumber
+              style={{ width: '100%', marginTop: 8 }}
+              value={timeHorizon}
+              onChange={(value) => setTimeHorizon(value || 10)}
+              min={1}
+              max={30}
+              suffix="年"
+            />
+          </Col>
+          <Col span={6}>
+            <Text>SCHD 权重</Text>
+            <InputNumber
+              style={{ width: '100%', marginTop: 8 }}
+              value={schdWeight}
+              onChange={(value) => {
+                setSchdWeight(value || 70);
+                setJepqWeight(100 - (value || 70));
+              }}
+              min={0}
+              max={100}
+              suffix="%"
+            />
+          </Col>
+          <Col span={6}>
+            <Text>JEPQ 权重</Text>
+            <InputNumber
+              style={{ width: '100%', marginTop: 8 }}
+              value={jepqWeight}
+              onChange={(value) => {
+                setJepqWeight(value || 30);
+                setSchdWeight(100 - (value || 30));
+              }}
+              min={0}
+              max={100}
+              suffix="%"
+            />
+          </Col>
+        </Row>
+        <Divider />
         <Button
           type="primary"
-          icon={<SyncOutlined spin={calculating} />}
-          onClick={handleCalculate}
-          loading={calculating}
+          size="large"
+          loading={loading}
+          onClick={handleAnalyze}
+          block
         >
-          计算分析
+          开始分析
         </Button>
-      </PageHeader>
+      </Card>
 
-      {/* 配置区域 */}
-      <ConfigCard
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalculatorOutlined />
-            <span>组合配置</span>
-          </div>
-        }
-      >
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={12}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                投资金额
-              </label>
-              <InputNumber
-                style={{ width: '100%' }}
-                prefix={<DollarOutlined />}
-                value={config.total_investment}
-                onChange={(value) => setConfig(prev => ({ ...prev, total_investment: value || 0 }))}
-                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ''))}
-                min={1000}
-                step={1000}
-                size="large"
-              />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                ETF配比
-              </label>
-
-              {Object.entries(config.allocation).map(([symbol, weight]) => (
-                <AllocationItem key={symbol}>
-                  <span className="symbol">{symbol}</span>
-                  <Slider
-                    className="slider"
-                    value={weight * 100}
-                    onChange={(value) => handleAllocationChange(symbol, value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                  />
-                  <Space.Compact>
-                    <InputNumber
-                      className="input"
-                      value={weight * 100}
-                      onChange={(value) => handleAllocationChange(symbol, value || 0)}
-                      min={0}
-                      max={100}
-                      precision={0}
-                    />
-                    <span style={{ padding: '0 8px', display: 'flex', alignItems: 'center' }}>%</span>
-                  </Space.Compact>
-                </AllocationItem>
-              ))}
-
-              <div style={{
-                textAlign: 'right',
-                padding: '8px 0',
-                color: Math.abs(totalAllocation - 1) < 0.001 ? theme.colors.success : theme.colors.danger,
-                fontWeight: 500,
-              }}>
-                总配比: {(totalAllocation * 100).toFixed(0)}%
-                {Math.abs(totalAllocation - 1) > 0.001 && ' (需要调整为100%)'}
-              </div>
-            </div>
-          </Col>
-
-          <Col xs={24} lg={12}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                快速预设
-              </label>
-              <div>
-                <PresetButton onClick={() => applyPreset('433')}>
-                  4:3:3 组合
-                </PresetButton>
-                <PresetButton onClick={() => applyPreset('442')}>
-                  4:4:2 组合
-                </PresetButton>
-                <PresetButton onClick={() => applyPreset('balanced')}>
-                  平衡型
-                </PresetButton>
-                <PresetButton onClick={() => applyPreset('conservative')}>
-                  稳健型
-                </PresetButton>
-                <PresetButton onClick={() => applyPreset('tech-heavy')}>
-                  科技型
-                </PresetButton>
-                <PresetButton onClick={() => applyPreset('real-estate')}>
-                  地产型
-                </PresetButton>
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                股息税率
-              </label>
-              <Space.Compact style={{ width: '100%' }}>
-                <InputNumber
-                  style={{ flex: 1 }}
-                  prefix={<PercentageOutlined />}
-                  value={config.tax_rate}
-                  onChange={(value) => setConfig(prev => ({ ...prev, tax_rate: value || 0 }))}
-                  min={0}
-                  max={50}
-                  precision={1}
+      {result && (
+        <>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="最终价值 (乐观)"
+                  value={result.scenarios.optimistic?.final_value || 0}
+                  precision={2}
+                  prefix={<ArrowUpOutlined />}
+                  suffix="USD"
+                  valueStyle={{ color: '#3f8600' }}
                 />
-                <span style={{ padding: '0 8px', display: 'flex', alignItems: 'center' }}>%</span>
-              </Space.Compact>
-            </div>
-          </Col>
-        </Row>
-      </ConfigCard>
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="最终价值 (中性)"
+                  value={result.scenarios.neutral?.final_value || 0}
+                  precision={2}
+                  suffix="USD"
+                />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="最终价值 (悲观)"
+                  value={result.scenarios.pessimistic?.final_value || 0}
+                  precision={2}
+                  prefix={<ArrowDownOutlined />}
+                  suffix="USD"
+                  valueStyle={{ color: '#cf1322' }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
-      {/* 汇总数据 */}
-      <SummaryRow>
-        <SummaryCard>
-          <div className="label">总投资</div>
-          <div className="value">${portfolio.total_investment.toLocaleString()}</div>
-        </SummaryCard>
-        <SummaryCard $color={theme.colors.success}>
-          <div className="label">当前价值</div>
-          <div className="value" style={{ color: theme.colors.success }}>
-            ${portfolio.total_value.toLocaleString()}
-          </div>
-        </SummaryCard>
-        <SummaryCard $color={portfolio.total_return >= 0 ? theme.colors.success : theme.colors.danger}>
-          <div className="label">资本利得</div>
-          <div className="value" style={{ color: portfolio.total_return >= 0 ? theme.colors.success : theme.colors.danger }}>
-            ${portfolio.total_return.toLocaleString()}
-          </div>
-          <div className="change">{portfolio.total_return_percent.toFixed(2)}%</div>
-        </SummaryCard>
-        <SummaryCard $color={theme.colors.warning}>
-          <div className="label">税前年股息</div>
-          <div className="value" style={{ color: theme.colors.warning }}>
-            ${portfolio.annual_dividend_before_tax.toLocaleString()}
-          </div>
-        </SummaryCard>
-        <SummaryCard $color={theme.colors.danger}>
-          <div className="label">股息税 ({portfolio.tax_rate}%)</div>
-          <div className="value" style={{ color: theme.colors.danger }}>
-            -${portfolio.dividend_tax.toLocaleString()}
-          </div>
-        </SummaryCard>
-        <SummaryCard $color={theme.colors.success}>
-          <div className="label">税后年股息</div>
-          <div className="value" style={{ color: theme.colors.success }}>
-            ${portfolio.annual_dividend_after_tax.toLocaleString()}
-          </div>
-          <div className="change">收益率 {portfolio.weighted_dividend_yield.toFixed(2)}%</div>
-        </SummaryCard>
-      </SummaryRow>
+          <Card title="情景对比" style={{ marginBottom: 24 }}>
+            <Table
+              dataSource={generateComparisonData()}
+              columns={comparisonColumns}
+              pagination={false}
+              rowKey="metric"
+            />
+          </Card>
 
-      {/* 持仓明细表格 */}
-      <Card
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <PieChartOutlined />
-            <span>持仓明细</span>
-          </div>
-        }
-        style={{ marginBottom: 20, boxShadow: theme.shadows.card }}
-      >
-        <StyledTable
-          dataSource={portfolio.holdings}
-          rowKey="symbol"
-          pagination={false}
-          size="middle"
-        >
-          <Table.Column
-            title="ETF"
-            dataIndex="symbol"
-            key="symbol"
-            render={(text: string, record: PortfolioHolding) => (
-              <div>
-                <strong>{text}</strong>
-                <br />
-                <small style={{ color: theme.colors.textMuted }}>{record.name}</small>
-              </div>
-            )}
-          />
-          <Table.Column
-            title="配比"
-            dataIndex="weight"
-            key="weight"
-            render={(value: number) => <Progress percent={value} size="small" showInfo={false} />}
-          />
-          <Table.Column
-            title="投资金额"
-            dataIndex="investment"
-            key="investment"
-            align="right"
-            render={(value: number) => `$${value.toLocaleString()}`}
-          />
-          <Table.Column
-            title="当前价格"
-            dataIndex="current_price"
-            key="current_price"
-            align="right"
-            render={(value: number) => `$${(value as number).toFixed(2)}`}
-          />
-          <Table.Column
-            title="持有份数"
-            dataIndex="shares"
-            key="shares"
-            align="right"
-            render={(value: number) => (value as number).toFixed(2)}
-          />
-          <Table.Column
-            title="当前价值"
-            dataIndex="current_value"
-            key="current_value"
-            align="right"
-            render={(value: number) => `$${(value as number).toLocaleString()}`}
-          />
-          <Table.Column
-            title="资本利得"
-            dataIndex="capital_gain"
-            key="capital_gain"
-            align="right"
-            render={(value: number) => {
-              const numValue = value as number;
-              return (
-                <span style={{ color: numValue >= 0 ? theme.colors.success : theme.colors.danger }}>
-                  ${numValue.toLocaleString()}
-                </span>
-              );
-            }}
-          />
-          <Table.Column
-            title="股息率"
-            dataIndex="dividend_yield"
-            key="dividend_yield"
-            align="right"
-            render={(value?: number) => value ? `${(value as number).toFixed(2)}%` : '-'}
-          />
-          <Table.Column
-            title="税后年股息"
-            dataIndex="annual_dividend_after_tax"
-            key="annual_dividend_after_tax"
-            align="right"
-            render={(value: number) => {
-              const numValue = value as number;
-              return (
-                <span style={{ color: theme.colors.success }}>${numValue.toLocaleString()}</span>
-              );
-            }}
-          />
-        </StyledTable>
-      </Card>
+          <Card title="价值增长趋势" style={{ marginBottom: 24 }}>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={generateProjectionChartData()}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" label={{ value: '年份', position: 'insideBottom', offset: -5 }} />
+                <YAxis
+                  label={{ value: '价值 (USD)', angle: -90, position: 'insideLeft' }}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  labelFormatter={(label) => `第 ${label} 年`}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="optimistic"
+                  stroke="#52c41a"
+                  name="乐观"
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="neutral"
+                  stroke="#1890ff"
+                  name="中性"
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="pessimistic"
+                  stroke="#ff4d4f"
+                  name="悲观"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
 
-      {/* 持仓分布图表 */}
-      {portfolio.holdings.length > 0 && (
-        <Card
-          title={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <PieChartOutlined />
-              <span>持仓可视化</span>
-            </div>
-          }
-          style={{ boxShadow: theme.shadows.card, marginTop: 20 }}
-        >
-          <Tabs
-            items={[
-              {
-                key: 'pie',
-                label: (
-                  <span>
-                    <PieChartOutlined />
-                    持仓分布
-                  </span>
-                ),
-                children: (
-                  <HoldingPieChart
-                    data={portfolio.holdings.map(h => ({
-                      symbol: h.symbol,
-                      name: h.name,
-                      weight: h.weight,
-                      value: h.current_value,
-                    }))}
-                    title=""
+          <Card title="年度收益分布" style={{ marginBottom: 24 }}>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={generateProjectionChartData()}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" label={{ value: '年份', position: 'insideBottom', offset: -5 }} />
+                <YAxis
+                  label={{ value: '价值 (USD)', angle: -90, position: 'insideLeft' }}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  labelFormatter={(label) => `第 ${label} 年`}
+                />
+                <Legend />
+                <Bar dataKey="optimistic" fill="#52c41a" name="乐观" />
+                <Bar dataKey="neutral" fill="#1890ff" name="中性" />
+                <Bar dataKey="pessimistic" fill="#ff4d4f" name="悲观" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Collapse style={{ marginBottom: 24 }}>
+            <Panel header="各情景详细预测" key="1">
+              {['pessimistic', 'neutral', 'optimistic'].map((scenario) => (
+                <div key={scenario} style={{ marginBottom: 24 }}>
+                  <Title level={4}>
+                    <Tag color={getScenarioColor(scenario)}>
+                      {getScenarioName(scenario)}
+                    </Tag>
+                  </Title>
+                  <Row gutter={16} style={{ marginBottom: 16 }}>
+                    <Col span={6}>
+                      <Statistic
+                        title="平均年化收益"
+                        value={result.scenarios[scenario]?.avg_annual_return || 0}
+                        precision={2}
+                        suffix="%"
+                      />
+                    </Col>
+                    <Col span={6}>
+                      <Statistic
+                        title="波动率"
+                        value={result.scenarios[scenario]?.assumptions.volatility || 0}
+                        precision={2}
+                        suffix="%"
+                      />
+                    </Col>
+                    <Col span={6}>
+                      <Statistic
+                        title="夏普比率"
+                        value={result.scenarios[scenario]?.assumptions.sharpe_ratio || 0}
+                        precision={2}
+                      />
+                    </Col>
+                    <Col span={6}>
+                      <Statistic
+                        title="最大回撤"
+                        value={result.scenarios[scenario]?.assumptions.max_drawdown || 0}
+                        precision={2}
+                        suffix="%"
+                      />
+                    </Col>
+                  </Row>
+                  <Table
+                    dataSource={result.scenarios[scenario]?.projections || []}
+                    columns={projectionColumns}
+                    pagination={false}
+                    rowKey="year"
+                    size="small"
                   />
-                ),
-              },
-            ]}
-          />
-        </Card>
+                </div>
+              ))}
+            </Panel>
+            <Panel header="方法论与假设" key="2">
+              <Title level={4}>方法论</Title>
+              <Paragraph>{result.methodology}</Paragraph>
+              <Title level={4}>假设条件</Title>
+              <Paragraph style={{ whiteSpace: 'pre-line' }}>
+                {result.assumptions}
+              </Paragraph>
+              <Title level={4}>局限性</Title>
+              <Paragraph style={{ whiteSpace: 'pre-line' }}>
+                {result.limitations}
+              </Paragraph>
+            </Panel>
+          </Collapse>
+        </>
       )}
-
-      {/* 综合收益 */}
-      <Card
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <LineChartOutlined />
-            <span>综合收益分析</span>
-          </div>
-        }
-        style={{ boxShadow: theme.shadows.card }}
-      >
-        <Row gutter={[24, 24]}>
-          <Col xs={24} md={8}>
-            <Statistic
-              title="综合总收益"
-              value={portfolio.total_return_with_dividend}
-              precision={2}
-              prefix="$"
-              styles={{
-                content: {
-                  color: portfolio.total_return_with_dividend >= 0 ? theme.colors.success : theme.colors.danger,
-                  fontSize: 32,
-                }
-              }}
-            />
-            <div style={{ marginTop: 8, color: theme.colors.textSecondary }}>
-              包含资本利得 + 税后股息
-            </div>
-          </Col>
-          <Col xs={24} md={8}>
-            <Statistic
-              title="综合收益率"
-              value={portfolio.total_return_with_dividend_percent}
-              precision={2}
-              suffix="%"
-              styles={{
-                content: {
-                  color: portfolio.total_return_with_dividend_percent >= 0 ? theme.colors.success : theme.colors.danger,
-                  fontSize: 32,
-                }
-              }}
-            />
-            <div style={{ marginTop: 8, color: theme.colors.textSecondary }}>
-              年化收益率
-            </div>
-          </Col>
-          <Col xs={24} md={8}>
-            <div style={{ padding: '20px', background: theme.colors.background, borderRadius: 8 }}>
-              <h4 style={{ margin: '0 0 12px 0' }}>收益构成</h4>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span>资本利得:</span>
-                <span style={{ color: portfolio.total_return >= 0 ? theme.colors.success : theme.colors.danger }}>
-                  ${portfolio.total_return.toLocaleString()}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>税后股息:</span>
-                <span style={{ color: theme.colors.success }}>
-                  ${portfolio.annual_dividend_after_tax.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </Card>
-    </Layout>
+    </div>
   );
 };
 

@@ -139,6 +139,9 @@ func main() {
 	router.POST("/api/portfolio-configs/:id/toggle-status", portfolioHandler.TogglePortfolioConfigStatus)
 	router.POST("/api/portfolio-configs/:id/analyze", portfolioHandler.AnalyzePortfolioConfig)
 
+	// 投资组合情景分析路由
+	router.POST("/api/portfolio/scenarios", portfolioHandler.AnalyzeScenarios)
+
 	// 投资组合优化路由
 	router.POST("/api/portfolio/optimize", optimizerHandler.OptimizePortfolio)
 	router.POST("/api/portfolio/efficient-frontier", optimizerHandler.GetEfficientFrontier)
