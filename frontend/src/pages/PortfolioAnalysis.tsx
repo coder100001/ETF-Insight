@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   Row,
   Col,
   Typography,
-  Select,
   InputNumber,
   Button,
   Table,
@@ -13,7 +12,6 @@ import {
   Divider,
   Collapse,
   message,
-  Space,
 } from 'antd';
 import {
   LineChart,
@@ -31,11 +29,9 @@ import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   DashboardOutlined,
-  InfoCircleOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
 const { Panel } = Collapse;
 
 interface ScenarioAssumptions {
@@ -101,7 +97,6 @@ const PortfolioAnalysis: React.FC = () => {
   const [timeHorizon, setTimeHorizon] = useState(10);
   const [schdWeight, setSchdWeight] = useState(70);
   const [jepqWeight, setJepqWeight] = useState(30);
-  const [activeScenario, setActiveScenario] = useState<string>('all');
 
   const handleAnalyze = async () => {
     if (schdWeight + jepqWeight !== 100) {
@@ -131,7 +126,7 @@ const PortfolioAnalysis: React.FC = () => {
       } else {
         message.error(data.error || '分析失败');
       }
-    } catch (error) {
+    } catch {
       message.error('请求失败');
     } finally {
       setLoading(false);
@@ -424,7 +419,7 @@ const PortfolioAnalysis: React.FC = () => {
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: unknown) => formatCurrency(Number(value))}
                   labelFormatter={(label) => `第 ${label} 年`}
                 />
                 <Legend />
@@ -463,7 +458,7 @@ const PortfolioAnalysis: React.FC = () => {
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: unknown) => formatCurrency(Number(value))}
                   labelFormatter={(label) => `第 ${label} 年`}
                 />
                 <Legend />

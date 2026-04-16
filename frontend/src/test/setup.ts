@@ -3,9 +3,7 @@ import { vi } from 'vitest'
 
 // Extend global type
 declare global {
-  // eslint-disable-next-line no-var
   var ResizeObserver: typeof ResizeObserver
-  // eslint-disable-next-line no-var
   var IntersectionObserver: typeof IntersectionObserver
 }
 
