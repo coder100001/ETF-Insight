@@ -130,6 +130,7 @@ const RiskAnalysis: React.FC = () => {
 
   useEffect(() => {
     fetchRiskData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPortfolio]);
 
   // 获取风险等级
@@ -167,7 +168,7 @@ const RiskAnalysis: React.FC = () => {
     {
       title: '风险贡献',
       key: 'contribution',
-      render: (_: any, record: PortfolioRisk) => {
+      render: (_: unknown, record: PortfolioRisk) => {
         const contribution = (record.componentVar / (riskMetrics?.var95 || 1)) * 100;
         return (
           <Tag color={contribution > 40 ? 'red' : contribution > 25 ? 'orange' : 'green'}>

@@ -141,6 +141,7 @@ const TechnicalAnalysis: React.FC = () => {
 
   useEffect(() => {
     fetchTechnicalData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedETFs, dateRange]);
 
   // 雷达图配置
@@ -193,7 +194,7 @@ const TechnicalAnalysis: React.FC = () => {
 
   // 生成 MACD 图表数据
   const generateMACDData = () => {
-    const data: any[] = [];
+    const data: Array<{ date: string; value: number; type: string }> = [];
     const dates = Array.from({ length: 30 }, (_, i) =>
       dayjs().subtract(29 - i, 'days').format('MM-DD')
     );
