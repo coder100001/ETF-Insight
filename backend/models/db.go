@@ -60,6 +60,7 @@ func AutoMigrate() error {
 		&ETFConfig{},
 		&ETFData{},
 		&OperationLog{},
+		&AuditLog{},
 		&ExchangeRate{},
 		&AShareDividendETF{},
 		&AShareETFPortfolio{},
