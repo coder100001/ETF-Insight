@@ -53,8 +53,17 @@ func NewPortfolioAnalyticsService() *PortfolioAnalyticsService {
 	}
 }
 
+// SetDB 设置数据库连接(用于测试)
+func (s *PortfolioAnalyticsService) SetDB(db *gorm.DB) {
+	s.db = db
+}
+
 // GetETFHistoricalData 获取ETF历史价格数据
 func (s *PortfolioAnalyticsService) GetETFHistoricalData(symbol string, days int) ([]models.ETFData, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("数据库连接未初始化")
+	}
+
 	var data []models.ETFData
 
 	// 计算开始日期
