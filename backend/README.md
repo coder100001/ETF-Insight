@@ -18,8 +18,10 @@ ETF-Insight 后端坚持以下设计理念：
 
 ### 量化分析引擎
 - **投资组合优化**: 马科维茨模型、有效前沿、夏普比率最大化
+- **投资组合情景分析**: 蒙特卡洛模拟、三种市场情景(乐观/中性/悲观)、VaR/CVaR风险指标
 - **风险指标计算**: 波动率、最大回撤、夏普比率、Beta、Alpha
-- **技术指标**: 支持扩展各类技术分析指标
+- **技术指标**: RSI、MACD、布林带、移动平均线
+- **风险模型**: VaR/CVaR (历史法/参数法)、组合风险分解
 - **多因子模型**: Fama-French 等因子分析框架
 
 ### 数据服务
@@ -66,7 +68,11 @@ backend/
 │   ├── exchange_rate/     # 汇率服务
 │   ├── sync/              # 同步服务
 │   ├── etf_analysis.go    # ETF分析服务
-│   └── portfolio_optimizer.go  # 组合优化服务
+│   ├── portfolio_optimizer.go  # 组合优化服务
+│   ├── portfolio_analytics.go  # 组合分析服务(金融公式计算)
+│   ├── scenario_analysis.go    # 情景分析服务(蒙特卡洛模拟)
+│   ├── technical_indicators.go # 技术指标服务(RSI/MACD/布林带)
+│   └── risk_models.go          # 风险模型服务(VaR/CVaR)
 ├── tasks/                 # 定时任务
 │   ├── scheduler.go       # 主调度器
 │   ├── exchange_rate_task.go
@@ -134,7 +140,17 @@ go build -o etf-insight
 ### 投资组合接口
 - `POST /api/portfolio/optimize` - 组合优化
 - `POST /api/portfolio/efficient-frontier` - 有效前沿
+- `POST /api/portfolio/scenarios` - 投资组合情景分析(蒙特卡洛模拟)
+- `GET /api/portfolio/default-templates` - 获取默认投资组合模板
 - `GET /api/portfolio/analysis` - 组合分析
+
+### 技术指标接口
+- `GET /api/etf/:symbol/technical` - 获取ETF技术指标(RSI/MACD/布林带)
+- `GET /api/etf/:symbol/risk` - 获取ETF风险指标(VaR/CVaR)
+
+### 实时数据接口
+- `POST /api/etf/update-realtime` - 手动刷新实时数据
+- `GET /api/etf/list` - ETF列表（包含实时价格）
 
 ### A股ETF接口
 - `GET /api/a-share/etfs` - A股ETF列表
@@ -208,9 +224,28 @@ go tool cover -html=coverage.out
 ## 📊 数据源策略
 
 ### ETF 数据源
-- **主数据源**: Finage API
-- **数据质量**: 实时数据、完整字段、入库校验
-- **同步频率**: 定时任务自动更新
+- **主数据源**: Finage API (唯一真实数据源)
+- **数据质量**: 实时数据、完整OHLCV字段、入库校验
+- **历史数据**: 3年历史数据同步(约388天)
+- **同步频率**: 定时任务自动更新 + 手动刷新接口
+
+### 历史数据同步
+```bash
+# 同步3年历史数据到数据库
+cd backend
+FINAGE_API_KEY=your_api_key go run cmd/sync_etf_history/main.go
+
+# 支持的ETF: SCHD, JEPQ, JEPI, SPYD, VOO, QQQ
+```
+
+### 实时数据更新
+```bash
+# 手动刷新实时数据
+curl -X POST http://localhost:8080/api/etf/update-realtime
+
+# 返回示例:
+# {"success": true, "count": 6, "source": "finage"}
+```
 
 ### 汇率数据源
 - **主数据源**: Open Exchange Rates

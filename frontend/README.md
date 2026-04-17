@@ -19,8 +19,14 @@ ETF-Insight 前端致力于提供：
 
 ### 量化分析视图
 - **ETF对比分析**: 多维度并排对比，雷达图、柱状图可视化
+- **投资组合情景分析**:
+  - 蒙特卡洛模拟可视化，三种市场情景对比
+  - **动态 ETF 选择**: 从 API 获取可用 ETF 列表，显示实时价格
+  - **灵活权重配置**: 支持添加/删除 ETF，实时权重验证
+  - **基于真实数据**: 使用历史数据计算年化收益率、波动率等指标
 - **投资组合分析**: 饼图展示配置，收益曲线，风险指标
-- **技术指标展示**: 支持各类技术分析指标可视化
+- **技术指标展示**: RSI、MACD、布林带雷达图可视化
+- **风险分析**: VaR/CVaR风险指标展示
 - **有效前沿图**: 马科维茨投资组合优化的有效前沿展示
 
 ### A股ETF支持
@@ -77,7 +83,9 @@ frontend/
 │   │   ├── ETFDashboard.tsx       # ETF市场总览
 │   │   ├── ETFComparison.tsx      # ETF对比分析
 │   │   ├── ETFDetail.tsx          # ETF详情
-│   │   ├── PortfolioAnalysis.tsx   # 投资组合分析
+│   │   ├── PortfolioAnalysis.tsx   # 投资组合情景分析(动态ETF选择+实时价格)
+│   │   ├── TechnicalAnalysis.tsx   # 技术分析(RSI/MACD/布林带)
+│   │   ├── RiskAnalysis.tsx        # 风险分析(VaR/CVaR)
 │   │   ├── ASharePortfolio.tsx     # A股红利ETF组合
 │   │   ├── ExchangeRate.tsx        # 汇率管理
 │   │   └── ...
@@ -88,7 +96,8 @@ frontend/
 │   │   ├── HoldingPieChart.tsx    # 持仓饼图
 │   │   └── ...
 │   ├── services/           # API 服务
-│   │   └── api.ts                 # API调用封装
+│   │   ├── api.ts                 # API调用封装
+│   │   └── portfolio.ts           # 投资组合API
 │   ├── types/              # TypeScript 类型
 │   │   └── index.ts               # 全局类型定义
 │   ├── utils/              # 工具函数

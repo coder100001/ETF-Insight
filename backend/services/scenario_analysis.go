@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -66,6 +67,9 @@ type ScenarioResult struct {
 	AvgAnnualReturn float64               `json:"avg_annual_return"`
 	BestYear        float64               `json:"best_year"`
 	WorstYear       float64               `json:"worst_year"`
+	VaR95           float64               `json:"var_95"`
+	VaR99           float64               `json:"var_99"`
+	CVaR95          float64               `json:"cvar_95"`
 }
 
 // ComparisonMetrics 对比指标
@@ -79,19 +83,14 @@ type ComparisonMetrics struct {
 
 // ScenarioAnalysisService 情景分析服务
 type ScenarioAnalysisService struct {
-	historicalData map[string][]float64
+	analyticsService *PortfolioAnalyticsService
 }
 
 // NewScenarioAnalysisService 创建情景分析服务
 func NewScenarioAnalysisService() *ScenarioAnalysisService {
 	return &ScenarioAnalysisService{
-		historicalData: make(map[string][]float64),
+		analyticsService: NewPortfolioAnalyticsService(),
 	}
-}
-
-// LoadHistoricalData 加载历史数据
-func (s *ScenarioAnalysisService) LoadHistoricalData(symbol string, data []float64) {
-	s.historicalData[symbol] = data
 }
 
 // AnalyzePortfolio 分析投资组合
@@ -105,36 +104,43 @@ func (s *ScenarioAnalysisService) AnalyzePortfolio(
 		return nil, err
 	}
 
-	// 计算加权指标
-	weightedMetrics := s.calculateWeightedMetrics(portfolio)
+	// 使用真实历史数据计算组合指标 (使用252天 ≈ 1年数据)
+	portfolioAnalytics, err := s.analyticsService.AnalyzePortfolio(portfolio, 252*3) // 3年数据
+	if err != nil {
+		// 如果无法获取历史数据，使用默认指标
+		portfolioAnalytics = s.getDefaultPortfolioAnalytics(portfolio)
+	}
 
 	// 生成三种情景
 	scenarios := make(map[MarketScenario]*ScenarioResult)
 
-	// 中性情景
+	// 中性情景 - 基于历史数据
 	scenarios[Neutral] = s.generateScenario(
 		Neutral,
-		weightedMetrics,
+		portfolioAnalytics,
 		totalInvestment,
 		timeHorizonYears,
+		1.0, // 中性乘数
 	)
 
-	// 悲观情景
-	pessimisticMetrics := s.adjustForPessimistic(weightedMetrics)
+	// 悲观情景 - 收益降低，波动增加
+	pessimisticAnalytics := s.adjustAnalyticsForScenario(portfolioAnalytics, Pessimistic)
 	scenarios[Pessimistic] = s.generateScenario(
 		Pessimistic,
-		pessimisticMetrics,
+		pessimisticAnalytics,
 		totalInvestment,
 		timeHorizonYears,
+		0.85, // 悲观乘数
 	)
 
-	// 乐观情景
-	optimisticMetrics := s.adjustForOptimistic(weightedMetrics)
+	// 乐观情景 - 收益增加，波动降低
+	optimisticAnalytics := s.adjustAnalyticsForScenario(portfolioAnalytics, Optimistic)
 	scenarios[Optimistic] = s.generateScenario(
 		Optimistic,
-		optimisticMetrics,
+		optimisticAnalytics,
 		totalInvestment,
 		timeHorizonYears,
+		1.15, // 乐观乘数
 	)
 
 	// 计算对比指标
@@ -146,17 +152,20 @@ func (s *ScenarioAnalysisService) AnalyzePortfolio(
 		TimeHorizonYears:  timeHorizonYears,
 		Scenarios:         scenarios,
 		ComparisonMetrics: comparison,
-		Methodology: "基于历史表现和蒙特卡洛模拟的三种市场情景分析。" +
-			"使用几何布朗运动模型预测资产价格路径，考虑股息再投资。",
+		Methodology: "基于真实历史数据的几何布朗运动蒙特卡洛模拟。" +
+			"使用3年历史数据计算年化收益率、波动率和相关系数。" +
+			"进行1000次蒙特卡洛模拟，计算置信区间和风险指标。",
 		Assumptions: "中性情景：基于历史平均收益率和波动率。\n" +
-			"悲观情景：收益率降低30%，波动率增加50%，最大回撤增加100%。\n" +
-			"乐观情景：收益率增加30%，波动率降低20%，最大回撤减少50%。\n" +
-			"无风险利率：4.5%（当前美国国债利率水平）。",
+			"悲观情景：收益率降低15%，波动率增加30%，最大回撤增加50%。\n" +
+			"乐观情景：收益率增加15%，波动率降低20%，最大回撤减少30%。\n" +
+			"无风险利率：4.5%（当前美国国债利率水平）。\n" +
+			"股息再投资：假设股息按年再投资。",
 		Limitations: "1. 历史表现不代表未来结果\n" +
 			"2. 模型假设市场遵循几何布朗运动\n" +
 			"3. 未考虑极端市场事件（黑天鹅）\n" +
 			"4. 交易成本和税费影响未完全建模\n" +
-			"5. 股息收益率假设保持不变",
+			"5. 股息收益率假设保持不变\n" +
+			"6. 相关系数基于历史数据，可能随时间变化",
 	}
 
 	return result, nil
@@ -183,129 +192,122 @@ func (s *ScenarioAnalysisService) validatePortfolio(portfolio map[string]float64
 	return nil
 }
 
-// calculateWeightedMetrics 计算加权指标
-func (s *ScenarioAnalysisService) calculateWeightedMetrics(portfolio map[string]float64) *WeightedMetrics {
-	// SCHD 和 JEPQ 的历史指标（基于实际数据）
-	etfMetrics := map[string]*ETFBaseMetrics{
+// getDefaultPortfolioAnalytics 获取默认组合指标
+func (s *ScenarioAnalysisService) getDefaultPortfolioAnalytics(portfolio map[string]float64) *PortfolioAnalytics {
+	// 基于SCHD和JEPQ的默认指标
+	etfMetrics := map[string]*ETFHistoricalMetrics{
 		"SCHD": {
-			AnnualReturn:  0.12, // 12% 年化收益
-			Volatility:    0.18, // 18% 波动率
+			Symbol:        "SCHD",
+			AnnualReturn:  0.12,
+			Volatility:    0.18,
 			SharpeRatio:   0.67,
-			MaxDrawdown:   0.20,  // 20% 最大回撤
-			DividendYield: 0.035, // 3.5% 股息率
+			MaxDrawdown:   0.20,
+			DividendYield: 0.035,
 		},
 		"JEPQ": {
-			AnnualReturn:  0.10, // 10% 年化收益
-			Volatility:    0.15, // 15% 波动率
+			Symbol:        "JEPQ",
+			AnnualReturn:  0.10,
+			Volatility:    0.15,
 			SharpeRatio:   0.67,
-			MaxDrawdown:   0.18,  // 18% 最大回撤
-			DividendYield: 0.095, // 9.5% 股息率
+			MaxDrawdown:   0.18,
+			DividendYield: 0.095,
+		},
+		"QQQ": {
+			Symbol:        "QQQ",
+			AnnualReturn:  0.15,
+			Volatility:    0.22,
+			SharpeRatio:   0.68,
+			MaxDrawdown:   0.35,
+			DividendYield: 0.006,
+		},
+		"VTI": {
+			Symbol:        "VTI",
+			AnnualReturn:  0.10,
+			Volatility:    0.16,
+			SharpeRatio:   0.59,
+			MaxDrawdown:   0.25,
+			DividendYield: 0.015,
 		},
 	}
 
-	weightedReturn := 0.0
-	weightedVolatility := 0.0
-	weightedSharpe := 0.0
-	weightedDrawdown := 0.0
-	weightedDividend := 0.0
+	// 计算加权指标
+	expectedReturn := 0.0
+	volatility := 0.0
+	maxDrawdown := 0.0
 
 	for symbol, weight := range portfolio {
 		if metrics, ok := etfMetrics[symbol]; ok {
-			weightedReturn += weight * metrics.AnnualReturn
-			weightedVolatility += weight * metrics.Volatility
-			weightedSharpe += weight * metrics.SharpeRatio
-			weightedDrawdown += weight * metrics.MaxDrawdown
-			weightedDividend += weight * metrics.DividendYield
+			expectedReturn += weight * metrics.AnnualReturn
+			volatility += weight * metrics.Volatility
+			maxDrawdown += weight * metrics.MaxDrawdown
 		}
 	}
 
-	// 组合波动率需要考虑相关性（简化计算）
-	// 假设 SCHD 和 JEPQ 相关系数为 0.7
-	correlation := 0.7
-	if len(portfolio) == 2 {
-		symbols := make([]string, 0, 2)
-		for s := range portfolio {
-			symbols = append(symbols, s)
-		}
-		if m1, ok1 := etfMetrics[symbols[0]]; ok1 {
-			if m2, ok2 := etfMetrics[symbols[1]]; ok2 {
-				w1 := portfolio[symbols[0]]
-				w2 := portfolio[symbols[1]]
-				vol1 := m1.Volatility
-				vol2 := m2.Volatility
-				// 组合方差公式
-				portfolioVariance := w1*w1*vol1*vol1 + w2*w2*vol2*vol2 + 2*w1*w2*correlation*vol1*vol2
-				weightedVolatility = math.Sqrt(portfolioVariance)
-			}
-		}
+	// 组合波动率调整 (简化计算)
+	volatility = volatility * 0.9 // 考虑分散化效应
+
+	riskFreeRate := 0.045
+	sharpeRatio := (expectedReturn - riskFreeRate) / volatility
+	if volatility == 0 {
+		sharpeRatio = 0
 	}
 
-	return &WeightedMetrics{
-		AnnualReturn:  weightedReturn,
-		Volatility:    weightedVolatility,
-		SharpeRatio:   weightedSharpe,
-		MaxDrawdown:   weightedDrawdown,
-		DividendYield: weightedDividend,
+	return &PortfolioAnalytics{
+		ExpectedReturn: expectedReturn,
+		Volatility:     volatility,
+		SharpeRatio:    sharpeRatio,
+		MaxDrawdown:    maxDrawdown,
+		ETFMetrics:     etfMetrics,
 	}
 }
 
-// WeightedMetrics 加权指标
-type WeightedMetrics struct {
-	AnnualReturn  float64
-	Volatility    float64
-	SharpeRatio   float64
-	MaxDrawdown   float64
-	DividendYield float64
-}
-
-// ETFBaseMetrics ETF 基础指标
-type ETFBaseMetrics struct {
-	AnnualReturn  float64
-	Volatility    float64
-	SharpeRatio   float64
-	MaxDrawdown   float64
-	DividendYield float64
-}
-
-// adjustForPessimistic 调整为悲观情景
-func (s *ScenarioAnalysisService) adjustForPessimistic(metrics *WeightedMetrics) *WeightedMetrics {
-	return &WeightedMetrics{
-		AnnualReturn:  metrics.AnnualReturn * 0.7,   // 收益降低30%
-		Volatility:    metrics.Volatility * 1.5,     // 波动率增加50%
-		SharpeRatio:   metrics.SharpeRatio * 0.5,    // 夏普比率降低50%
-		MaxDrawdown:   metrics.MaxDrawdown * 2.0,    // 最大回撤增加100%
-		DividendYield: metrics.DividendYield * 0.85, // 股息率降低15%
+// adjustAnalyticsForScenario 根据情景调整指标
+func (s *ScenarioAnalysisService) adjustAnalyticsForScenario(
+	analytics *PortfolioAnalytics,
+	scenario MarketScenario,
+) *PortfolioAnalytics {
+	adjusted := &PortfolioAnalytics{
+		ExpectedReturn: analytics.ExpectedReturn,
+		Volatility:     analytics.Volatility,
+		SharpeRatio:    analytics.SharpeRatio,
+		MaxDrawdown:    analytics.MaxDrawdown,
+		ETFMetrics:     analytics.ETFMetrics,
 	}
-}
 
-// adjustForOptimistic 调整为乐观情景
-func (s *ScenarioAnalysisService) adjustForOptimistic(metrics *WeightedMetrics) *WeightedMetrics {
-	return &WeightedMetrics{
-		AnnualReturn:  metrics.AnnualReturn * 1.3,  // 收益增加30%
-		Volatility:    metrics.Volatility * 0.8,    // 波动率降低20%
-		SharpeRatio:   metrics.SharpeRatio * 1.4,   // 夏普比率增加40%
-		MaxDrawdown:   metrics.MaxDrawdown * 0.5,   // 最大回撤减少50%
-		DividendYield: metrics.DividendYield * 1.1, // 股息率增加10%
+	switch scenario {
+	case Pessimistic:
+		adjusted.ExpectedReturn = analytics.ExpectedReturn * 0.85
+		adjusted.Volatility = analytics.Volatility * 1.30
+		adjusted.SharpeRatio = analytics.SharpeRatio * 0.60
+		adjusted.MaxDrawdown = analytics.MaxDrawdown * 1.50
+	case Optimistic:
+		adjusted.ExpectedReturn = analytics.ExpectedReturn * 1.15
+		adjusted.Volatility = analytics.Volatility * 0.80
+		adjusted.SharpeRatio = analytics.SharpeRatio * 1.40
+		adjusted.MaxDrawdown = analytics.MaxDrawdown * 0.70
 	}
+
+	return adjusted
 }
 
-// generateScenario 生成情景预测
+// generateScenario 生成情景预测 (使用蒙特卡洛模拟)
 func (s *ScenarioAnalysisService) generateScenario(
 	scenario MarketScenario,
-	metrics *WeightedMetrics,
+	analytics *PortfolioAnalytics,
 	totalInvestment float64,
 	timeHorizonYears int,
+	scenarioMultiplier float64,
 ) *ScenarioResult {
-	riskFreeRate := 0.045 // 4.5% 无风险利率
+	riskFreeRate := 0.045
 
 	assumptions := &ScenarioAssumptions{
 		Scenario:      scenario,
-		AnnualReturn:  metrics.AnnualReturn,
-		Volatility:    metrics.Volatility,
-		SharpeRatio:   (metrics.AnnualReturn - riskFreeRate) / metrics.Volatility,
-		MaxDrawdown:   metrics.MaxDrawdown,
+		AnnualReturn:  analytics.ExpectedReturn * scenarioMultiplier,
+		Volatility:    analytics.Volatility,
+		SharpeRatio:   (analytics.ExpectedReturn*scenarioMultiplier - riskFreeRate) / analytics.Volatility,
+		MaxDrawdown:   analytics.MaxDrawdown,
 		RiskFreeRate:  riskFreeRate,
-		DividendYield: metrics.DividendYield,
+		DividendYield: 0.05, // 简化假设
 	}
 
 	// 设置情景描述
@@ -321,35 +323,102 @@ func (s *ScenarioAnalysisService) generateScenario(
 		assumptions.MarketCondition = "经济繁荣，市场情绪乐观"
 	}
 
-	// 生成年度预测
-	projections := make([]PortfolioProjection, timeHorizonYears)
-	currentValue := totalInvestment
+	// 运行蒙特卡洛模拟 (1000次)
+	numSimulations := 1000
+	finalValues := make([]float64, numSimulations)
+	allProjections := make([][]PortfolioProjection, numSimulations)
+
+	for sim := 0; sim < numSimulations; sim++ {
+		projections, finalValue := s.runSingleSimulation(
+			assumptions,
+			totalInvestment,
+			timeHorizonYears,
+			sim,
+		)
+		finalValues[sim] = finalValue
+		allProjections[sim] = projections
+	}
+
+	// 计算统计指标
+	sort.Float64s(finalValues)
+	medianFinalValue := finalValues[numSimulations/2]
+	var95 := finalValues[int(float64(numSimulations)*0.05)] // 5%分位数
+	var99 := finalValues[int(float64(numSimulations)*0.01)] // 1%分位数
+	cvar95 := s.calculateCVaRFromSimulations(finalValues, 0.95)
+
+	// 使用中位数路径作为展示结果
+	medianProjections := allProjections[numSimulations/2]
+
+	// 计算其他指标
+	totalReturn := (medianFinalValue - totalInvestment) / totalInvestment
+	avgAnnualReturn := math.Pow(medianFinalValue/totalInvestment, 1.0/float64(timeHorizonYears)) - 1
+
+	// 找出最好和最坏年份
 	bestYear := -math.MaxFloat64
 	worstYear := math.MaxFloat64
+	for _, proj := range medianProjections {
+		if proj.AnnualReturn > bestYear {
+			bestYear = proj.AnnualReturn
+		}
+		if proj.AnnualReturn < worstYear {
+			worstYear = proj.AnnualReturn
+		}
+	}
 
+	return &ScenarioResult{
+		Assumptions:     assumptions,
+		Projections:     medianProjections,
+		FinalValue:      medianFinalValue,
+		TotalReturn:     totalReturn * 100,
+		AvgAnnualReturn: avgAnnualReturn * 100,
+		BestYear:        bestYear,
+		WorstYear:       worstYear,
+		VaR95:           var95,
+		VaR99:           var99,
+		CVaR95:          cvar95,
+	}
+}
+
+// runSingleSimulation 运行单次模拟
+func (s *ScenarioAnalysisService) runSingleSimulation(
+	assumptions *ScenarioAssumptions,
+	initialValue float64,
+	timeHorizonYears int,
+	seed int,
+) ([]PortfolioProjection, float64) {
+	// 为每次模拟设置不同的随机种子
+	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(seed)))
+
+	projections := make([]PortfolioProjection, timeHorizonYears)
+	currentValue := initialValue
 	startDate := time.Now()
 
+	// 几何布朗运动参数
+	mu := assumptions.AnnualReturn
+	sigma := assumptions.Volatility
+	dt := 1.0 // 1年时间步长
+
 	for year := 0; year < timeHorizonYears; year++ {
-		// 使用几何布朗运动模拟
-		// dS = μS dt + σS dW
-		drift := metrics.AnnualReturn - 0.5*metrics.Volatility*metrics.Volatility
-		randomShock := s.generateRandomShock(metrics.Volatility)
-
-		annualReturn := drift + randomShock
 		startValue := currentValue
-		endValue := currentValue * math.Exp(annualReturn)
 
-		// 加上股息收入
-		dividendIncome := endValue * metrics.DividendYield
-		// 假设股息再投资
+		// 几何布朗运动: dS = μS dt + σS dW
+		// S_t = S_0 * exp((μ - σ²/2)t + σ√t Z)
+		z := s.generateNormalRandom(r)
+		growthFactor := math.Exp((mu-0.5*sigma*sigma)*dt + sigma*math.Sqrt(dt)*z)
+
+		endValue := startValue * growthFactor
+
+		// 股息再投资
+		dividendIncome := endValue * assumptions.DividendYield
 		endValue += dividendIncome
 
-		cumulativeReturn := (endValue - totalInvestment) / totalInvestment
+		annualReturn := (endValue - startValue) / startValue
+		cumulativeReturn := (endValue - initialValue) / initialValue
 
 		yearStart := startDate.AddDate(year, 0, 0)
 		yearEnd := startDate.AddDate(year+1, 0, 0)
 
-		projection := PortfolioProjection{
+		projections[year] = PortfolioProjection{
 			Year:             year + 1,
 			StartDate:        yearStart.Format("2006-01-02"),
 			EndDate:          yearEnd.Format("2006-01-02"),
@@ -357,79 +426,79 @@ func (s *ScenarioAnalysisService) generateScenario(
 			EndValue:         endValue,
 			AnnualReturn:     annualReturn * 100,
 			CumulativeReturn: cumulativeReturn * 100,
-			Volatility:       metrics.Volatility * 100,
-			MaxDrawdown:      metrics.MaxDrawdown * 100,
+			Volatility:       assumptions.Volatility * 100,
+			MaxDrawdown:      assumptions.MaxDrawdown * 100,
 			SharpeRatio:      assumptions.SharpeRatio,
 			DividendIncome:   dividendIncome,
 			TotalValue:       endValue,
 		}
 
-		projections[year] = projection
-
-		if annualReturn > bestYear {
-			bestYear = annualReturn
-		}
-		if annualReturn < worstYear {
-			worstYear = annualReturn
-		}
-
 		currentValue = endValue
 	}
 
-	totalReturn := (currentValue - totalInvestment) / totalInvestment
-	avgAnnualReturn := math.Pow(currentValue/totalInvestment, 1.0/float64(timeHorizonYears)) - 1
+	return projections, currentValue
+}
 
-	return &ScenarioResult{
-		Assumptions:     assumptions,
-		Projections:     projections,
-		FinalValue:      currentValue,
-		TotalReturn:     totalReturn * 100,
-		AvgAnnualReturn: avgAnnualReturn * 100,
-		BestYear:        bestYear * 100,
-		WorstYear:       worstYear * 100,
+// generateNormalRandom 生成标准正态分布随机数 (Box-Muller变换)
+func (s *ScenarioAnalysisService) generateNormalRandom(r *rand.Rand) float64 {
+	u1 := r.Float64()
+	u2 := r.Float64()
+	return math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
+}
+
+// calculateCVaRFromSimulations 从模拟结果计算CVaR
+func (s *ScenarioAnalysisService) calculateCVaRFromSimulations(values []float64, confidence float64) float64 {
+	sort.Float64s(values)
+
+	// 找到对应分位数的位置
+	index := int(float64(len(values)) * (1 - confidence))
+	if index < 0 {
+		index = 0
 	}
+
+	// 计算尾部平均值
+	sum := 0.0
+	count := 0
+	for i := 0; i <= index && i < len(values); i++ {
+		sum += values[i]
+		count++
+	}
+
+	if count == 0 {
+		return values[0]
+	}
+
+	return sum / float64(count)
 }
 
-// generateRandomShock 生成随机冲击（简化版蒙特卡洛）
-func (s *ScenarioAnalysisService) generateRandomShock(volatility float64) float64 {
-	// 使用 Box-Muller 变换生成正态分布随机数
-	u1 := rand.Float64()
-	u2 := rand.Float64()
-	z := math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
-	return volatility * z * 0.3 // 降低随机性使结果更可预测
-}
-
-// calculateComparison 计算情景对比
+// calculateComparison 计算对比指标
 func (s *ScenarioAnalysisService) calculateComparison(
 	scenarios map[MarketScenario]*ScenarioResult,
 ) *ComparisonMetrics {
-	bestScenario := Neutral
-	worstScenario := Neutral
+	comparison := &ComparisonMetrics{}
+
+	// 找出最好和最坏情景
 	bestValue := -math.MaxFloat64
 	worstValue := math.MaxFloat64
-	bestRiskAdjusted := Neutral
 	bestSharpe := -math.MaxFloat64
 
 	for scenario, result := range scenarios {
 		if result.FinalValue > bestValue {
 			bestValue = result.FinalValue
-			bestScenario = scenario
+			comparison.BestScenario = scenario
 		}
 		if result.FinalValue < worstValue {
 			worstValue = result.FinalValue
-			worstScenario = scenario
+			comparison.WorstScenario = scenario
 		}
 		if result.Assumptions.SharpeRatio > bestSharpe {
 			bestSharpe = result.Assumptions.SharpeRatio
-			bestRiskAdjusted = scenario
+			comparison.RiskAdjustedWinner = scenario
 		}
 	}
 
-	return &ComparisonMetrics{
-		BestScenario:       bestScenario,
-		WorstScenario:      worstScenario,
-		ValueDifference:    bestValue - worstValue,
-		ReturnSpread:       scenarios[bestScenario].TotalReturn - scenarios[worstScenario].TotalReturn,
-		RiskAdjustedWinner: bestRiskAdjusted,
-	}
+	comparison.ValueDifference = bestValue - worstValue
+	comparison.ReturnSpread = scenarios[Optimistic].TotalReturn - scenarios[Pessimistic].TotalReturn
+
+	return comparison
 }

@@ -89,8 +89,9 @@ LOG_LEVEL=info
 
 #### 量化分析能力
 - ✅ **投资组合优化**: 马科维茨模型、有效前沿、夏普比率最大化
-- 🔄 **技术指标**: RSI、MACD、布林带、均线系统
-- 🔄 **风险模型**: VaR、CVaR、压力测试、情景分析
+- ✅ **投资组合情景分析**: 蒙特卡洛模拟、三种市场情景（乐观/中性/悲观）、VaR/CVaR风险指标
+- ✅ **技术指标**: RSI、MACD、布林带、均线系统
+- ✅ **风险模型**: VaR、CVaR（历史法/参数法）、压力测试、情景分析
 - 🔄 **因子分析**: Fama-French 三因子、Carhart 四因子模型
 
 ### 第二阶段：研究平台化 (v2.6 - v2.8) - 3-6个月
@@ -173,6 +174,74 @@ git push origin feature/your-feature-name
 ---
 
 ## 🔧 最新技术更新
+
+### v2.5 更新内容
+
+#### 投资组合情景分析 (新增)
+- ✅ **蒙特卡洛模拟**: 1000次模拟路径，基于几何布朗运动模型
+  - `services/scenario_analysis.go` - 情景分析服务
+  - 使用真实历史数据计算收益率和波动率
+  - 三种市场情景：乐观(+20%)、中性(0%)、悲观(-20%)
+- ✅ **金融计算公式**: 标准金融公式计算组合指标
+  - `services/portfolio_analytics.go` - 组合分析服务
+  - 组合收益率: $R_p = \sum w_i R_i$
+  - 组合方差: $\sigma_p^2 = \sum\sum w_i w_j \sigma_i \sigma_j \rho_{ij}$
+  - 年化计算: $\times \sqrt{252}$
+- ✅ **风险指标**: VaR 95%/99%、CVaR 95%、最大回撤、夏普比率
+  - 参数法计算VaR/CVaR，基于正态分布假设
+  - 蒙特卡洛模拟计算置信区间
+- ✅ **默认投资组合模板**: 6种预设组合
+  - 保守型、平衡型、进取型、收入型、股息增长型、科技聚焦型
+  - API: `GET /api/portfolio/default-templates`
+- ✅ **前端分析页面**: 交互式情景分析可视化
+  - `PortfolioAnalysis.tsx` - 投资组合情景分析页面
+  - **动态 ETF 选择**: 从 API 获取可用 ETF 列表，显示实时价格
+  - **灵活配置**: 支持添加/删除 ETF，动态调整权重
+  - **权重验证**: 实时显示总配比，100% 时才可分析
+  - 折线图展示三种情景下的资产增长路径
+  - 对比表格展示各情景关键指标
+
+#### 实时数据获取 (v2.5 增强)
+- ✅ **Finage API 集成**: 唯一真实数据源
+  - `services/datasource/finage_provider.go` - Finage 数据源提供者
+  - 环境变量: `FINAGE_API_KEY` (必须配置)
+  - 支持实时报价和聚合历史数据
+- ✅ **历史数据同步**: 3 年历史数据入库
+  - `cmd/sync_etf_history/main.go` - 历史数据同步脚本
+  - 同步 6 个 ETF 的日级别 OHLCV 数据
+  - 数据时间范围: 2024-11 至 2026-04 (约 388 天)
+- ✅ **实时数据更新**: 定时任务自动更新
+  - `POST /api/etf/update-realtime` - 手动刷新实时数据
+  - 数据入库: ETFData 表存储完整 OHLCV 数据
+  - 冲突处理: 使用 UPSERT 避免重复数据
+- ✅ **数据质量保证**:
+  - 字段完整性: Open, High, Low, Close, Volume 全部入库
+  - 数据源标识: 记录数据来源 (finage)
+  - 历史数据计算: 基于真实历史数据计算年化收益率、波动率等指标
+
+#### 技术指标库 (v2.5 新增)
+- ✅ **RSI (相对强弱指标)**: 基于价格变动的动量指标
+  - `services/technical_indicators.go`
+  - 支持 6/12/24 日周期
+  - 超买(>70)/超卖(<30)信号识别
+- ✅ **MACD (指数平滑异同平均线)**: 趋势跟踪动量指标
+  - DIF线、DEA线、MACD柱状图
+  - 金叉/死叉信号识别
+- ✅ **布林带 (Bollinger Bands)**: 波动性通道指标
+  - 中轨(SMA20)、上轨(+2σ)、下轨(-2σ)
+  - 价格位置百分比计算
+- ✅ **移动平均线**: SMA简单移动平均、EMA指数移动平均
+  - 支持自定义周期
+  - 多周期均线对比
+
+#### 风险模型 (v2.5 新增)
+- ✅ **VaR/CVaR计算**: `services/risk_models.go`
+  - 历史模拟法: 基于历史收益率分位数
+  - 参数法: 基于正态分布假设
+  - 支持 95% 和 99% 置信水平
+- ✅ **组合风险分解**: 成分VaR、边际VaR分析
+- ✅ **风险调整收益**: 夏普比率、索提诺比率、卡尔玛比率
+- ✅ **市场风险指标**: Beta、Alpha、最大回撤
 
 ### v2.4 更新内容
 
@@ -604,6 +673,75 @@ P3 - 优化改进 → 纳入迭代计划
 | **精度** | 使用decimal.Decimal，避免浮点数精度问题 |
 | **单位** | 收益率统一使用百分比，波动率使用年化值 |
 | **边界** | 除零保护，返回零值或明确错误 |
+| **数据来源** | 优先使用数据库真实历史数据，不足时使用默认值 |
+
+---
+
+### 0. 投资组合分析核心公式
+
+#### 0.1 对数收益率计算
+```
+r_t = ln(P_t / P_{t-1})
+
+其中:
+- P_t: 第t日收盘价
+- P_{t-1}: 第t-1日收盘价
+- r_t: 第t日对数收益率
+```
+
+#### 0.2 组合预期收益率
+```
+R_p = Σ w_i * R_i
+
+其中:
+- R_p: 组合预期年化收益率
+- w_i: 第i个资产的权重
+- R_i: 第i个资产的预期年化收益率
+```
+
+#### 0.3 组合方差 (考虑相关性)
+```
+σ_p² = Σ Σ w_i * w_j * σ_i * σ_j * ρ_ij
+
+其中:
+- σ_p²: 组合方差
+- w_i, w_j: 第i,j个资产的权重
+- σ_i, σ_j: 第i,j个资产的年化波动率
+- ρ_ij: 第i,j个资产的相关系数
+```
+
+#### 0.4 蒙特卡洛模拟 (几何布朗运动)
+```
+S_t = S_0 * exp((μ - σ²/2) * t + σ * √t * Z)
+
+其中:
+- S_t: t时刻的资产价格
+- S_0: 初始资产价格
+- μ: 预期年化收益率
+- σ: 年化波动率
+- t: 时间(年)
+- Z: 标准正态分布随机变量
+```
+
+#### 0.5 VaR (参数法)
+```
+VaR_α = μ + Z_α * σ
+
+其中:
+- VaR_α: 置信水平α下的风险价值
+- μ: 收益率均值
+- Z_α: 标准正态分布的分位数 (95%: -1.645, 99%: -2.326)
+- σ: 收益率标准差
+```
+
+#### 0.6 CVaR (参数法)
+```
+CVaR_α = μ - σ * φ(Z_α) / Φ(Z_α)
+
+其中:
+- φ: 标准正态分布PDF
+- Φ: 标准正态分布CDF
+```
 
 ---
 
@@ -846,6 +984,122 @@ utils.Info("API request", "url", reqURL)
 
 ---
 
+## 🗄️ 数据操作日志规范
+
+### 设计原则
+- **不删除数据**: 所有数据操作采用软删除或更新，保留历史记录
+- **完整审计**: 记录所有数据变更的操作人、时间、前后值
+- **可追溯**: 支持按时间、表名、操作类型查询
+
+### 数据操作日志表 (data_operation_logs)
+
+```go
+// DataOperationLog 数据操作日志模型
+type DataOperationLog struct {
+    ID            uint           `json:"id" gorm:"primaryKey"`
+    TableName     string         `json:"table_name" gorm:"index;size:64"`      // 表名: etf_configs, portfolio_configs等
+    OperationType string         `json:"operation_type" gorm:"index;size:20"`  // 操作类型: CREATE, UPDATE, DELETE
+    RecordID      uint           `json:"record_id" gorm:"index"`               // 被操作记录ID
+    OldValues     datatypes.JSON `json:"old_values" gorm:"type:json"`          // 操作前的数据(JSON)
+    NewValues     datatypes.JSON `json:"new_values" gorm:"type:json"`          // 操作后的数据(JSON)
+    Diff          datatypes.JSON `json:"diff" gorm:"type:json"`                // 变更字段对比
+    OperatorID    uint           `json:"operator_id" gorm:"index"`             // 操作人ID
+    OperatorName  string         `json:"operator_name" gorm:"size:64"`         // 操作人名称
+    OperatorIP    string         `json:"operator_ip" gorm:"size:64"`           // 操作人IP
+    RequestID     string         `json:"request_id" gorm:"size:64"`            // 请求ID(关联审计日志)
+    Reason        string         `json:"reason" gorm:"size:255"`               // 操作原因/备注
+    CreatedAt     time.Time      `json:"created_at"`
+}
+```
+
+### 自动记录机制
+
+#### 1. GORM Hook 自动记录
+```go
+// 在模型定义中启用审计
+func (e *ETFConfig) AfterCreate(tx *gorm.DB) error {
+    return logDataChange(tx, "etf_configs", "CREATE", e.ID, nil, e, "")
+}
+
+func (e *ETFConfig) AfterUpdate(tx *gorm.DB) error {
+    // 获取旧值
+    var oldETF ETFConfig
+    tx.Unscoped().First(&oldETF, e.ID)
+    return logDataChange(tx, "etf_configs", "UPDATE", e.ID, &oldETF, e, "")
+}
+
+func (e *ETFConfig) AfterDelete(tx *gorm.DB) error {
+    return logDataChange(tx, "etf_configs", "DELETE", e.ID, e, nil, "")
+}
+```
+
+#### 2. 手动记录辅助函数
+```go
+// LogDataChange 记录数据变更
+func LogDataChange(
+    db *gorm.DB,
+    tableName string,
+    operationType string,
+    recordID uint,
+    oldValues interface{},
+    newValues interface{},
+    reason string,
+) error {
+    // 从context获取操作人信息
+    operatorID, _ := db.Statement.Context.Value("operator_id").(uint)
+    operatorName, _ := db.Statement.Context.Value("operator_name").(string)
+    operatorIP, _ := db.Statement.Context.Value("operator_ip").(string)
+    requestID, _ := db.Statement.Context.Value("request_id").(string)
+
+    // 计算差异
+    diff := calculateDiff(oldValues, newValues)
+
+    log := DataOperationLog{
+        TableName:     tableName,
+        OperationType: operationType,
+        RecordID:      recordID,
+        OldValues:     toJSON(oldValues),
+        NewValues:     toJSON(newValues),
+        Diff:          toJSON(diff),
+        OperatorID:    operatorID,
+        OperatorName:  operatorName,
+        OperatorIP:    operatorIP,
+        RequestID:     requestID,
+        Reason:        reason,
+    }
+
+    return db.Create(&log).Error
+}
+```
+
+### 查询API
+
+```go
+// 查询数据操作日志
+GET /api/data-logs?table=etf_configs&operation=UPDATE&start_date=2026-01-01&end_date=2026-12-31
+
+// 查询单条记录的历史
+GET /api/data-logs/record?table=etf_configs&record_id=1
+
+// 数据回滚(管理员权限)
+POST /api/data-logs/rollback
+{
+    "log_id": 123,
+    "reason": "误操作恢复"
+}
+```
+
+### 应用场景
+
+| 场景 | 功能 |
+|------|------|
+| **数据追溯** | 查看某条记录的所有历史变更 |
+| **误操作恢复** | 通过日志回滚到之前的状态 |
+| **审计合规** | 记录谁在什么时间做了什么修改 |
+| **数据分析** | 统计各表的操作频率和趋势 |
+
+---
+
 ## 🎯 成功指标
 
 ### 技术指标
@@ -979,5 +1233,5 @@ utils.Info("API request", "url", reqURL)
 
 ---
 
-*本文档最后更新: 2026-04-13 (v2.5 金融算法安全增强版)*
+*本文档最后更新: 2026-04-17 (v2.5 数据操作日志规范版)*
 *强制上下文绑定版本: v2.0*

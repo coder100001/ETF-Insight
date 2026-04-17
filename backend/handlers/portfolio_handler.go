@@ -47,6 +47,94 @@ type UpdatePortfolioConfigRequest struct {
 	IsDefault       bool               `json:"is_default"`
 }
 
+// DefaultPortfolioTemplate 默认投资组合模板
+type DefaultPortfolioTemplate struct {
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Allocation  map[string]float64 `json:"allocation"`
+	RiskLevel   string             `json:"risk_level"`
+	Icon        string             `json:"icon"`
+}
+
+// GetDefaultPortfolioTemplates 获取默认投资组合模板
+func (h *PortfolioHandler) GetDefaultPortfolioTemplates(c *gin.Context) {
+	templates := []DefaultPortfolioTemplate{
+		{
+			ID:          "conservative",
+			Name:        "保守型组合",
+			Description: "低风险，稳定收益，适合风险厌恶型投资者",
+			Allocation: map[string]float64{
+				"BND": 0.80, // 80% 债券
+				"VTI": 0.20, // 20% 股票
+			},
+			RiskLevel: "低",
+			Icon:      "🛡️",
+		},
+		{
+			ID:          "balanced",
+			Name:        "平衡型组合",
+			Description: "股债平衡，风险收益适中，适合大多数投资者",
+			Allocation: map[string]float64{
+				"VTI": 0.60, // 60% 股票
+				"BND": 0.40, // 40% 债券
+			},
+			RiskLevel: "中",
+			Icon:      "⚖️",
+		},
+		{
+			ID:          "aggressive",
+			Name:        "进取型组合",
+			Description: "高增长潜力，较高风险，适合年轻投资者",
+			Allocation: map[string]float64{
+				"QQQ": 0.80, // 80% 成长型股票
+				"BND": 0.20, // 20% 债券
+			},
+			RiskLevel: "高",
+			Icon:      "🚀",
+		},
+		{
+			ID:          "income",
+			Name:        "收入型组合",
+			Description: "高股息收益，适合退休人士或需要现金流的投资者",
+			Allocation: map[string]float64{
+				"SCHD": 0.50, // 50% 高股息
+				"JEPQ": 0.50, // 50% 高股息
+			},
+			RiskLevel: "中低",
+			Icon:      "💰",
+		},
+		{
+			ID:          "dividend_growth",
+			Name:        "股息增长型",
+			Description: "股息增长与资本增值并重",
+			Allocation: map[string]float64{
+				"SCHD": 0.40,
+				"VYM":  0.30,
+				"VTI":  0.30,
+			},
+			RiskLevel: "中",
+			Icon:      "📈",
+		},
+		{
+			ID:          "tech_focus",
+			Name:        "科技聚焦型",
+			Description: "重仓科技板块，高增长高波动",
+			Allocation: map[string]float64{
+				"QQQ": 0.70,
+				"VTI": 0.30,
+			},
+			RiskLevel: "高",
+			Icon:      "💻",
+		},
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    templates,
+	})
+}
+
 func (h *PortfolioHandler) AnalyzePortfolio(c *gin.Context) {
 	var req PortfolioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

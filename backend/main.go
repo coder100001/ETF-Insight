@@ -141,6 +141,7 @@ func main() {
 
 	// 投资组合情景分析路由
 	router.POST("/api/portfolio/scenarios", portfolioHandler.AnalyzeScenarios)
+	router.GET("/api/portfolio/default-templates", portfolioHandler.GetDefaultPortfolioTemplates)
 
 	// 投资组合优化路由
 	router.POST("/api/portfolio/optimize", optimizerHandler.OptimizePortfolio)
