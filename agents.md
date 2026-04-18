@@ -185,11 +185,17 @@ git push origin feature/your-feature-name
 - ✅ **金融计算公式**: 标准金融公式计算组合指标
   - `services/portfolio_analytics.go` - 组合分析服务
   - 组合收益率: $R_p = \sum w_i R_i$
-  - 组合方差: $\sigma_p^2 = \sum\sum w_i w_j \sigma_i \sigma_j \rho_{ij}$
+  - 组合方差: $\sigma_p^2 = \sum_i w_i^2 \sigma_i^2 + 2 \sum_{i<j} w_i w_j \sigma_i \sigma_j \rho_{ij}$
   - 年化计算: $\times \sqrt{252}$
 - ✅ **风险指标**: VaR 95%/99%、CVaR 95%、最大回撤、夏普比率
   - 参数法计算VaR/CVaR，基于正态分布假设
   - 蒙特卡洛模拟计算置信区间
+- ✅ **新增风险调整指标**:
+  - **索提诺比率 (Sortino Ratio)**: $(R_p - R_f) / \sigma_d$，只考虑下行风险
+  - **卡尔玛比率 (Calmar Ratio)**: $R_p / \text{最大回撤}$，收益与回撤的比值
+  - **下行偏差 (Downside Deviation)**: 只考虑低于目标收益率的波动
+  - **偏度 (Skewness)**: 收益分布的不对称性
+  - **峰度 (Kurtosis)**: 收益分布的尾部厚度
 - ✅ **默认投资组合模板**: 6种预设组合
   - 保守型、平衡型、进取型、收入型、股息增长型、科技聚焦型
   - API: `GET /api/portfolio/default-templates`
@@ -844,7 +850,120 @@ func calculateMaxDrawdown(prices []models.ETFData) decimal.Decimal {
 
 ---
 
-### 3. 其他指标
+### 3. 索提诺比率 (Sortino Ratio)
+
+#### 标准公式
+```
+Sortino = (Rp - Rf) / σd
+
+其中:
+- Rp: 投资组合年化收益率
+- Rf: 年化无风险利率
+- σd: 下行标准差 (只考虑负收益)
+```
+
+#### 下行标准差计算
+```
+σd = sqrt( Σ(min(ri - τ, 0)²) / n )
+
+其中:
+- ri: 第i期收益率
+- τ: 目标收益率 (通常设为0)
+- n: 总期数
+```
+
+#### 实现规范
+```go
+// CalculateSortinoRatio 计算索提诺比率
+// 只考虑下行风险，比夏普比率更适合评估不对称收益
+func (s *PortfolioAnalyticsService) CalculateSortinoRatio(returns []float64, riskFreeRate float64) float64 {
+    if len(returns) == 0 {
+        return 0
+    }
+
+    meanReturn := s.mean(returns)
+    targetReturn := 0.0 // 最小可接受收益率
+
+    // 计算下行偏差
+    downsideDeviations := make([]float64, 0)
+    for _, r := range returns {
+        if r < targetReturn {
+            downsideDeviations = append(downsideDeviations, (r-targetReturn)*(r-targetReturn))
+        }
+    }
+
+    if len(downsideDeviations) == 0 {
+        return 0 // 没有下行风险
+    }
+
+    downsideVariance := 0.0
+    for _, d := range downsideDeviations {
+        downsideVariance += d
+    }
+    downsideStd := math.Sqrt(downsideVariance / float64(len(returns)))
+
+    if downsideStd == 0 {
+        return 0
+    }
+
+    // 年化处理
+    annualReturn := meanReturn * 252
+    annualDownsideStd := downsideStd * math.Sqrt(252)
+
+    return (annualReturn - riskFreeRate) / annualDownsideStd
+}
+```
+
+---
+
+### 4. 卡尔玛比率 (Calmar Ratio)
+
+#### 标准公式
+```
+Calmar = Rp / |MDD|
+
+其中:
+- Rp: 投资组合年化收益率
+- MDD: 最大回撤 (取绝对值)
+```
+
+#### 实现规范
+```go
+// CalculateCalmarRatio 计算卡尔玛比率
+// 衡量收益与最大回撤的比值，适合评估风险调整后的收益
+func (s *PortfolioAnalyticsService) CalculateCalmarRatio(annualReturn, maxDrawdown float64) float64 {
+    if maxDrawdown == 0 {
+        return 0
+    }
+    return annualReturn / maxDrawdown
+}
+```
+
+---
+
+### 5. 偏度与峰度
+
+#### 偏度 (Skewness)
+```
+Skewness = [n / ((n-1)(n-2))] * Σ((xi - μ) / σ)³
+
+衡量收益分布的不对称性:
+- 正偏度: 右尾较长，极端正收益概率高
+- 负偏度: 左尾较长，极端负收益概率高
+```
+
+#### 峰度 (Kurtosis)
+```
+Excess Kurtosis = [Σ((xi - μ) / σ)⁴ / n] - 3
+
+衡量收益分布的尾部厚度:
+- 正超额峰度: 厚尾，极端事件概率高
+- 负超额峰度: 薄尾，收益更集中在均值附近
+```
+
+---
+
+### 6. 其他指标
 
 | 指标 | 公式 | 精度要求 |
 |------|------|----------|

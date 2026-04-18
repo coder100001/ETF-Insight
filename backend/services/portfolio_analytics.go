@@ -31,6 +31,7 @@ type PortfolioAnalytics struct {
 	Volatility        float64                          `json:"volatility"`         // 年化波动率
 	SharpeRatio       float64                          `json:"sharpe_ratio"`       // 夏普比率
 	SortinoRatio      float64                          `json:"sortino_ratio"`      // 索提诺比率
+	CalmarRatio       float64                          `json:"calmar_ratio"`       // 卡尔玛比率
 	MaxDrawdown       float64                          `json:"max_drawdown"`       // 最大回撤
 	VaR95             float64                          `json:"var_95"`             // 95% VaR
 	VaR99             float64                          `json:"var_99"`             // 99% VaR
@@ -219,8 +220,9 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 	portfolio map[string]float64,
 	days int,
 ) (*PortfolioAnalytics, error) {
-	// 获取每个ETF的指标
+	// 获取每个ETF的指标和历史数据
 	etfMetrics := make(map[string]*ETFHistoricalMetrics)
+	etfData := make(map[string][]models.ETFData)
 
 	for symbol := range portfolio {
 		metrics, err := s.CalculateETFMetrics(symbol, days)
@@ -228,6 +230,12 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 			return nil, fmt.Errorf("计算ETF %s 指标失败: %w", symbol, err)
 		}
 		etfMetrics[symbol] = metrics
+
+		// 同时获取历史数据用于后续计算
+		data, err := s.GetETFHistoricalData(symbol, days)
+		if err == nil {
+			etfData[symbol] = data
+		}
 	}
 
 	// 计算组合预期收益率
@@ -238,7 +246,7 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 	}
 
 	// 计算组合波动率 (考虑相关性)
-	// σ_p² = Σ Σ w_i * w_j * σ_i * σ_j * ρ_ij
+	// σ_p² = Σ_i w_i² * σ_i² + 2 * Σ_i<j w_i * w_j * σ_i * σ_j * ρ_ij
 	portfolioVariance := 0.0
 	symbols := make([]string, 0, len(portfolio))
 	for s := range portfolio {
@@ -247,29 +255,41 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 
 	correlationMatrix := make(map[string]float64)
 
-	for i, sym1 := range symbols {
-		for j, sym2 := range symbols {
+	// 第一遍: 计算方差项 (i = j)
+	for _, sym := range symbols {
+		w := portfolio[sym]
+		sigma := etfMetrics[sym].Volatility
+		// w_i² * σ_i²
+		portfolioVariance += w * w * sigma * sigma
+		// 对角线相关系数为1
+		key := fmt.Sprintf("%s_%s", sym, sym)
+		correlationMatrix[key] = 1.0
+	}
+
+	// 第二遍: 计算协方差项 (i < j)，乘以2因为矩阵对称
+	for i := 0; i < len(symbols); i++ {
+		for j := i + 1; j < len(symbols); j++ {
+			sym1 := symbols[i]
+			sym2 := symbols[j]
 			w1 := portfolio[sym1]
 			w2 := portfolio[sym2]
 			sigma1 := etfMetrics[sym1].Volatility
 			sigma2 := etfMetrics[sym2].Volatility
 
-			var correlation float64
-			if i == j {
-				correlation = 1.0
-			} else {
-				corr, err := s.CalculateCorrelation(sym1, sym2, days)
-				if err != nil {
-					// 如果计算失败，使用默认相关系数
-					corr = 0.7
-				}
-				correlation = corr
+			corr, err := s.CalculateCorrelation(sym1, sym2, days)
+			if err != nil {
+				// 如果计算失败，使用默认相关系数
+				corr = 0.7
 			}
 
-			key := fmt.Sprintf("%s_%s", sym1, sym2)
-			correlationMatrix[key] = correlation
+			// 存储相关系数矩阵 (对称)
+			key1 := fmt.Sprintf("%s_%s", sym1, sym2)
+			key2 := fmt.Sprintf("%s_%s", sym2, sym1)
+			correlationMatrix[key1] = corr
+			correlationMatrix[key2] = corr
 
-			portfolioVariance += w1 * w2 * sigma1 * sigma2 * correlation
+			// 2 * w_i * w_j * σ_i * σ_j * ρ_ij
+			portfolioVariance += 2 * w1 * w2 * sigma1 * sigma2 * corr
 		}
 	}
 
@@ -282,20 +302,72 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 		sharpeRatio = 0
 	}
 
-	// 计算组合最大回撤 (简化: 取各ETF最大回撤的加权平均)
-	maxDrawdown := 0.0
-	for symbol, weight := range portfolio {
-		maxDrawdown += weight * etfMetrics[symbol].MaxDrawdown
-	}
+	// 计算组合最大回撤 (基于组合净值序列)
+	maxDrawdown := s.calculatePortfolioMaxDrawdown(portfolio, etfMetrics, days)
+
+	// 计算索提诺比率 (需要组合收益率序列)
+	portfolioReturns := s.calculatePortfolioReturnsFromData(portfolio, etfData)
+	sortinoRatio := s.CalculateSortinoRatio(portfolioReturns, riskFreeRate)
+
+	// 计算卡尔玛比率
+	calmarRatio := s.CalculateCalmarRatio(expectedReturn, maxDrawdown)
 
 	return &PortfolioAnalytics{
 		ExpectedReturn:    expectedReturn,
 		Volatility:        portfolioVolatility,
 		SharpeRatio:       sharpeRatio,
+		SortinoRatio:      sortinoRatio,
+		CalmarRatio:       calmarRatio,
 		MaxDrawdown:       maxDrawdown,
 		CorrelationMatrix: correlationMatrix,
 		ETFMetrics:        etfMetrics,
 	}, nil
+}
+
+// calculatePortfolioReturnsFromData 从已有数据计算组合收益率序列
+func (s *PortfolioAnalyticsService) calculatePortfolioReturnsFromData(
+	portfolio map[string]float64,
+	etfData map[string][]models.ETFData,
+) []float64 {
+	// 获取所有ETF的共同日期
+	commonDates := s.findCommonDates(etfData)
+	if len(commonDates) < 2 {
+		return []float64{}
+	}
+
+	// 计算每日组合价值
+	portfolioValues := make([]float64, len(commonDates))
+
+	for i, date := range commonDates {
+		dailyValue := 0.0
+		for symbol, weight := range portfolio {
+			for _, d := range etfData[symbol] {
+				if d.Date.Format("2006-01-02") == date {
+					price, _ := d.ClosePrice.Float64()
+					// 归一化价格
+					if len(etfData[symbol]) > 0 {
+						firstPrice, _ := etfData[symbol][0].ClosePrice.Float64()
+						if firstPrice > 0 {
+							return_rate := (price - firstPrice) / firstPrice
+							dailyValue += weight * (1 + return_rate)
+						}
+					}
+					break
+				}
+			}
+		}
+		portfolioValues[i] = dailyValue
+	}
+
+	// 计算对数收益率
+	returns := make([]float64, len(portfolioValues)-1)
+	for i := 1; i < len(portfolioValues); i++ {
+		if portfolioValues[i-1] > 0 {
+			returns[i-1] = math.Log(portfolioValues[i] / portfolioValues[i-1])
+		}
+	}
+
+	return returns
 }
 
 // 辅助函数
@@ -459,4 +531,263 @@ func (s *PortfolioAnalyticsService) CalculateCVaR(returns []float64, confidence 
 
 	cvar := mean - std*(phi/Phi)
 	return cvar
+}
+
+// calculatePortfolioMaxDrawdown 计算组合最大回撤
+// 基于组合净值序列计算，而不是简单加权
+func (s *PortfolioAnalyticsService) calculatePortfolioMaxDrawdown(
+	portfolio map[string]float64,
+	etfMetrics map[string]*ETFHistoricalMetrics,
+	days int,
+) float64 {
+	// 获取所有ETF的历史数据
+	etfData := make(map[string][]models.ETFData)
+	for symbol := range portfolio {
+		data, err := s.GetETFHistoricalData(symbol, days)
+		if err != nil {
+			// 如果无法获取数据，使用ETF自身的最大回撤
+			return etfMetrics[symbol].MaxDrawdown
+		}
+		etfData[symbol] = data
+	}
+
+	// 找到所有ETF的共同日期
+	commonDates := s.findCommonDates(etfData)
+	if len(commonDates) < 2 {
+		// 数据不足，返回加权平均作为fallback
+		weightedMDD := 0.0
+		for symbol, weight := range portfolio {
+			weightedMDD += weight * etfMetrics[symbol].MaxDrawdown
+		}
+		return weightedMDD
+	}
+
+	// 计算组合每日净值
+	portfolioValues := make([]float64, len(commonDates))
+	baseValue := 100.0 // 基准值
+
+	for i, date := range commonDates {
+		dailyValue := 0.0
+		for symbol, weight := range portfolio {
+			// 找到该日期对应的ETF数据
+			for _, d := range etfData[symbol] {
+				if d.Date.Format("2006-01-02") == date {
+					price, _ := d.ClosePrice.Float64()
+					// 归一化价格 (以第一天为基准)
+					if i == 0 {
+						dailyValue += weight * baseValue
+					} else {
+						// 计算相对于第一天的收益率
+						firstPrice, _ := etfData[symbol][0].ClosePrice.Float64()
+						if firstPrice > 0 {
+							return_rate := (price - firstPrice) / firstPrice
+							dailyValue += weight * baseValue * (1 + return_rate)
+						}
+					}
+					break
+				}
+			}
+		}
+		portfolioValues[i] = dailyValue
+	}
+
+	// 计算最大回撤
+	return s.calculateMaxDrawdownFromValues(portfolioValues)
+}
+
+// findCommonDates 找到所有ETF的共同交易日
+func (s *PortfolioAnalyticsService) findCommonDates(etfData map[string][]models.ETFData) []string {
+	if len(etfData) == 0 {
+		return []string{}
+	}
+
+	// 获取第一个ETF的所有日期
+	var firstSymbol string
+	for symbol := range etfData {
+		firstSymbol = symbol
+		break
+	}
+
+	dateSet := make(map[string]bool)
+	for _, d := range etfData[firstSymbol] {
+		dateSet[d.Date.Format("2006-01-02")] = true
+	}
+
+	// 检查其他ETF的日期
+	for symbol, data := range etfData {
+		if symbol == firstSymbol {
+			continue
+		}
+		currentDates := make(map[string]bool)
+		for _, d := range data {
+			currentDates[d.Date.Format("2006-01-02")] = true
+		}
+
+		// 只保留共同日期
+		for date := range dateSet {
+			if !currentDates[date] {
+				delete(dateSet, date)
+			}
+		}
+	}
+
+	// 转换为排序后的切片
+	dates := make([]string, 0, len(dateSet))
+	for date := range dateSet {
+		dates = append(dates, date)
+	}
+	sort.Strings(dates)
+
+	return dates
+}
+
+// calculateMaxDrawdownFromValues 从净值序列计算最大回撤
+func (s *PortfolioAnalyticsService) calculateMaxDrawdownFromValues(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+
+	maxDrawdown := 0.0
+	peak := values[0]
+
+	for _, value := range values {
+		if value > peak {
+			peak = value
+		}
+
+		drawdown := (peak - value) / peak
+		if drawdown > maxDrawdown {
+			maxDrawdown = drawdown
+		}
+	}
+
+	return maxDrawdown
+}
+
+// CalculateSortinoRatio 计算索提诺比率
+// Sortino Ratio = (R_p - R_f) / σ_d
+// 其中 σ_d 是下行标准差 (只考虑负收益)
+func (s *PortfolioAnalyticsService) CalculateSortinoRatio(returns []float64, riskFreeRate float64) float64 {
+	if len(returns) == 0 {
+		return 0
+	}
+
+	// 计算平均收益率
+	meanReturn := s.mean(returns)
+
+	// 计算下行标准差 (只考虑低于目标收益率的偏差)
+	// 目标收益率通常设为0或风险-free rate
+	targetReturn := 0.0 // 使用0作为最小可接受收益率
+	downsideDeviations := make([]float64, 0)
+
+	for _, r := range returns {
+		if r < targetReturn {
+			downsideDeviations = append(downsideDeviations, (r-targetReturn)*(r-targetReturn))
+		}
+	}
+
+	if len(downsideDeviations) == 0 {
+		return 0 // 没有下行风险，无法计算
+	}
+
+	// 计算下行标准差
+	downsideVariance := 0.0
+	for _, d := range downsideDeviations {
+		downsideVariance += d
+	}
+	downsideStd := math.Sqrt(downsideVariance / float64(len(returns)))
+
+	if downsideStd == 0 {
+		return 0
+	}
+
+	// 年化处理
+	annualReturn := meanReturn * 252
+	annualDownsideStd := downsideStd * math.Sqrt(252)
+	annualRiskFreeRate := riskFreeRate
+
+	return (annualReturn - annualRiskFreeRate) / annualDownsideStd
+}
+
+// CalculateCalmarRatio 计算卡尔玛比率
+// Calmar Ratio = 年化收益率 / 最大回撤
+func (s *PortfolioAnalyticsService) CalculateCalmarRatio(annualReturn, maxDrawdown float64) float64 {
+	if maxDrawdown == 0 {
+		return 0
+	}
+	return annualReturn / maxDrawdown
+}
+
+// CalculateDownsideDeviation 计算下行偏差
+// 只考虑低于目标收益率的波动
+func (s *PortfolioAnalyticsService) CalculateDownsideDeviation(returns []float64, targetReturn float64) float64 {
+	if len(returns) == 0 {
+		return 0
+	}
+
+	downsideSum := 0.0
+	count := 0
+
+	for _, r := range returns {
+		if r < targetReturn {
+			downsideSum += (r - targetReturn) * (r - targetReturn)
+			count++
+		}
+	}
+
+	if count == 0 {
+		return 0
+	}
+
+	return math.Sqrt(downsideSum / float64(len(returns)))
+}
+
+// CalculateSkewness 计算偏度
+// 衡量收益分布的不对称性
+func (s *PortfolioAnalyticsService) CalculateSkewness(returns []float64) float64 {
+	n := float64(len(returns))
+	if n < 3 {
+		return 0
+	}
+
+	mean := s.mean(returns)
+	std := math.Sqrt(s.variance(returns, mean))
+
+	if std == 0 {
+		return 0
+	}
+
+	sumCubed := 0.0
+	for _, r := range returns {
+		sumCubed += math.Pow((r-mean)/std, 3)
+	}
+
+	// 样本偏度修正
+	skewness := (n / ((n - 1) * (n - 2))) * sumCubed
+	return skewness
+}
+
+// CalculateKurtosis 计算峰度
+// 衡量收益分布的尾部厚度
+func (s *PortfolioAnalyticsService) CalculateKurtosis(returns []float64) float64 {
+	n := float64(len(returns))
+	if n < 4 {
+		return 0
+	}
+
+	mean := s.mean(returns)
+	std := math.Sqrt(s.variance(returns, mean))
+
+	if std == 0 {
+		return 0
+	}
+
+	sumFourth := 0.0
+	for _, r := range returns {
+		sumFourth += math.Pow((r-mean)/std, 4)
+	}
+
+	//  excess kurtosis (减去3得到超额峰度)
+	kurtosis := sumFourth / n
+	return kurtosis - 3
 }
