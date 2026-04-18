@@ -89,6 +89,12 @@ func AuditLogger() gin.HandlerFunc {
 			auditLog.Resource = extractResource(c.Request.URL.Path)
 		}
 
+		// 检查数据库连接是否可用
+		if models.DB == nil {
+			utils.Warn("Database not initialized, skipping audit log")
+			return
+		}
+
 		go func(log *models.AuditLog) {
 			if err := models.DB.Create(log).Error; err != nil {
 				utils.Error("Failed to create audit log", err)
