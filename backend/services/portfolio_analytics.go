@@ -14,15 +14,22 @@ import (
 
 // ETFHistoricalMetrics ETF历史指标
 type ETFHistoricalMetrics struct {
-	Symbol        string    `json:"symbol"`
-	AnnualReturn  float64   `json:"annual_return"`  // 年化收益率
-	Volatility    float64   `json:"volatility"`     // 年化波动率
-	SharpeRatio   float64   `json:"sharpe_ratio"`   // 夏普比率
-	MaxDrawdown   float64   `json:"max_drawdown"`   // 最大回撤
-	DividendYield float64   `json:"dividend_yield"` // 股息率
-	DataPoints    int       `json:"data_points"`    // 数据点数量
-	StartDate     time.Time `json:"start_date"`     // 数据开始日期
-	EndDate       time.Time `json:"end_date"`       // 数据结束日期
+	Symbol         string                        `json:"symbol"`
+	AnnualReturn   float64                       `json:"annual_return"`   // 年化收益率
+	Volatility     float64                       `json:"volatility"`      // 年化波动率
+	SharpeRatio    float64                       `json:"sharpe_ratio"`    // 夏普比率
+	MaxDrawdown    float64                       `json:"max_drawdown"`    // 最大回撤
+	DividendYield  float64                       `json:"dividend_yield"`  // 股息率
+	DataPoints     int                           `json:"data_points"`     // 数据点数量
+	StartDate      time.Time                     `json:"start_date"`      // 数据开始日期
+	EndDate        time.Time                     `json:"end_date"`        // 数据结束日期
+	RollingMetrics map[int]*RollingWindowMetrics `json:"rolling_metrics"` // 滚动窗口指标
+	SortinoRatio   float64                       `json:"sortino_ratio"`   // 索提诺比率
+	CalmarRatio    float64                       `json:"calmar_ratio"`    // 卡尔玛比率
+	Skewness       float64                       `json:"skewness"`        // 偏度
+	Kurtosis       float64                       `json:"kurtosis"`        // 峰度
+	VaR95          float64                       `json:"var_95"`          // 95% VaR
+	CVaR95         float64                       `json:"cvar_95"`         // 95% CVaR
 }
 
 // PortfolioAnalytics 组合分析指标
@@ -151,16 +158,40 @@ func (s *PortfolioAnalyticsService) CalculateETFMetrics(symbol string, days int)
 	// 计算股息率 (简化计算: 假设基于SCHD/JEPQ的已知股息率)
 	dividendYield := s.getEstimatedDividendYield(symbol)
 
+	// 计算索提诺比率
+	sortinoRatio := s.CalculateSortinoRatio(returns, riskFreeRate)
+
+	// 计算卡尔玛比率
+	calmarRatio := s.CalculateCalmarRatio(annualReturn, maxDrawdown)
+
+	// 计算偏度和峰度
+	skewness := s.CalculateSkewness(returns)
+	kurtosis := s.CalculateKurtosis(returns)
+
+	// 计算VaR和CVaR
+	var95 := s.CalculateVaR(returns, 0.95)
+	cvar95 := s.CalculateCVaR(returns, 0.95)
+
+	// 计算滚动窗口指标
+	rollingMetrics := s.CalculateAllRollingWindows(returns, prices)
+
 	return &ETFHistoricalMetrics{
-		Symbol:        symbol,
-		AnnualReturn:  annualReturn,
-		Volatility:    annualVolatility,
-		SharpeRatio:   sharpeRatio,
-		MaxDrawdown:   maxDrawdown,
-		DividendYield: dividendYield,
-		DataPoints:    len(data),
-		StartDate:     data[0].Date,
-		EndDate:       data[len(data)-1].Date,
+		Symbol:         symbol,
+		AnnualReturn:   annualReturn,
+		Volatility:     annualVolatility,
+		SharpeRatio:    sharpeRatio,
+		MaxDrawdown:    maxDrawdown,
+		DividendYield:  dividendYield,
+		DataPoints:     len(data),
+		StartDate:      data[0].Date,
+		EndDate:        data[len(data)-1].Date,
+		RollingMetrics: rollingMetrics,
+		SortinoRatio:   sortinoRatio,
+		CalmarRatio:    calmarRatio,
+		Skewness:       skewness,
+		Kurtosis:       kurtosis,
+		VaR95:          var95,
+		CVaR95:         cvar95,
 	}, nil
 }
 
@@ -790,4 +821,142 @@ func (s *PortfolioAnalyticsService) CalculateKurtosis(returns []float64) float64
 	//  excess kurtosis (减去3得到超额峰度)
 	kurtosis := sumFourth / n
 	return kurtosis - 3
+}
+
+// RollingWindowMetrics 滚动窗口指标
+type RollingWindowMetrics struct {
+	WindowDays   int     `json:"window_days"`   // 窗口天数
+	AnnualReturn float64 `json:"annual_return"` // 年化收益率
+	Volatility   float64 `json:"volatility"`    // 年化波动率
+	SharpeRatio  float64 `json:"sharpe_ratio"`  // 夏普比率
+	MaxDrawdown  float64 `json:"max_drawdown"`  // 最大回撤
+	CalmarRatio  float64 `json:"calmar_ratio"`  // 卡尔玛比率
+	SortinoRatio float64 `json:"sortino_ratio"` // 索提诺比率
+	VaR95        float64 `json:"var_95"`        // 95% VaR
+	WinRate      float64 `json:"win_rate"`      // 胜率
+	AvgGain      float64 `json:"avg_gain"`      // 平均盈利
+	AvgLoss      float64 `json:"avg_loss"`      // 平均亏损
+	ProfitFactor float64 `json:"profit_factor"` // 盈亏比
+}
+
+// CalculateRollingWindowMetrics 计算滚动窗口指标
+// 支持 30日/60日/90日/180日/1年 等窗口
+func (s *PortfolioAnalyticsService) CalculateRollingWindowMetrics(
+	returns []float64,
+	prices []decimal.Decimal,
+	windowDays int,
+) *RollingWindowMetrics {
+	if len(returns) < windowDays || windowDays < 30 {
+		return nil
+	}
+
+	// 获取最近窗口期的数据
+	recentReturns := returns[len(returns)-windowDays:]
+	recentPrices := prices[len(prices)-windowDays-1:]
+
+	// 计算年化收益率
+	totalReturn := 0.0
+	for _, r := range recentReturns {
+		totalReturn += r
+	}
+	annualReturn := totalReturn * (252.0 / float64(windowDays))
+
+	// 计算年化波动率
+	mean := s.mean(recentReturns)
+	variance := s.variance(recentReturns, mean)
+	volatility := math.Sqrt(variance) * math.Sqrt(252)
+
+	// 计算夏普比率
+	riskFreeRate := 0.045
+	sharpeRatio := 0.0
+	if volatility > 0 {
+		sharpeRatio = (annualReturn - riskFreeRate) / volatility
+	}
+
+	// 计算最大回撤
+	maxDrawdown := s.calculateMaxDrawdown(recentPrices)
+
+	// 计算卡尔玛比率
+	calmarRatio := 0.0
+	if maxDrawdown > 0 {
+		calmarRatio = annualReturn / maxDrawdown
+	}
+
+	// 计算索提诺比率
+	sortinoRatio := s.CalculateSortinoRatio(recentReturns, riskFreeRate)
+
+	// 计算VaR 95%
+	var95 := s.CalculateVaR(recentReturns, 0.95)
+
+	// 计算胜率、平均盈亏、盈亏比
+	winCount := 0
+	lossCount := 0
+	gainSum := 0.0
+	lossSum := 0.0
+
+	for _, r := range recentReturns {
+		if r > 0 {
+			winCount++
+			gainSum += r
+		} else if r < 0 {
+			lossCount++
+			lossSum += math.Abs(r)
+		}
+	}
+
+	winRate := 0.0
+	if len(recentReturns) > 0 {
+		winRate = float64(winCount) / float64(len(recentReturns))
+	}
+
+	avgGain := 0.0
+	if winCount > 0 {
+		avgGain = gainSum / float64(winCount)
+	}
+
+	avgLoss := 0.0
+	if lossCount > 0 {
+		avgLoss = lossSum / float64(lossCount)
+	}
+
+	profitFactor := 0.0
+	if lossSum > 0 {
+		profitFactor = gainSum / lossSum
+	}
+
+	return &RollingWindowMetrics{
+		WindowDays:   windowDays,
+		AnnualReturn: annualReturn,
+		Volatility:   volatility,
+		SharpeRatio:  sharpeRatio,
+		MaxDrawdown:  maxDrawdown,
+		CalmarRatio:  calmarRatio,
+		SortinoRatio: sortinoRatio,
+		VaR95:        var95,
+		WinRate:      winRate,
+		AvgGain:      avgGain,
+		AvgLoss:      avgLoss,
+		ProfitFactor: profitFactor,
+	}
+}
+
+// CalculateAllRollingWindows 计算所有常用滚动窗口指标
+// 返回 30日、60日、90日、180日、1年的指标
+func (s *PortfolioAnalyticsService) CalculateAllRollingWindows(
+	returns []float64,
+	prices []decimal.Decimal,
+) map[int]*RollingWindowMetrics {
+	windows := []int{30, 60, 90, 180, 252} // 252个交易日≈1年
+	result := make(map[int]*RollingWindowMetrics)
+
+	for _, window := range windows {
+		if len(returns) >= window {
+			metrics := s.CalculateRollingWindowMetrics(returns, prices, window)
+			if metrics != nil {
+				result[window] = metrics
+			}
+		}
+	}
+
+	return result
 }

@@ -379,7 +379,15 @@ func (s *ScenarioAnalysisService) generateScenario(
 	}
 }
 
-// runSingleSimulation 运行单次模拟
+// DividendPayment 股息支付记录
+type DividendPayment struct {
+	Date           time.Time `json:"date"`
+	Amount         float64   `json:"amount"`
+	ReinvestShares float64   `json:"reinvest_shares"`
+	SharePrice     float64   `json:"share_price"`
+}
+
+// runSingleSimulation 运行单次模拟 (改进版，支持季度股息再投资)
 func (s *ScenarioAnalysisService) runSingleSimulation(
 	assumptions *ScenarioAssumptions,
 	initialValue float64,
@@ -396,24 +404,42 @@ func (s *ScenarioAnalysisService) runSingleSimulation(
 	// 几何布朗运动参数
 	mu := assumptions.AnnualReturn
 	sigma := assumptions.Volatility
-	dt := 1.0 // 1年时间步长
+
+	// 季度参数
+	quartersPerYear := 4
+	dt := 1.0 / float64(quartersPerYear) // 季度时间步长
+	quarterlyDividendYield := assumptions.DividendYield / float64(quartersPerYear)
 
 	for year := 0; year < timeHorizonYears; year++ {
-		startValue := currentValue
+		yearStartValue := currentValue
+		yearDividendIncome := 0.0
 
-		// 几何布朗运动: dS = μS dt + σS dW
-		// S_t = S_0 * exp((μ - σ²/2)t + σ√t Z)
-		z := s.generateNormalRandom(r)
-		growthFactor := math.Exp((mu-0.5*sigma*sigma)*dt + sigma*math.Sqrt(dt)*z)
+		// 按季度模拟
+		for quarter := 0; quarter < quartersPerYear; quarter++ {
+			quarterStartValue := currentValue
 
-		endValue := startValue * growthFactor
+			// 几何布朗运动: dS = μS dt + σS dW
+			// S_t = S_0 * exp((μ - σ²/2)t + σ√t Z)
+			z := s.generateNormalRandom(r)
+			growthFactor := math.Exp((mu-0.5*sigma*sigma)*dt + sigma*math.Sqrt(dt)*z)
 
-		// 股息再投资
-		dividendIncome := endValue * assumptions.DividendYield
-		endValue += dividendIncome
+			quarterEndValue := quarterStartValue * growthFactor
 
-		annualReturn := (endValue - startValue) / startValue
-		cumulativeReturn := (endValue - initialValue) / initialValue
+			// 季度股息支付和再投资
+			// 假设在季度末支付股息，并立即以季度末价格再投资
+			quarterlyDividend := quarterEndValue * quarterlyDividendYield
+			yearDividendIncome += quarterlyDividend
+
+			// 股息再投资: 增加持仓价值
+			// 假设以季度末价格购买额外份额
+			quarterEndValue += quarterlyDividend
+
+			currentValue = quarterEndValue
+		}
+
+		// 年度汇总
+		annualReturn := (currentValue - yearStartValue) / yearStartValue
+		cumulativeReturn := (currentValue - initialValue) / initialValue
 
 		yearStart := startDate.AddDate(year, 0, 0)
 		yearEnd := startDate.AddDate(year+1, 0, 0)
@@ -422,18 +448,97 @@ func (s *ScenarioAnalysisService) runSingleSimulation(
 			Year:             year + 1,
 			StartDate:        yearStart.Format("2006-01-02"),
 			EndDate:          yearEnd.Format("2006-01-02"),
-			StartValue:       startValue,
-			EndValue:         endValue,
+			StartValue:       yearStartValue,
+			EndValue:         currentValue,
 			AnnualReturn:     annualReturn * 100,
 			CumulativeReturn: cumulativeReturn * 100,
 			Volatility:       assumptions.Volatility * 100,
 			MaxDrawdown:      assumptions.MaxDrawdown * 100,
 			SharpeRatio:      assumptions.SharpeRatio,
-			DividendIncome:   dividendIncome,
-			TotalValue:       endValue,
+			DividendIncome:   yearDividendIncome,
+			TotalValue:       currentValue,
+		}
+	}
+
+	return projections, currentValue
+}
+
+// runSingleSimulationMonthly 运行单次模拟 (月度版本，更精确)
+func (s *ScenarioAnalysisService) runSingleSimulationMonthly(
+	assumptions *ScenarioAssumptions,
+	initialValue float64,
+	timeHorizonYears int,
+	seed int,
+) ([]PortfolioProjection, float64) {
+	// 为每次模拟设置不同的随机种子
+	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(seed)))
+
+	projections := make([]PortfolioProjection, timeHorizonYears)
+	currentValue := initialValue
+	startDate := time.Now()
+
+	// 几何布朗运动参数
+	mu := assumptions.AnnualReturn
+	sigma := assumptions.Volatility
+
+	// 月度参数
+	monthsPerYear := 12
+	dt := 1.0 / float64(monthsPerYear) // 月度时间步长
+	monthlyDividendYield := assumptions.DividendYield / float64(monthsPerYear)
+
+	// 月度股息支付通常不均匀，模拟实际支付模式
+	// 大多数ETF每季度支付，但在不同月份
+	dividendMonths := map[int]bool{2: true, 5: true, 8: true, 11: true} // 3月、6月、9月、12月(0-indexed)
+
+	for year := 0; year < timeHorizonYears; year++ {
+		yearStartValue := currentValue
+		yearDividendIncome := 0.0
+
+		// 按月度模拟
+		for month := 0; month < monthsPerYear; month++ {
+			monthStartValue := currentValue
+
+			// 几何布朗运动
+			z := s.generateNormalRandom(r)
+			growthFactor := math.Exp((mu-0.5*sigma*sigma)*dt + sigma*math.Sqrt(dt)*z)
+
+			monthEndValue := monthStartValue * growthFactor
+
+			// 月度或季度股息支付
+			var monthlyDividend float64
+			if dividendMonths[month] {
+				// 季度支付月，支付3个月的累积股息
+				monthlyDividend = monthEndValue * monthlyDividendYield * 3
+			}
+			yearDividendIncome += monthlyDividend
+
+			// 股息再投资
+			monthEndValue += monthlyDividend
+
+			currentValue = monthEndValue
 		}
 
-		currentValue = endValue
+		// 年度汇总
+		annualReturn := (currentValue - yearStartValue) / yearStartValue
+		cumulativeReturn := (currentValue - initialValue) / initialValue
+
+		yearStart := startDate.AddDate(year, 0, 0)
+		yearEnd := startDate.AddDate(year+1, 0, 0)
+
+		projections[year] = PortfolioProjection{
+			Year:             year + 1,
+			StartDate:        yearStart.Format("2006-01-02"),
+			EndDate:          yearEnd.Format("2006-01-02"),
+			StartValue:       yearStartValue,
+			EndValue:         currentValue,
+			AnnualReturn:     annualReturn * 100,
+			CumulativeReturn: cumulativeReturn * 100,
+			Volatility:       assumptions.Volatility * 100,
+			MaxDrawdown:      assumptions.MaxDrawdown * 100,
+			SharpeRatio:      assumptions.SharpeRatio,
+			DividendIncome:   yearDividendIncome,
+			TotalValue:       currentValue,
+		}
 	}
 
 	return projections, currentValue

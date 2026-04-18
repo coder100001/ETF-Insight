@@ -196,6 +196,14 @@ git push origin feature/your-feature-name
   - **下行偏差 (Downside Deviation)**: 只考虑低于目标收益率的波动
   - **偏度 (Skewness)**: 收益分布的不对称性
   - **峰度 (Kurtosis)**: 收益分布的尾部厚度
+- ✅ **滚动窗口指标**: 动态计算近期表现
+  - 支持 30日/60日/90日/180日/1年(252日) 窗口
+  - 包含年化收益率、波动率、夏普比率、最大回撤等
+  - 新增交易指标: 胜率、平均盈亏、盈亏比
+- ✅ **改进股息再投资模型**:
+  - 季度再投资: 每季度支付并立即再投资
+  - 月度再投资: 模拟实际季度支付模式(3/6/9/12月)
+  - 更精确的复利计算，考虑时间价值
 - ✅ **默认投资组合模板**: 6种预设组合
   - 保守型、平衡型、进取型、收入型、股息增长型、科技聚焦型
   - API: `GET /api/portfolio/default-templates`
@@ -963,7 +971,103 @@ Excess Kurtosis = [Σ((xi - μ) / σ)⁴ / n] - 3
 
 ---
 
-### 6. 其他指标
+### 6. 滚动窗口指标
+
+#### 滚动窗口计算
+```
+对于窗口期 n (如30日、60日、90日、180日、252日):
+
+年化收益率 = (Σ日收益率) × (252/n)
+年化波动率 = σ_日 × √252
+夏普比率 = (年化收益率 - Rf) / 年化波动率
+卡尔玛比率 = 年化收益率 / 最大回撤
+索提诺比率 = (年化收益率 - Rf) / 下行标准差
+```
+
+#### 交易统计指标
+```
+胜率 = 盈利交易数 / 总交易数
+平均盈利 = 总盈利 / 盈利交易数
+平均亏损 = 总亏损 / 亏损交易数
+盈亏比 = 总盈利 / 总亏损
+```
+
+#### 实现规范
+```go
+// RollingWindowMetrics 滚动窗口指标
+type RollingWindowMetrics struct {
+    WindowDays   int     `json:"window_days"`   // 窗口天数
+    AnnualReturn float64 `json:"annual_return"` // 年化收益率
+    Volatility   float64 `json:"volatility"`    // 年化波动率
+    SharpeRatio  float64 `json:"sharpe_ratio"`  // 夏普比率
+    MaxDrawdown  float64 `json:"max_drawdown"`  // 最大回撤
+    CalmarRatio  float64 `json:"calmar_ratio"`  // 卡尔玛比率
+    SortinoRatio float64 `json:"sortino_ratio"` // 索提诺比率
+    VaR95        float64 `json:"var_95"`        // 95% VaR
+    WinRate      float64 `json:"win_rate"`      // 胜率
+    AvgGain      float64 `json:"avg_gain"`      // 平均盈利
+    AvgLoss      float64 `json:"avg_loss"`      // 平均亏损
+    ProfitFactor float64 `json:"profit_factor"` // 盈亏比
+}
+
+// CalculateAllRollingWindows 计算所有常用滚动窗口
+func (s *PortfolioAnalyticsService) CalculateAllRollingWindows(
+    returns []float64,
+    prices []decimal.Decimal,
+) map[int]*RollingWindowMetrics {
+    windows := []int{30, 60, 90, 180, 252} // 252个交易日≈1年
+    // ... 实现
+}
+```
+
+---
+
+### 7. 股息再投资模型
+
+#### 季度再投资模型
+```
+每季度末:
+1. 计算季度收益: S_t = S_{t-1} × exp((μ - σ²/2)×Δt + σ×√Δt×Z)
+2. 支付季度股息: D_t = S_t × (年化股息率 / 4)
+3. 再投资: S_t' = S_t + D_t
+
+其中:
+- Δt = 0.25 (1个季度)
+- 股息立即再投资，产生复利效应
+```
+
+#### 月度再投资模型 (更精确)
+```
+每月末:
+1. 计算月度收益: S_t = S_{t-1} × exp((μ - σ²/2)×Δt + σ×√Δt×Z)
+2. 判断是否为股息月 (通常3/6/9/12月)
+3. 如果是股息月: D_t = S_t × (年化股息率 / 4)
+4. 再投资: S_t' = S_t + D_t
+
+其中:
+- Δt = 1/12 (1个月)
+- 季度股息累积到支付月一次性支付
+```
+
+#### 复利效应
+```
+再投资 vs 不复投资的差异:
+
+不复投资: 终值 = P × (1 + r)^n + Σ(股息)
+再投资:   终值 = P × (1 + r + d)^n
+
+其中:
+- P: 初始投资
+- r: 年化收益率
+- d: 年化股息率
+- n: 年数
+
+长期持有(10年以上)，再投资的复利效应显著
+```
+
+---
+
+### 8. 其他指标
 
 | 指标 | 公式 | 精度要求 |
 |------|------|----------|
