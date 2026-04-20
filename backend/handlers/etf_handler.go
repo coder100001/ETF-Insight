@@ -862,16 +862,8 @@ func (h *ETFHandler) GetETFRisk(c *gin.Context) {
 		return
 	}
 
-	// 计算收益率序列
-	returns := make([]decimal.Decimal, 0, len(etfData)-1)
-	for i := len(etfData) - 1; i > 0; i-- {
-		currentPrice := etfData[i-1].ClosePrice
-		previousPrice := etfData[i].ClosePrice
-		if previousPrice.GreaterThan(decimal.Zero) {
-			ret := currentPrice.Sub(previousPrice).Div(previousPrice)
-			returns = append(returns, ret)
-		}
-	}
+	// 计算收益率序列(使用公共函数)
+	returns := utils.CalculateReturnsFromETFData(etfData)
 
 	if len(returns) < 30 {
 		c.JSON(http.StatusOK, gin.H{

@@ -1,8 +1,18 @@
 package factor
 
 import (
+	"encoding/csv"
+	"etf-insight/models"
+	"fmt"
 	"math"
+	"net/http"
 	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // FamaFrenchModel Fama-French三因子/五因子模型
@@ -663,7 +673,8 @@ func (m *FamaFrenchModel) LoadFiveFactorData(
 	m.UseFiveFactor = true
 }
 
-// GenerateSampleFactorData 生成示例因子数据 (用于测试)
+// GenerateSampleFactorData 生成示例因子数据 (用于测试或当真实数据不可用时)
+// 注意: 生产环境应使用LoadFactorDataFromDB从数据库获取真实因子数据
 func GenerateSampleFactorData(periods int) (
 	marketReturns,
 	smbReturns,
@@ -687,6 +698,224 @@ func GenerateSampleFactorData(periods int) (
 		smbReturns[i] = 0.002 + randNorm()*0.03     // 年化约2.4%，波动率约10%
 		hmlReturns[i] = 0.003 + randNorm()*0.03     // 年化约3.6%，波动率约10%
 		riskFreeReturns[i] = 0.0015                 // 年化约1.8%
+	}
+
+	return
+}
+
+// FactorDataSource 因子数据来源
+const (
+	FactorSourceKennethFrench = "kenneth_french" // Kenneth French数据库
+	FactorSourceAQR           = "aqr"            // AQR因子数据
+	FactorSourceLocalDB       = "local_db"       // 本地数据库
+)
+
+// LoadFactorDataFromFrench 从Kenneth French数据库下载因子数据
+// 注意: 这是一个示例实现，实际使用时需要处理网络错误和数据格式
+func LoadFactorDataFromFrench(startDate, endDate time.Time) (
+	marketReturns,
+	smbReturns,
+	hmlReturns,
+	riskFreeReturns []float64,
+	err error,
+) {
+	// Kenneth French数据库URL (Fama-French三因子月度数据)
+	url := "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip"
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to download factor data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, nil, nil, fmt.Errorf("failed to download factor data: status %d", resp.StatusCode)
+	}
+
+	// 实际实现需要解压ZIP并解析CSV
+	// 这里返回错误提示需要实现具体解析逻辑
+	return nil, nil, nil, nil, fmt.Errorf("parsing French database data requires additional implementation")
+}
+
+// LoadFactorDataFromDB 从本地数据库加载因子数据
+// 需要预先在数据库中存储历史因子数据
+func LoadFactorDataFromDB(db *gorm.DB, startDate, endDate time.Time) (
+	marketReturns,
+	smbReturns,
+	hmlReturns,
+	riskFreeReturns []float64,
+	err error,
+) {
+	// 查询数据库中的因子数据
+	// 假设有一个factor_data表存储历史因子数据
+	type FactorData struct {
+		Date          time.Time
+		MarketPremium float64 // 市场溢价 (Rm - Rf)
+		SMB           float64 // 市值因子
+		HML           float64 // 价值因子
+		RiskFreeRate  float64 // 无风险利率
+	}
+
+	var factors []FactorData
+	result := db.Table("factor_data").
+		Where("date >= ? AND date <= ?", startDate, endDate).
+		Order("date ASC").
+		Find(&factors)
+
+	if result.Error != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to load factor data from DB: %w", result.Error)
+	}
+
+	if len(factors) == 0 {
+		return nil, nil, nil, nil, fmt.Errorf("no factor data found for the specified period")
+	}
+
+	marketReturns = make([]float64, len(factors))
+	smbReturns = make([]float64, len(factors))
+	hmlReturns = make([]float64, len(factors))
+	riskFreeReturns = make([]float64, len(factors))
+
+	for i, f := range factors {
+		marketReturns[i] = f.MarketPremium
+		smbReturns[i] = f.SMB
+		hmlReturns[i] = f.HML
+		riskFreeReturns[i] = f.RiskFreeRate
+	}
+
+	return
+}
+
+// ParseFrenchCSV 解析Kenneth French数据库CSV格式
+func ParseFrenchCSV(data string) (
+	dates []time.Time,
+	marketReturns,
+	smbReturns,
+	hmlReturns,
+	riskFreeReturns []float64,
+	err error,
+) {
+	reader := csv.NewReader(strings.NewReader(data))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to parse CSV: %w", err)
+	}
+
+	// French数据库格式: 第一列是日期(YYYYMM), 后面是因子值(百分比)
+	for _, record := range records {
+		if len(record) < 4 {
+			continue
+		}
+
+		// 跳过标题行和非数据行
+		dateStr := strings.TrimSpace(record[0])
+		if len(dateStr) != 6 {
+			continue
+		}
+
+		date, err := time.Parse("200601", dateStr)
+		if err != nil {
+			continue
+		}
+
+		mktrf, _ := strconv.ParseFloat(strings.TrimSpace(record[1]), 64)
+		smb, _ := strconv.ParseFloat(strings.TrimSpace(record[2]), 64)
+		hml, _ := strconv.ParseFloat(strings.TrimSpace(record[3]), 64)
+		rf, _ := strconv.ParseFloat(strings.TrimSpace(record[4]), 64)
+
+		// 转换为小数形式
+		dates = append(dates, date)
+		marketReturns = append(marketReturns, mktrf/100)
+		smbReturns = append(smbReturns, smb/100)
+		hmlReturns = append(hmlReturns, hml/100)
+		riskFreeReturns = append(riskFreeReturns, rf/100)
+	}
+
+	return
+}
+
+// CalculateFactorFromETFs 从ETF组合计算因子暴露
+// 使用市值因子ETF和价值因子ETF作为代理
+func CalculateFactorFromETFs(
+	marketETF string, // 市场ETF (如SPY)
+	smallCapETF string, // 小盘ETF (如IWM)
+	largeCapETF string, // 大盘ETF (如VV)
+	valueETF string, // 价值ETF (如VTV)
+	growthETF string, // 成长ETF (如VUG)
+	startDate, endDate time.Time,
+) (
+	marketReturns,
+	smbReturns,
+	hmlReturns []float64,
+	err error,
+) {
+	// 获取各ETF的历史数据
+	getReturns := func(symbol string) ([]decimal.Decimal, error) {
+		var data []models.ETFData
+		result := models.DB.Where("symbol = ? AND date >= ? AND date <= ?", symbol, startDate, endDate).
+			Order("date ASC").
+			Find(&data)
+		if result.Error != nil {
+			return nil, result.Error
+		}
+
+		returns := make([]decimal.Decimal, len(data)-1)
+		for i := 1; i < len(data); i++ {
+			ret := data[i].ClosePrice.Sub(data[i-1].ClosePrice).Div(data[i-1].ClosePrice)
+			returns[i-1] = ret
+		}
+		return returns, nil
+	}
+
+	marketRets, err := getReturns(marketETF)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get market ETF data: %w", err)
+	}
+
+	smallRets, err := getReturns(smallCapETF)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get small cap ETF data: %w", err)
+	}
+
+	largeRets, err := getReturns(largeCapETF)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get large cap ETF data: %w", err)
+	}
+
+	valueRets, err := getReturns(valueETF)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get value ETF data: %w", err)
+	}
+
+	growthRets, err := getReturns(growthETF)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get growth ETF data: %w", err)
+	}
+
+	// 计算因子收益
+	minLen := len(marketRets)
+	if len(smallRets) < minLen {
+		minLen = len(smallRets)
+	}
+	if len(largeRets) < minLen {
+		minLen = len(largeRets)
+	}
+	if len(valueRets) < minLen {
+		minLen = len(valueRets)
+	}
+	if len(growthRets) < minLen {
+		minLen = len(growthRets)
+	}
+
+	marketReturns = make([]float64, minLen)
+	smbReturns = make([]float64, minLen)
+	hmlReturns = make([]float64, minLen)
+
+	for i := 0; i < minLen; i++ {
+		marketReturns[i], _ = marketRets[i].Float64()
+		smbReturn := smallRets[i].Sub(largeRets[i])
+		smbReturns[i], _ = smbReturn.Float64()
+		hmlReturn := valueRets[i].Sub(growthRets[i])
+		hmlReturns[i], _ = hmlReturn.Float64()
 	}
 
 	return

@@ -5,6 +5,7 @@ import (
 
 	"etf-insight/models"
 	"etf-insight/services"
+	"etf-insight/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -80,16 +81,8 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 		}
 		etfPrices[symbol] = etfData
 
-		// 计算收益率序列
-		symbolReturns := make([]decimal.Decimal, 0, len(etfData)-1)
-		for i := len(etfData) - 1; i > 0; i-- {
-			currentPrice := etfData[i-1].ClosePrice
-			previousPrice := etfData[i].ClosePrice
-			if previousPrice.GreaterThan(decimal.Zero) {
-				ret := currentPrice.Sub(previousPrice).Div(previousPrice)
-				symbolReturns = append(symbolReturns, ret)
-			}
-		}
+		// 计算收益率序列(使用公共函数)
+		symbolReturns := utils.CalculateReturnsFromETFData(etfData)
 		returns[symbol] = symbolReturns
 	}
 
