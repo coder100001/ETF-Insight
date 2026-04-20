@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Select, Switch, Table, Tabs, Spin, Alert, Tag } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { factorAPI } from '../services/api';
+import Layout from '../components/Layout';
 import styled from 'styled-components';
 
 const { TabPane } = Tabs;
@@ -256,10 +257,11 @@ const FactorAnalysis: React.FC = () => {
   }));
 
   return (
-    <Container>
-      <Title>Fama-French 因子归因分析</Title>
+    <Layout>
+      <Container>
+        <Title>Fama-French 因子归因分析</Title>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="配置" key="1">
           <StyledCard title="分析配置">
             <Row gutter={[24, 24]}>
@@ -437,13 +439,14 @@ const FactorAnalysis: React.FC = () => {
         </TabPane>
       </Tabs>
 
-      {loading && (
-        <div style={{ textAlign: 'center', padding: 40 }}>
-          <Spin size="large" />
-          <p style={{ marginTop: 16 }}>正在进行因子分析...</p>
-        </div>
-      )}
-    </Container>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16 }}>正在进行因子分析...</p>
+          </div>
+        )}
+      </Container>
+    </Layout>
   );
 };
 

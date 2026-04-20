@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Row, Col, Button, Select, InputNumber, message, Table, Tabs, Spin, Alert, Slider, Form } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis } from 'recharts';
 import { optimizationAPI } from '../services/api';
+import Layout from '../components/Layout';
 import styled from 'styled-components';
 
 const { TabPane } = Tabs;
@@ -382,10 +383,11 @@ const PortfolioOptimization: React.FC = () => {
     .sort((a, b) => b.weight - a.weight) : [];
 
   return (
-    <Container>
-      <Title>投资组合优化 (MPT / 风险平价 / Black-Litterman)</Title>
+    <Layout>
+      <Container>
+        <Title>投资组合优化 (MPT / 风险平价 / Black-Litterman)</Title>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="参数配置" key="1">
           <StyledCard title="选择ETF">
             <Select
@@ -852,13 +854,14 @@ const PortfolioOptimization: React.FC = () => {
         </TabPane>
       </Tabs>
 
-      {loading && (
-        <div style={{ textAlign: 'center', padding: 40 }}>
-          <Spin size="large" />
-          <p style={{ marginTop: 16 }}>正在计算最优组合...</p>
-        </div>
-      )}
-    </Container>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16 }}>正在计算最优组合...</p>
+          </div>
+        )}
+      </Container>
+    </Layout>
   );
 };
 

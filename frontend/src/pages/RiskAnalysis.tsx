@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Select, Button, Spin, Alert, Statistic, Table, Tag, message } from 'antd';
 import { WarningOutlined, SafetyOutlined, BarChartOutlined } from '@ant-design/icons';
+import Layout from '../components/Layout';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 import { portfolioAPI } from '../services/api';
@@ -164,15 +165,16 @@ const RiskAnalysis: React.FC = () => {
   ];
 
   return (
-    <PageContainer>
-      <PageHeader>
-        <PageTitle>
-          <WarningOutlined style={{ marginRight: theme.spacing.sm }} />
-          风险分析
-        </PageTitle>
-      </PageHeader>
+    <Layout>
+      <PageContainer>
+        <PageHeader>
+          <PageTitle>
+            <WarningOutlined style={{ marginRight: theme.spacing.sm }} />
+            风险分析
+          </PageTitle>
+        </PageHeader>
 
-      <Card style={{ marginBottom: theme.spacing.lg }}>
+        <Card style={{ marginBottom: theme.spacing.lg }}>
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} sm={12} md={8}>
             <div style={{ marginBottom: theme.spacing.xs }}>选择投资组合</div>
@@ -406,7 +408,8 @@ const RiskAnalysis: React.FC = () => {
       ) : (
         <Alert message="请选择投资组合以查看风险分析" type="info" />
       )}
-    </PageContainer>
+      </PageContainer>
+    </Layout>
   );
 };
 

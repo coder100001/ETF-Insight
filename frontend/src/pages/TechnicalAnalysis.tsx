@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Select, DatePicker, Button, Spin, Alert, Statistic } from 'antd';
 import { Radar, Line } from '@ant-design/charts';
 import { FundOutlined, LineChartOutlined, BarChartOutlined } from '@ant-design/icons';
+import Layout from '../components/Layout';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 import dayjs from 'dayjs';
@@ -244,13 +245,14 @@ const TechnicalAnalysis: React.FC = () => {
   };
 
   return (
-    <PageContainer>
-      <PageHeader>
-        <PageTitle>
-          <LineChartOutlined style={{ marginRight: theme.spacing.sm }} />
-          技术分析
-        </PageTitle>
-      </PageHeader>
+    <Layout>
+      <PageContainer>
+        <PageHeader>
+          <PageTitle>
+            <LineChartOutlined style={{ marginRight: theme.spacing.sm }} />
+            技术分析
+          </PageTitle>
+        </PageHeader>
 
       <FilterContainer>
         <Row gutter={[16, 16]} align="middle">
@@ -426,7 +428,8 @@ const TechnicalAnalysis: React.FC = () => {
           </Row>
         </>
       )}
-    </PageContainer>
+      </PageContainer>
+    </Layout>
   );
 };
 
