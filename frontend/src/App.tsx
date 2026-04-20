@@ -16,6 +16,8 @@ import ExchangeRate from './pages/ExchangeRate';
 import ASharePortfolio from './pages/ASharePortfolio';
 import TechnicalAnalysis from './pages/TechnicalAnalysis';
 import RiskAnalysis from './pages/RiskAnalysis';
+import PortfolioOptimization from './pages/PortfolioOptimization';
+import FactorAnalysis from './pages/FactorAnalysis';
 import './App.css';
 
 // 配置Ant Design主题 - 匹配Django模板风格
@@ -70,6 +72,8 @@ const App: FC = () => {
             {/* 分析工具路由 */}
             <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
             <Route path="/risk-analysis" element={<RiskAnalysis />} />
+            <Route path="/portfolio-optimization" element={<PortfolioOptimization />} />
+            <Route path="/factor-analysis" element={<FactorAnalysis />} />
 
             {/* 其他路由 */}
             <Route path="/operation-logs" element={<OperationLogs />} />

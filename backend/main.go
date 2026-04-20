@@ -117,6 +117,7 @@ func main() {
 	etfHandler := handlers.NewETFHandler(analysisService, defaultProvider)
 	portfolioHandler := handlers.NewPortfolioHandler(analysisService)
 	optimizerHandler := handlers.NewPortfolioOptimizerHandler(optimizer)
+	optimizationHandler := handlers.NewOptimizationHandler()
 
 	router.GET("/health", handlers.HealthHandler)
 	router.GET("/ready", handlers.ReadyHandler)
@@ -130,6 +131,7 @@ func main() {
 	router.GET("/api/etf/:symbol/history", etfHandler.GetETFHistory)
 	router.GET("/api/etf/:symbol/metrics", etfHandler.GetETFMetrics)
 	router.GET("/api/etf/:symbol/forecast", etfHandler.GetETFForecast)
+	router.GET("/api/etf/:symbol/risk", etfHandler.GetETFRisk)
 
 	router.GET("/api/portfolio-configs/", portfolioHandler.GetPortfolioConfigs)
 	router.POST("/api/portfolio-configs/", portfolioHandler.CreatePortfolioConfig)
@@ -142,10 +144,39 @@ func main() {
 	// 投资组合情景分析路由
 	router.POST("/api/portfolio/scenarios", portfolioHandler.AnalyzeScenarios)
 	router.GET("/api/portfolio/default-templates", portfolioHandler.GetDefaultPortfolioTemplates)
+	router.POST("/api/portfolio/risk", portfolioHandler.AnalyzePortfolioRisk)
 
 	// 投资组合优化路由
 	router.POST("/api/portfolio/optimize", optimizerHandler.OptimizePortfolio)
 	router.POST("/api/portfolio/efficient-frontier", optimizerHandler.GetEfficientFrontier)
+
+	// MPT均值-方差优化路由
+	router.POST("/api/optimization/mpt", optimizationHandler.MPTOptimize)
+	router.POST("/api/optimization/efficient-frontier", optimizationHandler.EfficientFrontier)
+	router.POST("/api/optimization/covariance", optimizationHandler.CalculateCovarianceMatrix)
+
+	// 风险平价优化路由
+	router.POST("/api/optimization/risk-parity", optimizationHandler.RiskParityOptimize)
+
+	// Black-Litterman优化路由
+	router.POST("/api/optimization/black-litterman", optimizationHandler.BlackLittermanOptimize)
+	router.POST("/api/optimization/market-implied-returns", optimizationHandler.MarketImpliedReturns)
+
+	// Fama-French因子分析路由
+	factorHandler := handlers.NewFactorHandler()
+	router.POST("/api/factor/analyze", factorHandler.AnalyzeFactorExposure)
+	router.POST("/api/factor/portfolio", factorHandler.AnalyzePortfolioFactors)
+	router.POST("/api/factor/multi-asset", factorHandler.AnalyzeMultipleAssets)
+	router.GET("/api/factor/statistics", factorHandler.GetFactorStatistics)
+	router.POST("/api/factor/risk-decomposition", factorHandler.DecomposeRisk)
+	router.POST("/api/factor/compare", factorHandler.CompareFactorAttribution)
+
+	// 回测路由
+	backtestHandler := handlers.NewBacktestHandler()
+	router.POST("/api/backtest/run", backtestHandler.RunBacktest)
+	router.POST("/api/backtest/event-driven", backtestHandler.RunEventDrivenBacktest)
+	router.GET("/api/backtest/strategies", backtestHandler.ListStrategies)
+	router.POST("/api/backtest/factors", backtestHandler.AnalyzeFactors)
 
 	// ETF配置路由
 	etfConfigHandler := handlers.NewETFConfigHandler()
@@ -169,6 +200,37 @@ func main() {
 	router.GET("/api/a-share/prices", aShareHandler.GetETFPrices)
 	router.GET("/api/a-share/prices/:symbol", aShareHandler.GetETFPriceBySymbol)
 	router.POST("/api/a-share/prices/refresh", aShareHandler.RefreshETFPrices)
+
+	// A股数据源路由
+	aShareDataHandler := handlers.NewAShareDataHandler()
+	router.POST("/api/a-share/enable-akshare", aShareDataHandler.EnableAKShare)
+	router.POST("/api/a-share/sync-etf-list", aShareDataHandler.SyncETFList)
+	router.POST("/api/a-share/sync-prices", aShareDataHandler.SyncETFPrices)
+	router.POST("/api/a-share/refresh-all", aShareDataHandler.RefreshAllData)
+	router.GET("/api/a-share/price/:symbol", aShareDataHandler.GetETFPrice)
+	router.GET("/api/a-share/all-prices", aShareDataHandler.GetAllETFPrices)
+	router.POST("/api/a-share/historical/:symbol", aShareDataHandler.GetHistoricalData)
+	router.GET("/api/a-share/search", aShareDataHandler.SearchETFs)
+	router.GET("/api/a-share/by-frequency/:frequency", aShareDataHandler.GetETFsByFrequency)
+	router.GET("/api/a-share/dividend-yield/:symbol", aShareDataHandler.CalculateDividendYield)
+	router.GET("/api/a-share/data-source-status", aShareDataHandler.GetDataSourceStatus)
+
+	// 跨资产类别ETF路由
+	universalETFHandler := handlers.NewUniversalETFHandler()
+	router.POST("/api/universal-etf/initialize", universalETFHandler.InitializeDefaultETFs)
+	router.GET("/api/universal-etf", universalETFHandler.GetAllETFs)
+	router.GET("/api/universal-etf/:symbol", universalETFHandler.GetETFBySymbol)
+	router.GET("/api/universal-etf/asset-class/:asset_class", universalETFHandler.GetETFsByAssetClass)
+	router.GET("/api/universal-etf/region/:region", universalETFHandler.GetETFsByRegion)
+	router.GET("/api/universal-etf/type/:etf_type", universalETFHandler.GetETFsByType)
+	router.GET("/api/universal-etf/search", universalETFHandler.SearchETFs)
+	router.POST("/api/universal-etf/filter", universalETFHandler.FilterETFs)
+	router.GET("/api/universal-etf/distribution/asset-class", universalETFHandler.GetAssetClassDistribution)
+	router.GET("/api/universal-etf/distribution/region", universalETFHandler.GetRegionDistribution)
+	router.POST("/api/universal-etf/compare", universalETFHandler.CompareETFs)
+	router.GET("/api/universal-etf/portfolio-allocation", universalETFHandler.GetPortfolioAllocation)
+	router.GET("/api/universal-etf/categories", universalETFHandler.GetCategories)
+	router.GET("/api/universal-etf/top-performers", universalETFHandler.GetTopPerformers)
 
 	// 汇率管理路由
 	exchangeRateHandler := handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask)

@@ -148,6 +148,29 @@ export const etfAPI = {
       method: 'POST',
     });
   },
+
+  // 获取ETF风险指标
+  getRisk: (symbol: string, period: string = '1y', confidence: number = 0.95) => {
+    return request<ApiResponse<{
+      symbol: string;
+      period: string;
+      current_price: number;
+      period_high: number;
+      period_low: number;
+      var_95: number;
+      cvar_95: number;
+      confidence: number;
+      volatility: number;
+      sharpe_ratio: number;
+      sortino_ratio: number;
+      max_drawdown: number;
+      calmar_ratio: number;
+      beta: number;
+      alpha: number;
+      annualized_return: number;
+      data_points: number;
+    }>>(`/etf/${symbol}/risk?period=${period}&confidence=${confidence}`);
+  },
 };
 
 // ETF配置API
@@ -261,6 +284,36 @@ export const portfolioAPI = {
     return request<ApiResponse<PortfolioAnalysisResult>>(`/portfolio-configs/${id}/analyze`, {
       method: 'POST',
       body: JSON.stringify({ tax_rate: taxRate }),
+    });
+  },
+
+  // 分析投资组合风险
+  analyzeRisk: (portfolio: Record<string, number>, period: string = '1y', confidence: number = 0.95) => {
+    return request<ApiResponse<{
+      portfolio: Record<string, number>;
+      period: string;
+      confidence: number;
+      risk_level: string;
+      var_95: number;
+      var_99: number;
+      cvar_95: number;
+      volatility: number;
+      sharpe_ratio: number;
+      sortino_ratio: number;
+      max_drawdown: number;
+      calmar_ratio: number;
+      beta: number;
+      alpha: number;
+      portfolio_risks: Array<{
+        symbol: string;
+        weight: number;
+        componentVar: number;
+        marginalVar: number;
+      }>;
+      data_points: number;
+    }>>(`/portfolio/risk`, {
+      method: 'POST',
+      body: JSON.stringify({ portfolio, period, confidence }),
     });
   },
 };
@@ -499,6 +552,282 @@ export const aSharePortfolioAPI = {
   refreshPrices: () => {
     return request<ApiResponse<{ message: string }>>(`/a-share/prices/refresh`, {
       method: 'POST',
+    });
+  },
+};
+
+// 组合优化API
+export const optimizationAPI = {
+  // MPT均值-方差优化
+  mptOptimize: (data: {
+    symbols: string[];
+    returns: Record<string, number>;
+    cov_matrix: Record<string, Record<string, number>>;
+    objective: 'min_volatility' | 'max_sharpe' | 'target_return';
+    target_return?: number;
+    risk_free_rate?: number;
+    constraints?: {
+      min_weights?: Record<string, number>;
+      max_weights?: Record<string, number>;
+      allow_short?: boolean;
+      max_short_weight?: number;
+    };
+  }) => {
+    return request<ApiResponse<{
+      weights: Record<string, number>;
+      expected_return: number;
+      volatility: number;
+      sharpe_ratio: number;
+      sortino_ratio: number;
+      diversification_ratio: number;
+      risk_contribution: Record<string, number>;
+      herfindahl_index: number;
+    }>>(`/optimization/mpt`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 计算有效前沿
+  efficientFrontier: (data: {
+    symbols: string[];
+    returns: Record<string, number>;
+    cov_matrix: Record<string, Record<string, number>>;
+    num_points?: number;
+    constraints?: {
+      min_weights?: Record<string, number>;
+      max_weights?: Record<string, number>;
+    };
+  }) => {
+    return request<ApiResponse<Array<{
+      target_return: number;
+      min_volatility: number;
+      optimal_weights: Record<string, number>;
+      sharpe_ratio: number;
+    }>>>(`/optimization/efficient-frontier`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 计算协方差矩阵
+  calculateCovariance: (data: {
+    returns: Record<string, number[]>;
+  }) => {
+    return request<ApiResponse<Record<string, Record<string, number>>>>(`/optimization/covariance`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 风险平价优化
+  riskParityOptimize: (data: {
+    symbols: string[];
+    returns: Record<string, number>;
+    cov_matrix: Record<string, Record<string, number>>;
+    method?: 'parity' | 'inverse_vol' | 'budget';
+    risk_budget?: Record<string, number>;
+    constraints?: {
+      min_weights?: Record<string, number>;
+      max_weights?: Record<string, number>;
+      target_volatility?: number;
+      use_leverage?: boolean;
+      max_leverage?: number;
+    };
+  }) => {
+    return request<ApiResponse<{
+      weights: Record<string, number>;
+      risk_contributions: Record<string, number>;
+      expected_return: number;
+      volatility: number;
+      leverage: number;
+      target_volatility: number;
+      diversification_ratio: number;
+    }>>(`/optimization/risk-parity`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Black-Litterman优化
+  blackLittermanOptimize: (data: {
+    market_weights: Record<string, number>;
+    cov_matrix: Record<string, Record<string, number>>;
+    absolute_views?: Record<string, number>;
+    relative_views?: Array<{
+      asset1: string;
+      asset2: string;
+      expected_diff: number;
+      confidence?: number;
+    }>;
+    risk_aversion?: number;
+    tau?: number;
+    risk_free_rate?: number;
+    constraints?: {
+      min_weights?: Record<string, number>;
+      max_weights?: Record<string, number>;
+    };
+  }) => {
+    return request<ApiResponse<{
+      prior_returns: Record<string, number>;
+      posterior_returns: Record<string, number>;
+      implied_returns: Record<string, number>;
+      optimal_weights: Record<string, number>;
+      expected_return: number;
+      volatility: number;
+      sharpe_ratio: number;
+      confidence: number;
+    }>>(`/optimization/black-litterman`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 计算市场隐含收益
+  marketImpliedReturns: (data: {
+    market_weights: Record<string, number>;
+    cov_matrix: Record<string, Record<string, number>>;
+    risk_aversion?: number;
+  }) => {
+    return request<ApiResponse<Record<string, number>>>(`/optimization/market-implied-returns`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// Fama-French因子分析API
+export const factorAPI = {
+  // 分析单个资产的因子暴露
+  analyzeFactor: (data: {
+    returns: number[];
+    symbol?: string;
+    use_five_factor?: boolean;
+    periods?: number;
+  }) => {
+    return request<ApiResponse<{
+      exposures: {
+        market: number;
+        size: number;
+        value: number;
+        profitability?: number;
+        investment?: number;
+        alpha: number;
+        r2: number;
+        adj_r2: number;
+      };
+      contributions: Record<string, number>;
+      total_return: number;
+      explained_return: number;
+      unexplained_return: number;
+      annualized_alpha: number;
+      t_statistics: Record<string, number>;
+      p_values: Record<string, number>;
+    }>>(`/factor/analyze`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 分析投资组合的因子暴露
+  analyzePortfolioFactors: (data: {
+    portfolio_returns: number[];
+    weights?: Record<string, number>;
+    use_five_factor?: boolean;
+  }) => {
+    return request<ApiResponse<{
+      exposures: {
+        market: number;
+        size: number;
+        value: number;
+        profitability?: number;
+        investment?: number;
+        alpha: number;
+        r2: number;
+        adj_r2: number;
+      };
+      contributions: Record<string, number>;
+      total_return: number;
+      explained_return: number;
+      unexplained_return: number;
+      annualized_alpha: number;
+      t_statistics: Record<string, number>;
+      p_values: Record<string, number>;
+    }>>(`/factor/portfolio`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 批量分析多个资产的因子暴露
+  analyzeMultipleAssets: (data: {
+    assets: Record<string, number[]>;
+    use_five_factor?: boolean;
+  }) => {
+    return request<ApiResponse<Record<string, {
+      exposures: {
+        market: number;
+        size: number;
+        value: number;
+        profitability?: number;
+        investment?: number;
+        alpha: number;
+        r2: number;
+        adj_r2: number;
+      };
+      contributions: Record<string, number>;
+      total_return: number;
+      explained_return: number;
+      unexplained_return: number;
+      annualized_alpha: number;
+      t_statistics: Record<string, number>;
+      p_values: Record<string, number>;
+    }>>>(`/factor/multi-asset`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 获取因子统计信息
+  getFactorStatistics: (params?: { five_factor?: boolean }) => {
+    return request<ApiResponse<Array<{
+      name: string;
+      annualized: number;
+      volatility: number;
+      sharpe: number;
+      max_drawdown: number;
+    }>>>(`/factor/statistics?${params?.five_factor ? 'five_factor=true' : ''}`);
+  },
+
+  // 风险分解
+  decomposeRisk: (data: {
+    exposures: {
+      market: number;
+      size: number;
+      value: number;
+      profitability?: number;
+      investment?: number;
+      alpha: number;
+      r2: number;
+      adj_r2: number;
+    };
+    use_five_factor?: boolean;
+  }) => {
+    return request<ApiResponse<Record<string, number>>>(`/factor/risk-decomposition`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 对比因子归因
+  compareFactorAttribution: (data: {
+    portfolios: Record<string, number[]>;
+    factor: string;
+    use_five_factor?: boolean;
+  }) => {
+    return request<ApiResponse<string[]>>(`/factor/compare`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   },
 };

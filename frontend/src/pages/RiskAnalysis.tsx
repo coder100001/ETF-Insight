@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Select, Button, Spin, Alert, Statistic, Table, Tag } from 'antd';
+import { Card, Row, Col, Select, Button, Spin, Alert, Statistic, Table, Tag, message } from 'antd';
 import { WarningOutlined, SafetyOutlined, BarChartOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
+import { portfolioAPI } from '../services/api';
 
 const { Option } = Select;
 
@@ -40,20 +41,17 @@ const StatGrid = styled.div`
   margin-bottom: ${theme.spacing.lg};
 `;
 
-// 模拟数据类型
-interface RiskMetrics {
-  volatility: number;
-  sharpeRatio: number;
-  sortinoRatio: number;
-  maxDrawdown: number;
-  calmarRatio: number;
-  beta: number;
-  alpha: number;
-  var95: number;
-  var99: number;
-  cvar95: number;
-}
+// 预定义投资组合配置
+const portfolioConfigs: Record<string, Record<string, number>> = {
+  conservative: { BND: 0.80, VTI: 0.20 },
+  balanced: { VTI: 0.60, BND: 0.40 },
+  aggressive: { QQQ: 0.80, BND: 0.20 },
+  income: { SCHD: 0.50, JEPQ: 0.50 },
+  dividend_growth: { SCHD: 0.40, VYM: 0.30, VTI: 0.30 },
+  tech_focus: { QQQ: 0.70, VTI: 0.30 },
+};
 
+// API返回的风险数据类型
 interface PortfolioRisk {
   symbol: string;
   weight: number;
@@ -61,68 +59,54 @@ interface PortfolioRisk {
   marginalVar: number;
 }
 
+interface RiskAnalysisResult {
+  portfolio: Record<string, number>;
+  period: string;
+  confidence: number;
+  risk_level: string;
+  var_95: number;
+  var_99: number;
+  cvar_95: number;
+  volatility: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  max_drawdown: number;
+  calmar_ratio: number;
+  beta: number;
+  alpha: number;
+  portfolio_risks: PortfolioRisk[];
+  data_points: number;
+}
+
 const RiskAnalysis: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<string>('conservative');
-  const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null);
-  const [portfolioRisks, setPortfolioRisks] = useState<PortfolioRisk[]>([]);
+  const [riskData, setRiskData] = useState<RiskAnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // 模拟获取风险数据
+  // 获取风险数据
   const fetchRiskData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // 模拟不同投资组合的风险数据
-      const mockData: Record<string, RiskMetrics> = {
-        conservative: {
-          volatility: 8.5,
-          sharpeRatio: 1.2,
-          sortinoRatio: 1.8,
-          maxDrawdown: 12.3,
-          calmarRatio: 0.85,
-          beta: 0.65,
-          alpha: 1.5,
-          var95: 2.1,
-          var99: 3.5,
-          cvar95: 2.8,
-        },
-        balanced: {
-          volatility: 12.8,
-          sharpeRatio: 0.95,
-          sortinoRatio: 1.4,
-          maxDrawdown: 18.5,
-          calmarRatio: 0.72,
-          beta: 0.85,
-          alpha: 0.8,
-          var95: 3.2,
-          var99: 5.1,
-          cvar95: 4.2,
-        },
-        aggressive: {
-          volatility: 18.2,
-          sharpeRatio: 0.75,
-          sortinoRatio: 1.1,
-          maxDrawdown: 28.3,
-          calmarRatio: 0.58,
-          beta: 1.15,
-          alpha: -0.5,
-          var95: 4.8,
-          var99: 7.2,
-          cvar95: 6.1,
-        },
-      };
+      const portfolio = portfolioConfigs[selectedPortfolio];
+      if (!portfolio) {
+        setError('Invalid portfolio selection');
+        return;
+      }
 
-      setRiskMetrics(mockData[selectedPortfolio]);
+      const response = await portfolioAPI.analyzeRisk(portfolio, '1y', 0.95);
 
-      // 模拟组合风险分解
-      const mockPortfolioRisks: PortfolioRisk[] = [
-        { symbol: 'SPY', weight: 0.4, componentVar: 1.25, marginalVar: 3.12 },
-        { symbol: 'BND', weight: 0.3, componentVar: 0.35, marginalVar: 1.17 },
-        { symbol: 'QQQ', weight: 0.2, componentVar: 1.15, marginalVar: 5.75 },
-        { symbol: 'VTI', weight: 0.1, componentVar: 0.45, marginalVar: 4.50 },
-      ];
-      setPortfolioRisks(mockPortfolioRisks);
-    } catch (error) {
-      console.error('Failed to fetch risk data:', error);
+      if (response.success && response.data) {
+        setRiskData(response.data);
+      } else {
+        setError(response.message || 'Failed to fetch risk data');
+        message.error(response.message || '获取风险数据失败');
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMsg);
+      message.error('获取风险数据失败: ' + errorMsg);
     } finally {
       setLoading(false);
     }
@@ -134,9 +118,9 @@ const RiskAnalysis: React.FC = () => {
   }, [selectedPortfolio]);
 
   // 获取风险等级
-  const getRiskLevel = (metrics: RiskMetrics): 'low' | 'medium' | 'high' => {
-    if (metrics.volatility < 10) return 'low';
-    if (metrics.volatility < 15) return 'medium';
+  const getRiskLevel = (volatility: number): 'low' | 'medium' | 'high' => {
+    if (volatility < 10) return 'low';
+    if (volatility < 15) return 'medium';
     return 'high';
   };
 
@@ -169,7 +153,7 @@ const RiskAnalysis: React.FC = () => {
       title: '风险贡献',
       key: 'contribution',
       render: (_: unknown, record: PortfolioRisk) => {
-        const contribution = (record.componentVar / (riskMetrics?.var95 || 1)) * 100;
+        const contribution = riskData ? (record.componentVar / riskData.var_95) * 100 : 0;
         return (
           <Tag color={contribution > 40 ? 'red' : contribution > 25 ? 'orange' : 'green'}>
             {contribution.toFixed(1)}%
@@ -200,6 +184,9 @@ const RiskAnalysis: React.FC = () => {
               <Option value="conservative">保守型组合</Option>
               <Option value="balanced">平衡型组合</Option>
               <Option value="aggressive">激进型组合</Option>
+              <Option value="income">收入型组合</Option>
+              <Option value="dividend_growth">股息增长型</Option>
+              <Option value="tech_focus">科技聚焦型</Option>
             </Select>
           </Col>
           <Col xs={24} sm={12} md={8}>
@@ -216,29 +203,40 @@ const RiskAnalysis: React.FC = () => {
         </Row>
       </Card>
 
+      {error && (
+        <Alert
+          message="数据获取失败"
+          description={error}
+          type="error"
+          style={{ marginBottom: theme.spacing.lg }}
+          closable
+          onClose={() => setError(null)}
+        />
+      )}
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: theme.spacing.xl }}>
           <Spin size="large" />
           <p>正在计算风险指标...</p>
         </div>
-      ) : riskMetrics ? (
+      ) : riskData ? (
         <>
           {/* 风险等级提示 */}
-          <RiskCard $riskLevel={getRiskLevel(riskMetrics)}>
+          <RiskCard $riskLevel={getRiskLevel(riskData.volatility)}>
             <Row align="middle" gutter={[16, 16]}>
               <Col>
                 <SafetyOutlined style={{ fontSize: 48, color: theme.colors.primary }} />
               </Col>
               <Col flex="auto">
                 <h3 style={{ marginBottom: theme.spacing.xs }}>
-                  风险等级: {getRiskLevel(riskMetrics) === 'low' ? '低风险' : getRiskLevel(riskMetrics) === 'medium' ? '中等风险' : '高风险'}
+                  风险等级: {riskData.risk_level === 'low' ? '低风险' : riskData.risk_level === 'medium' ? '中等风险' : '高风险'}
                 </h3>
                 <p style={{ color: theme.colors.textSecondary, margin: 0 }}>
-                  当前投资组合的年化波动率为 {riskMetrics.volatility}%，
-                  最大回撤为 {riskMetrics.maxDrawdown}%。
-                  {getRiskLevel(riskMetrics) === 'low'
+                  当前投资组合的年化波动率为 {riskData.volatility.toFixed(2)}%，
+                  最大回撤为 {riskData.max_drawdown.toFixed(2)}%。
+                  {riskData.risk_level === 'low'
                     ? '风险水平较低，适合保守型投资者。'
-                    : getRiskLevel(riskMetrics) === 'medium'
+                    : riskData.risk_level === 'medium'
                     ? '风险水平适中，适合平衡型投资者。'
                     : '风险水平较高，适合激进型投资者。'}
                 </p>
@@ -251,7 +249,7 @@ const RiskAnalysis: React.FC = () => {
             <Card>
               <Statistic
                 title="VaR (95%)"
-                value={riskMetrics.var95}
+                value={riskData.var_95}
                 precision={2}
                 suffix="%"
                 valueStyle={{ color: '#cf1322' }}
@@ -264,7 +262,7 @@ const RiskAnalysis: React.FC = () => {
             <Card>
               <Statistic
                 title="VaR (99%)"
-                value={riskMetrics.var99}
+                value={riskData.var_99}
                 precision={2}
                 suffix="%"
                 valueStyle={{ color: '#cf1322' }}
@@ -276,7 +274,7 @@ const RiskAnalysis: React.FC = () => {
             <Card>
               <Statistic
                 title="CVaR (95%)"
-                value={riskMetrics.cvar95}
+                value={riskData.cvar_95}
                 precision={2}
                 suffix="%"
                 valueStyle={{ color: '#cf1322' }}
@@ -288,7 +286,7 @@ const RiskAnalysis: React.FC = () => {
             <Card>
               <Statistic
                 title="波动率"
-                value={riskMetrics.volatility}
+                value={riskData.volatility}
                 precision={2}
                 suffix="%"
               />
@@ -306,31 +304,31 @@ const RiskAnalysis: React.FC = () => {
                   <Col span={12}>
                     <Statistic
                       title="夏普比率"
-                      value={riskMetrics.sharpeRatio}
+                      value={riskData.sharpe_ratio}
                       precision={2}
                       valueStyle={{
-                        color: riskMetrics.sharpeRatio > 1 ? '#3f8600' : riskMetrics.sharpeRatio > 0.5 ? '#faad14' : '#cf1322'
+                        color: riskData.sharpe_ratio > 1 ? '#3f8600' : riskData.sharpe_ratio > 0.5 ? '#faad14' : '#cf1322'
                       }}
                     />
                   </Col>
                   <Col span={12}>
                     <Statistic
                       title="索提诺比率"
-                      value={riskMetrics.sortinoRatio}
+                      value={riskData.sortino_ratio}
                       precision={2}
                     />
                   </Col>
                   <Col span={12}>
                     <Statistic
                       title="卡尔玛比率"
-                      value={riskMetrics.calmarRatio}
+                      value={riskData.calmar_ratio}
                       precision={2}
                     />
                   </Col>
                   <Col span={12}>
                     <Statistic
                       title="最大回撤"
-                      value={riskMetrics.maxDrawdown}
+                      value={riskData.max_drawdown}
                       precision={2}
                       suffix="%"
                       valueStyle={{ color: '#cf1322' }}
@@ -345,28 +343,28 @@ const RiskAnalysis: React.FC = () => {
                   <Col span={12}>
                     <Statistic
                       title="Beta"
-                      value={riskMetrics.beta}
+                      value={riskData.beta}
                       precision={2}
                       valueStyle={{
-                        color: riskMetrics.beta > 1 ? '#cf1322' : riskMetrics.beta < 0.8 ? '#3f8600' : '#666'
+                        color: riskData.beta > 1 ? '#cf1322' : riskData.beta < 0.8 ? '#3f8600' : '#666'
                       }}
                     />
                     <div style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                      {riskMetrics.beta > 1 ? '高于市场波动' : riskMetrics.beta < 0.8 ? '低于市场波动' : '与市场同步'}
+                      {riskData.beta > 1 ? '高于市场波动' : riskData.beta < 0.8 ? '低于市场波动' : '与市场同步'}
                     </div>
                   </Col>
                   <Col span={12}>
                     <Statistic
                       title="Alpha"
-                      value={riskMetrics.alpha}
+                      value={riskData.alpha}
                       precision={2}
                       suffix="%"
                       valueStyle={{
-                        color: riskMetrics.alpha > 0 ? '#3f8600' : riskMetrics.alpha < 0 ? '#cf1322' : '#666'
+                        color: riskData.alpha > 0 ? '#3f8600' : riskData.alpha < 0 ? '#cf1322' : '#666'
                       }}
                     />
                     <div style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                      {riskMetrics.alpha > 0 ? '超额收益' : riskMetrics.alpha < 0 ? '跑输市场' : '与市场持平'}
+                      {riskData.alpha > 0 ? '超额收益' : riskData.alpha < 0 ? '跑输市场' : '与市场持平'}
                     </div>
                   </Col>
                 </Row>
@@ -391,7 +389,7 @@ const RiskAnalysis: React.FC = () => {
             }
           >
             <Table
-              dataSource={portfolioRisks}
+              dataSource={riskData.portfolio_risks}
               columns={columns}
               rowKey="symbol"
               pagination={false}

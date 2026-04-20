@@ -92,18 +92,24 @@ LOG_LEVEL=info
 - ✅ **投资组合情景分析**: 蒙特卡洛模拟、三种市场情景（乐观/中性/悲观）、VaR/CVaR风险指标
 - ✅ **技术指标**: RSI、MACD、布林带、均线系统
 - ✅ **风险模型**: VaR、CVaR（历史法/参数法）、压力测试、情景分析
-- 🔄 **因子分析**: Fama-French 三因子、Carhart 四因子模型
+- ✅ **因子分析**: Fama-French 三因子/五因子模型、归因分析
+- ✅ **回测引擎**: 事件驱动架构、订单系统、滑点/手续费模型
+- ✅ **组合优化增强**: 风险平价模型、Black-Litterman模型
+
+#### 数据扩展
+- ✅ **A股数据源**: AKShare/TuShare接入、实时行情同步
+- ✅ **跨资产类别**: 股票/债券/商品/REIT/货币全覆盖
 
 ### 第二阶段：研究平台化 (v2.6 - v2.8) - 3-6个月
 
 #### 学术研究支持
-- 🔄 **回测引擎**: 事件驱动回测、滑点模拟、交易成本建模
+- ✅ **回测引擎**: 事件驱动回测、滑点模拟、交易成本建模
 - 🔄 **策略框架**: 策略模板、参数优化、 Walk-forward 分析
 - 🔄 **论文复现**: 经典量化策略实现（动量、价值、低波动等）
 - 🔄 **数据导出**: CSV/Excel/JSON 格式，支持学术研究
 
 #### 数据源扩展
-- 🔄 **插件架构**: 标准化数据源接口，支持自定义数据源
+- ✅ **插件架构**: 标准化数据源接口，支持自定义数据源
 - 🔄 **另类数据**: 情绪指标、资金流向、宏观经济数据
 - 🔄 **历史数据**: 更长时间序列，支持长期研究
 
@@ -256,6 +262,118 @@ git push origin feature/your-feature-name
 - ✅ **组合风险分解**: 成分VaR、边际VaR分析
 - ✅ **风险调整收益**: 夏普比率、索提诺比率、卡尔玛比率
 - ✅ **市场风险指标**: Beta、Alpha、最大回撤
+
+#### 回测引擎 (v2.5 新增)
+- ✅ **事件驱动架构**: `services/backtest/event_engine.go`
+  - 事件总线(EventBus)实现
+  - 多种事件类型: 市场事件、订单事件、成交事件、持仓事件
+  - 事件处理器链式调用
+- ✅ **订单系统**: 完整订单生命周期管理
+  - 订单类型: 市价单、限价单、止损单、止盈单
+  - 订单状态: 待提交/已提交/部分成交/全部成交/已取消/已拒绝
+  - 订单验证和风险控制
+- ✅ **高级回测功能**:
+  - 滑点模型: 固定滑点/百分比滑点/波动率滑点
+  - 手续费模型: 固定费率/阶梯费率
+  - 分红再投资: 支持股息自动再投资
+  - 再平衡: 定期再平衡和阈值再平衡
+  - 止损止盈: 自动触发订单
+- ✅ **回测结果分析**:
+  - 收益指标: 总收益、年化收益、超额收益
+  - 风险指标: 最大回撤、波动率、夏普比率、索提诺比率
+  - 交易统计: 胜率、盈亏比、平均持仓时间
+  - 净值曲线和回撤曲线
+- ✅ **API端点**:
+  - `POST /api/backtest/run` - 运行回测
+  - `POST /api/backtest/event-driven` - 事件驱动回测
+  - `GET /api/backtest/result/:id` - 获取回测结果
+  - `GET /api/backtest/compare` - 对比多个策略
+
+#### 组合优化增强 (v2.5 新增)
+- ✅ **马科维茨均值-方差优化**: `services/optimization/mpt_optimizer.go`
+  - 有效前沿计算
+  - 三种优化目标: 最大夏普比率/最小波动率/目标收益
+  - 权重约束: 单资产上限/下限
+  - 前沿曲线生成
+- ✅ **风险平价模型**: `services/optimization/risk_parity.go`
+  - 等风险贡献(ERC)
+  - 反向波动率加权
+  - 风险预算配置
+  - 迭代优化算法
+- ✅ **Black-Litterman模型**: `services/optimization/black_litterman.go`
+  - 市场均衡收益
+  - 投资者观点融合
+  - 绝对观点/相对观点支持
+  - 后验收益分布
+- ✅ **API端点**:
+  - `POST /api/portfolio/mpt-optimize` - MPT优化
+  - `POST /api/portfolio/efficient-frontier` - 有效前沿
+  - `POST /api/portfolio/risk-parity` - 风险平价
+  - `POST /api/portfolio/black-litterman` - Black-Litterman优化
+
+#### 因子分析模块 (v2.5 新增)
+- ✅ **Fama-French模型**: `services/factor/fama_french.go`
+  - 三因子模型: 市场因子、规模因子、价值因子
+  - 五因子模型: 增加盈利因子、投资因子
+  - 因子收益率计算
+  - 组合因子暴露度分析
+- ✅ **归因分析**:
+  - 收益归因: 因子贡献分解
+  - 风险归因: 因子风险贡献
+  - 主动收益分析
+- ✅ **API端点**:
+  - `POST /api/factor/fama-french` - Fama-French分析
+  - `GET /api/factor/models` - 获取可用模型
+  - `GET /api/factor/factors` - 获取因子定义
+- ✅ **前端页面**: `FactorAnalysis.tsx`
+  - 因子暴露度可视化
+  - 归因分析图表
+  - 模型选择界面
+
+#### A股ETF数据源扩展 (v2.5 新增)
+- ✅ **AKShare数据源**: `services/ashare/akshare_provider.go`
+  - Python AKShare服务: `services/ashare/akshare_server.py`
+  - ETF列表获取
+  - 实时行情数据
+  - 历史K线数据
+  - 分红历史数据
+- ✅ **TuShare数据源**: `services/ashare/tushare_provider.go`
+  - 基金基础信息
+  - 基金净值数据
+  - 日线行情数据
+- ✅ **ETF数据服务**: `services/ashare/etf_data_service.go`
+  - 数据同步管理
+  - 多数据源集成
+  - 股息率计算
+  - 搜索和筛选
+- ✅ **API端点**:
+  - `POST /api/a-share/enable-akshare` - 启用AKShare
+  - `POST /api/a-share/sync-etf-list` - 同步ETF列表
+  - `POST /api/a-share/sync-prices` - 同步价格
+  - `GET /api/a-share/search` - 搜索ETF
+  - `GET /api/a-share/by-frequency/:frequency` - 按分红频率筛选
+
+#### 跨资产类别ETF支持 (v2.5 新增)
+- ✅ **通用ETF模型**: `models/universal_etf.go`
+  - 资产类别: 股票/债券/商品/REIT/货币/多资产/另类
+  - 地区覆盖: 全球/美国/中国/欧洲/日本/新兴市场/亚太/拉美
+  - ETF类型: 指数/行业/因子/主题/主动/杠杆/反向
+  - 完整的风险收益指标
+- ✅ **ETF数据服务**: `services/etf/universal_etf_service.go`
+  - 预置ETF数据: 美股+A股主流ETF
+  - 多维度筛选: 资产类别/地区/类型/行业
+  - 分布统计: 资产类别分布/地区分布
+  - 组合配置建议: 保守/平衡/激进/股息策略
+- ✅ **API端点** (`handlers/universal_etf_handler.go`):
+  - `POST /api/universal-etf/initialize` - 初始化ETF数据
+  - `GET /api/universal-etf` - 获取所有ETF
+  - `GET /api/universal-etf/asset-class/:asset_class` - 按资产类别筛选
+  - `GET /api/universal-etf/region/:region` - 按地区筛选
+  - `GET /api/universal-etf/type/:etf_type` - 按类型筛选
+  - `POST /api/universal-etf/filter` - 多条件筛选
+  - `POST /api/universal-etf/compare` - ETF对比
+  - `GET /api/universal-etf/portfolio-allocation` - 组合配置建议
+  - `GET /api/universal-etf/categories` - 获取分类列表
 
 ### v2.4 更新内容
 

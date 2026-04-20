@@ -17,17 +17,19 @@ ETF-Insight 后端坚持以下设计理念：
 ## ✨ 核心特性
 
 ### 量化分析引擎
-- **投资组合优化**: 马科维茨模型、有效前沿、夏普比率最大化
+- **投资组合优化**: 马科维茨MPT、风险平价、Black-Litterman三种模型
 - **投资组合情景分析**: 蒙特卡洛模拟、三种市场情景(乐观/中性/悲观)、VaR/CVaR风险指标
-- **风险指标计算**: 波动率、最大回撤、夏普比率、Beta、Alpha
+- **风险指标计算**: 波动率、最大回撤、夏普比率、索提诺比率、卡尔玛比率、Beta、Alpha
 - **技术指标**: RSI、MACD、布林带、移动平均线
 - **风险模型**: VaR/CVaR (历史法/参数法)、组合风险分解
-- **多因子模型**: Fama-French 等因子分析框架
+- **多因子模型**: Fama-French 三因子/五因子模型、归因分析
+- **回测引擎**: 事件驱动架构、完整订单系统、滑点/手续费模型
 
 ### 数据服务
 - **多数据源支持**: Finage 主数据源 + 备用数据源故障转移
 - **汇率服务**: 多数据源汇率，自动故障转移
-- **A股ETF支持**: 中证红利、红利低波等主流红利ETF
+- **A股ETF支持**: AKShare/TuShare接入、中证红利、红利低波等主流红利ETF
+- **跨资产类别**: 股票/债券/商品/REIT/货币/多资产/另类全覆盖
 - **数据完整性**: 所有字段入库校验，操作日志记录
 
 ### 安全架构
@@ -67,6 +69,11 @@ backend/
 │   ├── datasource/        # 数据源微服务层
 │   ├── exchange_rate/     # 汇率服务
 │   ├── sync/              # 同步服务
+│   ├── backtest/          # 回测引擎(事件驱动)
+│   ├── optimization/      # 组合优化(MPT/风险平价/BL)
+│   ├── factor/            # 因子分析(Fama-French)
+│   ├── ashare/            # A股数据源(AKShare/TuShare)
+│   ├── etf/               # ETF服务(跨资产类别)
 │   ├── etf_analysis.go    # ETF分析服务
 │   ├── portfolio_optimizer.go  # 组合优化服务
 │   ├── portfolio_analytics.go  # 组合分析服务(金融公式计算)
@@ -152,10 +159,39 @@ go build -o etf-insight
 - `POST /api/etf/update-realtime` - 手动刷新实时数据
 - `GET /api/etf/list` - ETF列表（包含实时价格）
 
+### 回测引擎接口
+- `POST /api/backtest/run` - 运行回测
+- `POST /api/backtest/event-driven` - 事件驱动回测
+- `GET /api/backtest/result/:id` - 获取回测结果
+- `GET /api/backtest/compare` - 对比多个策略
+
+### 组合优化接口
+- `POST /api/portfolio/mpt-optimize` - MPT均值-方差优化
+- `POST /api/portfolio/efficient-frontier` - 有效前沿计算
+- `POST /api/portfolio/risk-parity` - 风险平价优化
+- `POST /api/portfolio/black-litterman` - Black-Litterman优化
+
+### 因子分析接口
+- `POST /api/factor/fama-french` - Fama-French因子分析
+- `GET /api/factor/models` - 获取可用模型
+- `GET /api/factor/factors` - 获取因子定义
+
 ### A股ETF接口
 - `GET /api/a-share/etfs` - A股ETF列表
 - `GET /api/a-share/prices` - ETF价格
 - `POST /api/a-share/prices/refresh` - 刷新价格
+- `POST /api/a-share/enable-akshare` - 启用AKShare数据源
+- `POST /api/a-share/sync-etf-list` - 同步ETF列表
+- `GET /api/a-share/search` - 搜索ETF
+
+### 跨资产类别ETF接口
+- `POST /api/universal-etf/initialize` - 初始化ETF数据
+- `GET /api/universal-etf` - 获取所有ETF
+- `GET /api/universal-etf/asset-class/:asset_class` - 按资产类别筛选
+- `GET /api/universal-etf/region/:region` - 按地区筛选
+- `POST /api/universal-etf/filter` - 多条件筛选
+- `POST /api/universal-etf/compare` - ETF对比
+- `GET /api/universal-etf/portfolio-allocation` - 组合配置建议
 
 ### 汇率接口
 - `GET /api/exchange-rates` - 汇率列表

@@ -816,6 +816,136 @@ func (h *ETFHandler) UpdateRealtimeData(c *gin.Context) {
 	})
 }
 
+// GetETFRisk 获取ETF风险指标
+func (h *ETFHandler) GetETFRisk(c *gin.Context) {
+	symbol := c.Param("symbol")
+	period := c.DefaultQuery("period", "1y")
+	confidenceStr := c.DefaultQuery("confidence", "0.95")
+
+	if symbol == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "symbol is required",
+		})
+		return
+	}
+
+	confidence, err := strconv.ParseFloat(confidenceStr, 64)
+	if err != nil || confidence <= 0 || confidence >= 1 {
+		confidence = 0.95
+	}
+
+	// 获取历史数据计算收益率
+	days := 252 // 默认1年
+	switch period {
+	case "3m":
+		days = 63
+	case "6m":
+		days = 126
+	case "1y":
+		days = 252
+	case "3y":
+		days = 756
+	case "5y":
+		days = 1260
+	}
+
+	var etfData []models.ETFData
+	if err := models.DB.Where("symbol = ?", symbol).
+		Order("date DESC").
+		Limit(days).
+		Find(&etfData).Error; err != nil || len(etfData) < 30 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   "Insufficient historical data for risk calculation",
+		})
+		return
+	}
+
+	// 计算收益率序列
+	returns := make([]decimal.Decimal, 0, len(etfData)-1)
+	for i := len(etfData) - 1; i > 0; i-- {
+		currentPrice := etfData[i-1].ClosePrice
+		previousPrice := etfData[i].ClosePrice
+		if previousPrice.GreaterThan(decimal.Zero) {
+			ret := currentPrice.Sub(previousPrice).Div(previousPrice)
+			returns = append(returns, ret)
+		}
+	}
+
+	if len(returns) < 30 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"error":   "Insufficient return data for risk calculation",
+		})
+		return
+	}
+
+	// 使用风险模型计算指标
+	riskModels := services.NewRiskModels()
+
+	// 计算VaR和CVaR
+	varData, err := riskModels.CalculateHistoricalVaR(returns, confidence)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to calculate VaR: " + err.Error(),
+		})
+		return
+	}
+
+	// 计算综合风险指标
+	riskFreeRate := decimal.NewFromFloat(0.02 / 252) // 假设2%年化无风险利率
+	riskMetrics, err := riskModels.CalculateRiskMetrics(returns, riskFreeRate, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to calculate risk metrics: " + err.Error(),
+		})
+		return
+	}
+
+	// 计算价格统计
+	prices := make([]decimal.Decimal, len(etfData))
+	for i, d := range etfData {
+		prices[i] = d.ClosePrice
+	}
+	currentPrice := prices[0]
+	highPrice := currentPrice
+	lowPrice := currentPrice
+	for _, p := range prices {
+		if p.GreaterThan(highPrice) {
+			highPrice = p
+		}
+		if p.LessThan(lowPrice) {
+			lowPrice = p
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": map[string]interface{}{
+			"symbol":            symbol,
+			"period":            period,
+			"current_price":     currentPrice.InexactFloat64(),
+			"period_high":       highPrice.InexactFloat64(),
+			"period_low":        lowPrice.InexactFloat64(),
+			"var_95":            varData.VaR.Mul(decimal.NewFromInt(100)).InexactFloat64(), // 转换为百分比
+			"cvar_95":           varData.CVaR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
+			"confidence":        confidence,
+			"volatility":        riskMetrics.Volatility.Mul(decimal.NewFromInt(100)).InexactFloat64(),
+			"sharpe_ratio":      riskMetrics.SharpeRatio.InexactFloat64(),
+			"sortino_ratio":     riskMetrics.SortinoRatio.InexactFloat64(),
+			"max_drawdown":      riskMetrics.MaxDrawdown.Mul(decimal.NewFromInt(100)).InexactFloat64(),
+			"calmar_ratio":      riskMetrics.CalmarRatio.InexactFloat64(),
+			"beta":              riskMetrics.Beta.InexactFloat64(),
+			"alpha":             riskMetrics.Alpha.InexactFloat64(),
+			"annualized_return": riskMetrics.Volatility.Mul(decimal.NewFromInt(100)).InexactFloat64(),
+			"data_points":       len(returns),
+		},
+	})
+}
+
 func getDefaultDividendYield(symbol string) float64 {
 	type dividendYield struct {
 		symbols []string

@@ -1,25 +1,53 @@
-# ETF-Insight (v2.3.2)
+# ETF-Insight (v2.5.0) 🚀
 
-A professional ETF analysis and comparison platform, benchmarking against international tools like Trackinsight and ETF Insider. Built with Go + React stack, providing in-depth ETF data insights, multi-dimensional comparison analysis, holdings decomposition, risk assessment, and portfolio optimization.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
+[![React Version](https://img.shields.io/badge/React-19.2.4-61DAFB)](https://reactjs.org/)
+[![Test Coverage](https://img.shields.io/badge/coverage-55%25-yellowgreen)](https://github.com/coder100001/ETF-Insight)
 
-**v2.3 Update**: Comprehensive exchange rate service upgrade - multi-data source failover, race condition fixes, performance optimization.
+**Open-Source Professional ETF Quantitative Analysis Platform**
 
-**v2.2 Update**: Comprehensive code quality optimization - Fixed all ESLint issues, achieved TypeScript type safety, unified code style.
+ETF-Insight is an open-source ETF analysis platform for professional investors, quantitative researchers, and financial institutions. Built with Go + React stack, providing institutional-grade ETF data insights, multi-dimensional quantitative analysis, and portfolio optimization.
 
-**v2.1 Update**: Fixed dividend yield display and capital gain calculations, optimized data accuracy.
+> 🎯 **Vision**: Become the most professional open-source ETF quantitative analysis tool, providing transparent and verifiable analysis capabilities
 
-**v2.0 Architecture Update**: Fully rely on Finage real data, removed all hard-coded mock data, all fields must be persisted.
+## 📢 Latest Updates
 
-**v2.3 Exchange Rate Service Upgrade**:
-- ✅ **Multi-data source failover**: Support for Open Exchange Rates, CurrencyAPI, Frankfurter three data sources
-- ✅ **Race condition fixes**: Resolved concurrent access issues in data source manager
-- ✅ **Health monitoring**: Automatic data source availability checks and failover switching
-- ✅ **Performance optimization**: Smart caching strategies, database query optimization
+**v2.5 Real-time Data & Quantitative Analysis Upgrade**:
+- ✅ **Real-time Data Acquisition**: Finage API integration, 3-year historical data sync (~388 days)
+- ✅ **Portfolio Scenario Analysis**: Monte Carlo simulation (1000 runs), three market scenarios (optimistic/neutral/pessimistic), VaR/CVaR risk metrics
+- ✅ **Dynamic ETF Selection**: Portfolio Analysis page supports fetching ETF list from API, displaying real-time prices
+- ✅ **Flexible Weight Configuration**: Support adding/removing ETFs, real-time weight validation
+- ✅ **Financial Calculation Formulas**: Standard financial formulas for portfolio metrics using real historical data
+  - Portfolio Variance: $\sigma_p^2 = \sum_i w_i^2 \sigma_i^2 + 2 \sum_{i<j} w_i w_j \sigma_i \sigma_j \rho_{ij}$
+  - Portfolio Maximum Drawdown: Calculated based on NAV series, not simple weighted
+- ✅ **New Risk-Adjusted Metrics**: Sortino Ratio (downside risk), Calmar Ratio (return/drawdown)
+- ✅ **Rolling Window Metrics**: 30/60/90/180/252-day dynamic windows, including win rate, profit/loss ratio
+- ✅ **Statistical Metrics**: Skewness, kurtosis analysis of return distribution characteristics
+- ✅ **Improved Dividend Reinvestment**: Quarterly/monthly reinvestment models, more accurate compound interest calculation
+- ✅ **Default Portfolio Templates**: 6 preset portfolios (conservative/balanced/aggressive/income/dividend growth/tech focused)
+- ✅ **Technical Indicators Library**: RSI, MACD, Bollinger Bands, Moving Averages
+- ✅ **Risk Models**: VaR/CVaR (historical/parametric methods), portfolio risk analysis
+- ✅ **Risk Metrics**: Sharpe Ratio, Sortino Ratio, Maximum Drawdown, Beta/Alpha
+- ✅ **Frontend Analysis Pages**: Portfolio scenario analysis, technical analysis (radar chart), risk analysis (VaR visualization)
+- ✅ **Test Coverage**: middleware 68.8%, utils 81.2%
+- ✅ **CI/CD**: Coverage detection, Codecov integration
 
-**v2.3.2 Pre-commit Hooks**:
-- ✅ **TypeScript type check**: Automatic check before commit
-- ✅ **ESLint check**: Frontend code quality assurance
-- ✅ **Fail blocks commit**: Syntax errors cannot be committed, avoiding CI build failures
+**v2.5 Quantitative Engine Enhancement**:
+- ✅ **Backtest Engine**: Event-driven architecture, complete order system, slippage/commission models
+- ✅ **Portfolio Optimization Enhancement**: Markowitz MPT, Risk Parity, Black-Litterman three models
+- ✅ **Factor Analysis Module**: Fama-French 3-factor/5-factor models, attribution analysis
+- ✅ **A-Share Data Source**: AKShare/TuShare integration, real-time market data sync
+- ✅ **Cross-Asset Coverage**: Equity/Bond/Commodity/REIT/Currency/Multi-Asset full coverage
+
+**v2.4 Security & API Documentation Upgrade**:
+- ✅ **JWT Authentication**: Complete authentication middleware, supporting token generation/validation/role control
+- ✅ **Audit Logging**: Asynchronous writing, automatic sensitive information masking, Request ID tracking
+- ✅ **Data Validation**: Generic validation middleware, supporting string/number/email types
+- ✅ **API Pagination**: Generic pagination response structure, supporting page/pageSize parameters
+- ✅ **Rate Limiting**: IP-level request frequency limiting
+- ✅ **Stock Symbol Validation**: Preventing illegal character injection
+- ✅ **Swagger API Documentation**: OpenAPI 3.0 specification, interactive API testing
 
 > **📚 For Developers**: This project uses **agents.md** as the core context document, containing architecture design, data models, coding rules, and other critical information.
 >
@@ -67,6 +95,41 @@ ETF-Insight aims to become a powerful ETF analysis tool for professional investo
 - **Automatic Synchronization** - Scheduled tasks automatically update exchange rate data (every 5 minutes)
 - **Currency Conversion** - Support for conversion between multiple currencies
 - **Sync Logging** - Complete exchange rate synchronization batch records and detailed tracking
+
+### 🔄 Backtest Engine (v2.5 New)
+- **Event-Driven Architecture** - High-performance backtest engine based on event bus
+- **Order System** - Full support for market/limit/stop-loss/take-profit orders
+- **Slippage Models** - Fixed slippage/percentage slippage/volatility slippage
+- **Commission Models** - Fixed rate/tiered rate
+- **Dividend Reinvestment** - Support automatic dividend reinvestment
+- **Rebalancing Strategy** - Periodic rebalancing and threshold rebalancing
+- **Backtest Analysis** - Return metrics, risk metrics, trade statistics
+
+### 🎯 Portfolio Optimization (v2.5 Enhanced)
+- **Markowitz MPT** - Mean-variance optimization, efficient frontier calculation
+- **Risk Parity** - Equal Risk Contribution (ERC), inverse volatility weighting
+- **Black-Litterman** - Bayesian view blending, posterior return distribution
+- **Weight Constraints** - Support single asset upper/lower bound constraints
+- **Optimization Objectives** - Max Sharpe/Min Volatility/Target Return
+
+### 📈 Factor Analysis (v2.5 New)
+- **Fama-French Models** - 3-factor/5-factor model support
+- **Factor Exposure** - Portfolio exposure analysis on each factor
+- **Attribution Analysis** - Return attribution, risk attribution decomposition
+- **Active Return Analysis** - Alpha decomposition, excess return sources
+
+### 🌏 A-Share ETF Data Source (v2.5 New)
+- **AKShare Integration** - Python AKShare service, real-time A-share ETF data
+- **TuShare Support** - Alternative data source, fund NAV data
+- **Data Synchronization** - ETF list, prices, historical K-line automatic sync
+- **Dividend Tracking** - Dividend yield calculation, dividend frequency statistics
+
+### 🌍 Cross-Asset ETF (v2.5 New)
+- **Full Asset Class Coverage** - Equity/Bond/Commodity/REIT/Currency/Multi-Asset/Alternative
+- **Global Region Coverage** - US/China/Europe/Japan/Emerging/Asia-Pacific/Latin America
+- **Rich ETF Types** - Index/Sector/Factor/Thematic/Active/Leveraged/Inverse
+- **Multi-Dimensional Filtering** - Asset class/region/type/sector/expense ratio
+- **Portfolio Allocation Suggestions** - Conservative/Balanced/Aggressive/Dividend strategy templates
 
 ### ⚙️ ETF Configuration Management
 - **CRUD Operations** - Create, read, update, delete ETF configuration information
