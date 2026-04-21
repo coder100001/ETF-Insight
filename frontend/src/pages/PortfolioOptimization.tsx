@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Select, InputNumber, message, Table, Tabs, Spin, Alert, Slider, Form } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis } from 'recharts';
-import { optimizationAPI } from '../services/api';
+import { optimizationAPI, etfAPI } from '../services/api';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
 
@@ -49,18 +49,24 @@ const MetricLabel = styled.div`
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B'];
 
-// 预设ETF数据
-const PRESET_ETFS = [
-  { symbol: 'VTI', name: 'Vanguard Total Stock Market', return: 0.12, volatility: 0.16 },
-  { symbol: 'VOO', name: 'Vanguard S&P 500', return: 0.11, volatility: 0.15 },
-  { symbol: 'QQQ', name: 'Invesco QQQ Trust', return: 0.14, volatility: 0.20 },
-  { symbol: 'IWM', name: 'iShares Russell 2000', return: 0.09, volatility: 0.19 },
-  { symbol: 'EFA', name: 'iShares MSCI EAFE', return: 0.08, volatility: 0.17 },
-  { symbol: 'EEM', name: 'iShares Emerging Markets', return: 0.10, volatility: 0.22 },
-  { symbol: 'AGG', name: 'iShares Core U.S. Aggregate Bond', return: 0.04, volatility: 0.05 },
-  { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond', return: 0.03, volatility: 0.14 },
-  { symbol: 'GLD', name: 'SPDR Gold Shares', return: 0.06, volatility: 0.15 },
-  { symbol: 'VNQ', name: 'Vanguard Real Estate', return: 0.08, volatility: 0.18 },
+// ETF基础信息类型
+interface ETFInfo {
+  symbol: string;
+  name: string;
+}
+
+// 默认ETF数据（当API不可用时使用）
+const DEFAULT_ETFS: ETFInfo[] = [
+  { symbol: 'VTI', name: 'Vanguard Total Stock Market' },
+  { symbol: 'VOO', name: 'Vanguard S&P 500' },
+  { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
+  { symbol: 'IWM', name: 'iShares Russell 2000' },
+  { symbol: 'EFA', name: 'iShares MSCI EAFE' },
+  { symbol: 'EEM', name: 'iShares Emerging Markets' },
+  { symbol: 'AGG', name: 'iShares Core U.S. Aggregate Bond' },
+  { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond' },
+  { symbol: 'GLD', name: 'SPDR Gold Shares' },
+  { symbol: 'VNQ', name: 'Vanguard Real Estate' },
 ];
 
 interface OptimizationResult {
@@ -102,6 +108,47 @@ interface BlackLittermanResult {
   confidence: number;
 }
 
+// ETF统计数据类型
+interface ETFStatistics {
+  symbol: string;
+  name: string;
+  annualized: number;
+  volatility: number;
+  sharpe: number;
+  max_drawdown: number;
+  data_points: number;
+}
+
+// 验证ETF统计数据是否合理
+const validateETFStatistics = (stats: ETFStatistics): boolean => {
+  // 检查数据点数是否足够
+  if (!stats.data_points || stats.data_points < 30) {
+    return false;
+  }
+
+  // 检查年化收益率是否在合理范围 (-50% 到 +100%)
+  if (stats.annualized < -0.5 || stats.annualized > 1.0) {
+    return false;
+  }
+
+  // 检查波动率是否在合理范围 (0.1% 到 100%)
+  if (stats.volatility < 0.001 || stats.volatility > 1.0) {
+    return false;
+  }
+
+  // 检查夏普比率是否在合理范围 (-5 到 +5)
+  if (stats.sharpe < -5.0 || stats.sharpe > 5.0) {
+    return false;
+  }
+
+  // 检查最大回撤是否在合理范围 (0 到 100%)
+  if (stats.max_drawdown < 0 || stats.max_drawdown > 1.0) {
+    return false;
+  }
+
+  return true;
+};
+
 const PortfolioOptimization: React.FC = () => {
   const [selectedETFs, setSelectedETFs] = useState<string[]>(['VTI', 'VOO', 'AGG']);
   const [objective, setObjective] = useState<'min_volatility' | 'max_sharpe' | 'target_return'>('max_sharpe');
@@ -114,11 +161,18 @@ const PortfolioOptimization: React.FC = () => {
   const [frontier, setFrontier] = useState<EfficientFrontierPoint[]>([]);
   const [activeTab, setActiveTab] = useState('1');
 
+  // ETF列表（从API获取）
+  const [availableETFs, setAvailableETFs] = useState<ETFInfo[]>([]);
+  // ETF统计数据
+  const [etfStatistics, setEtfStatistics] = useState<Record<string, ETFStatistics>>({});
+  const [etfStatsLoading, setEtfStatsLoading] = useState(false);
+
   // 风险平价状态
   const [rpMethod, setRpMethod] = useState<'parity' | 'inverse_vol' | 'budget'>('parity');
   const [rpResult, setRpResult] = useState<RiskParityResult | null>(null);
   const [targetVol, setTargetVol] = useState<number>(0.10);
   const [useLeverage] = useState<boolean>(false);
+  const [riskBudget, setRiskBudget] = useState<Record<string, number>>({});
 
   // Black-Litterman状态
   const [blResult, setBlResult] = useState<BlackLittermanResult | null>(null);
@@ -127,32 +181,99 @@ const PortfolioOptimization: React.FC = () => {
   const [tau, setTau] = useState<number>(0.025);
   const [riskAversion, setRiskAversion] = useState<number>(2.5);
 
-  // 生成协方差矩阵（简化模型）
+  // 从API获取ETF列表
+  useEffect(() => {
+    const fetchETFList = async () => {
+      try {
+        const response = await etfAPI.getList();
+        if (response.success && response.data && response.data.length > 0) {
+          setAvailableETFs(response.data);
+        } else {
+          // API失败时使用默认列表
+          setAvailableETFs(DEFAULT_ETFS);
+        }
+      } catch {
+        console.log('获取ETF列表失败，使用默认列表');
+        setAvailableETFs(DEFAULT_ETFS);
+      }
+    };
+
+    fetchETFList();
+  }, []);
+
+  // 获取所有可用ETF的统计数据（用于下拉列表显示）
+  useEffect(() => {
+    const fetchAllETFStatistics = async () => {
+      if (availableETFs.length === 0) return;
+
+      // 获取所有可用ETF的代码
+      const allSymbols = availableETFs.map(etf => etf.symbol);
+
+      // 确保至少有一个ETF代码
+      if (allSymbols.length === 0) {
+        console.log('没有可用的ETF代码，跳过统计数据获取');
+        return;
+      }
+
+      setEtfStatsLoading(true);
+      try {
+        const response = await optimizationAPI.getETFStatistics({
+          symbols: allSymbols,
+          period: '3y',
+        });
+
+        if (response.success && response.data) {
+          // 过滤并验证数据
+          const validatedData: Record<string, ETFStatistics> = {};
+          Object.entries(response.data).forEach(([symbol, stats]) => {
+            if (validateETFStatistics(stats)) {
+              validatedData[symbol] = stats;
+            } else {
+              console.warn(`ETF ${symbol} 的数据未通过验证，使用默认数据`);
+            }
+          });
+          setEtfStatistics(validatedData);
+        }
+      } catch {
+        // 静默失败，使用默认数据
+        console.log('获取ETF统计数据失败，使用默认数据');
+      } finally {
+        setEtfStatsLoading(false);
+      }
+    };
+
+    fetchAllETFStatistics();
+  }, [availableETFs]);
+
+  // 生成协方差矩阵（使用真实统计数据）
   const generateCovarianceMatrix = (symbols: string[]) => {
     const matrix: Record<string, Record<string, number>> = {};
 
     symbols.forEach(s1 => {
       matrix[s1] = {};
-      const etf1 = PRESET_ETFS.find(e => e.symbol === s1);
+      // 优先使用真实统计数据，否则使用默认波动率0.15
+      const stats1 = etfStatistics[s1];
+      const volatility1 = stats1?.volatility || 0.15;
 
       symbols.forEach(s2 => {
-        const etf2 = PRESET_ETFS.find(e => e.symbol === s2);
+        const stats2 = etfStatistics[s2];
+        const volatility2 = stats2?.volatility || 0.15;
 
         if (s1 === s2) {
           // 对角线：方差 = 波动率^2
-          matrix[s1][s2] = (etf1?.volatility || 0.15) ** 2;
+          matrix[s1][s2] = volatility1 ** 2;
         } else {
           // 非对角线：协方差 = 相关系数 * 波动率1 * 波动率2
           // 假设股票-股票相关性0.8，股票-债券0.2，债券-债券0.9
           let correlation = 0.5;
-          const isBond1 = s1.includes('AGG') || s1.includes('TLT');
-          const isBond2 = s2.includes('AGG') || s2.includes('TLT');
+          const isBond1 = s1.includes('AGG') || s1.includes('TLT') || s1.includes('BND');
+          const isBond2 = s2.includes('AGG') || s2.includes('TLT') || s2.includes('BND');
 
           if (isBond1 && isBond2) correlation = 0.9;
           else if (isBond1 || isBond2) correlation = 0.2;
           else correlation = 0.8;
 
-          matrix[s1][s2] = correlation * (etf1?.volatility || 0.15) * (etf2?.volatility || 0.15);
+          matrix[s1][s2] = correlation * volatility1 * volatility2;
         }
       });
     });
@@ -160,12 +281,13 @@ const PortfolioOptimization: React.FC = () => {
     return matrix;
   };
 
-  // 生成收益率映射
+  // 生成收益率映射（使用真实统计数据）
   const generateReturns = (symbols: string[]) => {
     const returns: Record<string, number> = {};
     symbols.forEach(symbol => {
-      const etf = PRESET_ETFS.find(e => e.symbol === symbol);
-      returns[symbol] = etf?.return || 0.10;
+      // 优先使用真实统计数据，否则使用默认收益率0.10
+      const stats = etfStatistics[symbol];
+      returns[symbol] = stats?.annualized || 0.10;
     });
     return returns;
   };
@@ -254,12 +376,34 @@ const PortfolioOptimization: React.FC = () => {
       return;
     }
 
+    // 风险预算方法需要提供risk_budget参数
+    if (rpMethod === 'budget') {
+      const hasRiskBudget = selectedETFs.some(etf => riskBudget[etf] && riskBudget[etf] > 0);
+      if (!hasRiskBudget) {
+        message.warning('风险预算方法需要为至少一个ETF设置风险预算');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const returns = generateReturns(selectedETFs);
       const covMatrix = generateCovarianceMatrix(selectedETFs);
 
-      const response = await optimizationAPI.riskParityOptimize({
+      const requestData: {
+        symbols: string[];
+        returns: Record<string, number>;
+        cov_matrix: Record<string, Record<string, number>>;
+        method: 'parity' | 'inverse_vol' | 'budget';
+        risk_budget?: Record<string, number>;
+        constraints: {
+          min_weights: Record<string, number>;
+          max_weights: Record<string, number>;
+          target_volatility: number;
+          use_leverage: boolean;
+          max_leverage: number;
+        };
+      } = {
         symbols: selectedETFs,
         returns,
         cov_matrix: covMatrix,
@@ -271,7 +415,14 @@ const PortfolioOptimization: React.FC = () => {
           use_leverage: useLeverage,
           max_leverage: 2.0,
         },
-      });
+      };
+
+      // 风险预算方法需要添加risk_budget参数
+      if (rpMethod === 'budget') {
+        requestData.risk_budget = riskBudget;
+      }
+
+      const response = await optimizationAPI.riskParityOptimize(requestData);
 
       if (response.success && response.data) {
         setRpResult(response.data);
@@ -396,12 +547,19 @@ const PortfolioOptimization: React.FC = () => {
               placeholder="选择ETF构建组合"
               value={selectedETFs}
               onChange={setSelectedETFs}
+              loading={etfStatsLoading}
             >
-              {PRESET_ETFS.map(etf => (
-                <Option key={etf.symbol} value={etf.symbol}>
-                  {etf.symbol} - {etf.name} (预期收益: {(etf.return * 100).toFixed(1)}%, 波动率: {(etf.volatility * 100).toFixed(1)}%)
-                </Option>
-              ))}
+              {availableETFs.map(etf => {
+                const stats = etfStatistics[etf.symbol];
+                const displayReturn = stats ? (stats.annualized * 100).toFixed(1) : '-';
+                const displayVol = stats ? (stats.volatility * 100).toFixed(1) : '-';
+                const dataSource = stats?.data_points ? '真实数据' : '暂无数据';
+                return (
+                  <Option key={etf.symbol} value={etf.symbol}>
+                    {etf.symbol} - {etf.name} (预期收益: {displayReturn}%, 波动率: {displayVol}%){stats?.data_points ? ` [${dataSource}]` : ''}
+                  </Option>
+                );
+              })}
             </Select>
           </StyledCard>
 
@@ -664,6 +822,37 @@ const PortfolioOptimization: React.FC = () => {
                       <Option value="budget">风险预算</Option>
                     </Select>
                   </Form.Item>
+                  {rpMethod === 'budget' && (
+                    <Form.Item label="风险预算配置" help="为每个ETF设置风险预算比例（总和应为100%）">
+                      <Alert
+                        message="风险预算说明"
+                        description="风险预算方法允许您为每个ETF指定风险贡献比例。例如，如果您希望某个ETF承担更多风险，可以为其分配更高的预算比例。"
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
+                      {selectedETFs.map(symbol => (
+                        <div key={symbol} style={{ marginBottom: 8 }}>
+                          <span style={{ display: 'inline-block', width: 80 }}>{symbol}:</span>
+                          <InputNumber
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={(riskBudget[symbol] || 0) * 100}
+                            onChange={(value) => {
+                              setRiskBudget(prev => ({
+                                ...prev,
+                                [symbol]: (value || 0) / 100
+                              }));
+                            }}
+                            formatter={(value) => `${value}%`}
+                            parser={(value) => parseFloat(value?.replace('%', '') || '0')}
+                            style={{ width: 100 }}
+                          />
+                        </div>
+                      ))}
+                    </Form.Item>
+                  )}
                   <Form.Item label="目标波动率 (%)" help="设置目标波动率以调整杠杆">
                     <Slider
                       min={5}

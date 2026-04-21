@@ -154,6 +154,7 @@ func main() {
 	router.POST("/api/optimization/mpt", optimizationHandler.MPTOptimize)
 	router.POST("/api/optimization/efficient-frontier", optimizationHandler.EfficientFrontier)
 	router.POST("/api/optimization/covariance", optimizationHandler.CalculateCovarianceMatrix)
+	router.POST("/api/optimization/etf-statistics", optimizationHandler.GetETFStatistics)
 
 	// 风险平价优化路由
 	router.POST("/api/optimization/risk-parity", optimizationHandler.RiskParityOptimize)

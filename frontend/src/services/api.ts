@@ -694,6 +694,26 @@ export const optimizationAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  // 获取ETF历史统计数据
+  getETFStatistics: (data: {
+    symbols: string[];
+    period?: string;
+    end_date?: string;
+  }) => {
+    return request<ApiResponse<Record<string, {
+      symbol: string;
+      name: string;
+      annualized: number;
+      volatility: number;
+      sharpe: number;
+      max_drawdown: number;
+      data_points: number;
+    }>>>(`/optimization/etf-statistics`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // Fama-French因子分析API
