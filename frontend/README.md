@@ -199,6 +199,16 @@ const detail = await etfAPI.getDetail('SPY');
 
 ## 🧪 测试
 
+### 前端测试状态
+
+| 类型 | 状态 | 说明 |
+|------|------|------|
+| 组件测试 | 🔄 进行中 | StatCard 等组件测试示例 |
+| E2E测试 | 📋 计划中 | 端到端测试覆盖主要用户流程 |
+| 类型检查 | ✅ 通过 | TypeScript 严格模式 |
+
+### 运行测试
+
 ```bash
 # 运行测试
 npm run test

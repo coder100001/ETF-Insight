@@ -245,12 +245,27 @@ func init() {
 
 ## 🧪 测试
 
+### 测试覆盖率 (2026-04-21)
+
+| 模块 | 覆盖率 | 关键功能 |
+|------|--------|----------|
+| services/factor | **80.8%** | Fama-French 三因子/五因子模型 |
+| services/technical | 100% | RSI、MACD、布林带 |
+| services/risk | 100% | VaR、CVaR、风险指标 |
+| middleware | 68.8% | 认证、审计、安全 |
+| utils | 81.2% | 工具函数 |
+
+### 运行测试
+
 ```bash
 # 运行所有测试
 go test -v ./...
 
 # 运行特定包测试
 go test -v ./services/...
+
+# 运行因子分析测试
+go test -v ./services/factor
 
 # 生成覆盖率报告
 go test -coverprofile=coverage.out ./...
