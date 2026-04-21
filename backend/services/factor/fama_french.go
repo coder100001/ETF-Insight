@@ -5,6 +5,7 @@ import (
 	"etf-insight/models"
 	"fmt"
 	"math"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strconv"
@@ -154,7 +155,7 @@ func (m *FamaFrenchModel) AnalyzeETF(
 func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionResult, error) {
 	n := len(dependent)
 	if n == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("依赖变量数据为空")
 	}
 
 	// 构建自变量矩阵 X
@@ -185,6 +186,15 @@ func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionRes
 		}
 	}
 
+	// 验证数据长度足够
+	if minLen == 0 {
+		return nil, fmt.Errorf("因子数据为空")
+	}
+	// 至少需要与变量数相同的数据点，但为了更稳定的结果，建议数据点 > 变量数
+	if minLen < k {
+		return nil, fmt.Errorf("数据点数量(%d)不足，至少需要%d个数据点", minLen, k)
+	}
+
 	// 构建X矩阵和Y向量
 	X := make([][]float64, minLen)
 	Y := make([]float64, minLen)
@@ -206,8 +216,8 @@ func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionRes
 	XtX := m.matrixMultiply(m.transpose(X), X)
 	XtY := m.matrixVectorMultiply(m.transpose(X), Y)
 
-	// 求解线性方程组 (X'X)β = X'Y
-	beta := m.solveLinearSystem(XtX, XtY)
+	// 求解线性方程组 (X'X)β = X'Y，使用带正则化的方法处理奇异矩阵
+	beta := m.solveLinearSystemWithRegularization(XtX, XtY, 1e-6)
 
 	// 计算预测值和残差
 	predicted := make([]float64, minLen)
@@ -262,11 +272,20 @@ func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionRes
 		"smb":    stdErrors[2],
 		"hml":    stdErrors[3],
 	}
+
+	// 计算t统计量，避免除以0
+	calcTStat := func(b, se float64) float64 {
+		if se < 1e-10 {
+			return 0
+		}
+		return b / se
+	}
+
 	tStats := map[string]float64{
-		"alpha":  beta[0] / stdErrors[0],
-		"market": beta[1] / stdErrors[1],
-		"smb":    beta[2] / stdErrors[2],
-		"hml":    beta[3] / stdErrors[3],
+		"alpha":  calcTStat(beta[0], stdErrors[0]),
+		"market": calcTStat(beta[1], stdErrors[1]),
+		"smb":    calcTStat(beta[2], stdErrors[2]),
+		"hml":    calcTStat(beta[3], stdErrors[3]),
 	}
 
 	if m.UseFiveFactor {
@@ -274,8 +293,8 @@ func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionRes
 		coefficients["cma"] = beta[5]
 		stdErrMap["rmw"] = stdErrors[4]
 		stdErrMap["cma"] = stdErrors[5]
-		tStats["rmw"] = beta[4] / stdErrors[4]
-		tStats["cma"] = beta[5] / stdErrors[5]
+		tStats["rmw"] = calcTStat(beta[4], stdErrors[4])
+		tStats["cma"] = calcTStat(beta[5], stdErrors[5])
 	}
 
 	// 计算P值 (简化计算，使用正态分布近似)
@@ -299,24 +318,22 @@ func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionRes
 func (m *FamaFrenchModel) calculateFactorContributions(exposure *FactorExposure) map[string]float64 {
 	contributions := make(map[string]float64)
 
+	// 安全计算平均值，避免除以0
+	safeAvg := func(returns []float64) float64 {
+		if len(returns) == 0 {
+			return 0
+		}
+		sum := 0.0
+		for _, r := range returns {
+			sum += r
+		}
+		return sum / float64(len(returns))
+	}
+
 	// 计算因子平均收益
-	avgMarket := 0.0
-	avgSMB := 0.0
-	avgHML := 0.0
-
-	for _, r := range m.MarketReturns {
-		avgMarket += r
-	}
-	for _, r := range m.SMBReturns {
-		avgSMB += r
-	}
-	for _, r := range m.HMLReturns {
-		avgHML += r
-	}
-
-	avgMarket /= float64(len(m.MarketReturns))
-	avgSMB /= float64(len(m.SMBReturns))
-	avgHML /= float64(len(m.HMLReturns))
+	avgMarket := safeAvg(m.MarketReturns)
+	avgSMB := safeAvg(m.SMBReturns)
+	avgHML := safeAvg(m.HMLReturns)
 
 	// 年化
 	contributions["market"] = exposure.Market * avgMarket * 12
@@ -325,16 +342,8 @@ func (m *FamaFrenchModel) calculateFactorContributions(exposure *FactorExposure)
 	contributions["alpha"] = exposure.Alpha * 12
 
 	if m.UseFiveFactor {
-		avgRMW := 0.0
-		avgCMA := 0.0
-		for _, r := range m.RMWReturns {
-			avgRMW += r
-		}
-		for _, r := range m.CMAReturns {
-			avgCMA += r
-		}
-		avgRMW /= float64(len(m.RMWReturns))
-		avgCMA /= float64(len(m.CMAReturns))
+		avgRMW := safeAvg(m.RMWReturns)
+		avgCMA := safeAvg(m.CMAReturns)
 
 		contributions["rmw"] = exposure.Profitability * avgRMW * 12
 		contributions["cma"] = exposure.Investment * avgCMA * 12
@@ -545,6 +554,12 @@ func (m *FamaFrenchModel) solveLinearSystem(A [][]float64, b []float64) []float6
 		}
 		augmented[i], augmented[maxRow] = augmented[maxRow], augmented[i]
 
+		// 检查主元是否为0（奇异矩阵）
+		if math.Abs(augmented[i][i]) < 1e-10 {
+			// 矩阵接近奇异，返回零解作为fallback
+			return make([]float64, n)
+		}
+
 		// 消元
 		for k := i + 1; k < n; k++ {
 			factor := augmented[k][i] / augmented[i][i]
@@ -557,6 +572,11 @@ func (m *FamaFrenchModel) solveLinearSystem(A [][]float64, b []float64) []float6
 	// 回代
 	x := make([]float64, n)
 	for i := n - 1; i >= 0; i-- {
+		// 检查主元是否为0
+		if math.Abs(augmented[i][i]) < 1e-10 {
+			x[i] = 0
+			continue
+		}
 		x[i] = augmented[i][n]
 		for j := i + 1; j < n; j++ {
 			x[i] -= augmented[i][j] * x[j]
@@ -565,6 +585,25 @@ func (m *FamaFrenchModel) solveLinearSystem(A [][]float64, b []float64) []float6
 	}
 
 	return x
+}
+
+// solveLinearSystemWithRegularization 使用Tikhonov正则化求解线性方程组
+// 这可以处理接近奇异的矩阵，提供更稳定的解
+func (m *FamaFrenchModel) solveLinearSystemWithRegularization(A [][]float64, b []float64, lambda float64) []float64 {
+	n := len(A)
+
+	// 添加正则化项: (A + λI)x = b
+	// 这可以提高矩阵的条件数，使求解更稳定
+	regularizedA := make([][]float64, n)
+	for i := range regularizedA {
+		regularizedA[i] = make([]float64, n)
+		copy(regularizedA[i], A[i])
+		// 只对对角线元素添加正则化（岭回归）
+		regularizedA[i][i] += lambda
+	}
+
+	// 使用标准的高斯消元法求解
+	return m.solveLinearSystem(regularizedA, b)
 }
 
 // matrixInverse 矩阵求逆 (简化实现，适用于小矩阵)
@@ -599,6 +638,20 @@ func (m *FamaFrenchModel) matrixInverse(matrix [][]float64) [][]float64 {
 		augmented[i], augmented[maxRow] = augmented[maxRow], augmented[i]
 
 		pivot := augmented[i][i]
+		// 检查主元是否为0（奇异矩阵）
+		if math.Abs(pivot) < 1e-10 {
+			// 矩阵接近奇异，返回单位矩阵作为fallback
+			for ii := 0; ii < n; ii++ {
+				for jj := 0; jj < n; jj++ {
+					if ii == jj {
+						result[ii][jj] = 1.0
+					} else {
+						result[ii][jj] = 0.0
+					}
+				}
+			}
+			return result
+		}
 		for j := 0; j < 2*n; j++ {
 			augmented[i][j] /= pivot
 		}
@@ -697,6 +750,43 @@ func GenerateSampleFactorData(periods int) (
 		marketReturns[i] = 0.005 + randNorm()*0.045 // 年化约6%，波动率约16%
 		smbReturns[i] = 0.002 + randNorm()*0.03     // 年化约2.4%，波动率约10%
 		hmlReturns[i] = 0.003 + randNorm()*0.03     // 年化约3.6%，波动率约10%
+		riskFreeReturns[i] = 0.0015                 // 年化约1.8%
+	}
+
+	return
+}
+
+// GenerateSampleFiveFactorData 生成示例五因子数据 (用于测试或当真实数据不可用时)
+func GenerateSampleFiveFactorData(periods int) (
+	marketReturns,
+	smbReturns,
+	hmlReturns,
+	rmwReturns,
+	cmaReturns,
+	riskFreeReturns []float64,
+) {
+	// 生成模拟的月度因子数据
+	marketReturns = make([]float64, periods)
+	smbReturns = make([]float64, periods)
+	hmlReturns = make([]float64, periods)
+	rmwReturns = make([]float64, periods)
+	cmaReturns = make([]float64, periods)
+	riskFreeReturns = make([]float64, periods)
+
+	// 历史平均因子收益 (月度)
+	// 市场溢价: ~0.5% /月
+	// SMB: ~0.2% /月
+	// HML: ~0.3% /月
+	// RMW (盈利因子): ~0.25% /月
+	// CMA (投资因子): ~0.2% /月
+	// 无风险利率: ~0.15% /月
+
+	for i := 0; i < periods; i++ {
+		marketReturns[i] = 0.005 + randNorm()*0.045 // 年化约6%，波动率约16%
+		smbReturns[i] = 0.002 + randNorm()*0.03     // 年化约2.4%，波动率约10%
+		hmlReturns[i] = 0.003 + randNorm()*0.03     // 年化约3.6%，波动率约10%
+		rmwReturns[i] = 0.0025 + randNorm()*0.025   // 年化约3%，波动率约8.7%
+		cmaReturns[i] = 0.002 + randNorm()*0.025    // 年化约2.4%，波动率约8.7%
 		riskFreeReturns[i] = 0.0015                 // 年化约1.8%
 	}
 
@@ -934,9 +1024,7 @@ func randNorm() float64 {
 
 // randFloat 生成[0,1)均匀分布随机数
 func randFloat() float64 {
-	// 使用简单伪随机数生成器
-	// 实际应使用crypto/rand或math/rand
-	return 0.5 // 简化返回
+	return rand.Float64()
 }
 
 // SortByFactorExposure 按因子暴露排序

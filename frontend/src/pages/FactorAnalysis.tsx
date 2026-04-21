@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Select, Switch, Table, Tabs, Spin, Alert, Tag } from 'antd';
+import { Card, Row, Col, Button, Select, Switch, Table, Tabs, Spin, Alert, Tag, message } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { factorAPI } from '../services/api';
+import { factorAPI, etfAPI } from '../services/api';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
 
@@ -49,19 +49,10 @@ const MetricLabel = styled.div`
 
 
 
-// 预设ETF数据
-const PRESET_ETFS = [
-  { symbol: 'VTI', name: 'Vanguard Total Stock Market' },
-  { symbol: 'VOO', name: 'Vanguard S&P 500' },
-  { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
-  { symbol: 'IWM', name: 'iShares Russell 2000' },
-  { symbol: 'EFA', name: 'iShares MSCI EAFE' },
-  { symbol: 'EEM', name: 'iShares Emerging Markets' },
-  { symbol: 'AGG', name: 'iShares Core U.S. Aggregate Bond' },
-  { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond' },
-  { symbol: 'GLD', name: 'SPDR Gold Shares' },
-  { symbol: 'VNQ', name: 'Vanguard Real Estate' },
-];
+interface ETFInfo {
+  symbol: string;
+  name: string;
+}
 
 // 生成模拟收益率数据
 const generateReturns = (periods: number = 36): number[] => {
@@ -106,13 +97,40 @@ interface FactorStats {
 }
 
 const FactorAnalysis: React.FC = () => {
-  const [selectedETFs, setSelectedETFs] = useState<string[]>(['VTI', 'VOO', 'AGG']);
+  const [selectedETFs, setSelectedETFs] = useState<string[]>([]);
   const [useFiveFactor, setUseFiveFactor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [factorStats, setFactorStats] = useState<FactorStats[]>([]);
   const [attribution, setAttribution] = useState<FactorAttribution | null>(null);
   const [multiAttribution, setMultiAttribution] = useState<Record<string, FactorAttribution>>({});
   const [activeTab, setActiveTab] = useState('1');
+  const [error, setError] = useState<string | null>(null);
+  const [availableETFs, setAvailableETFs] = useState<ETFInfo[]>([]);
+  const [etfLoading, setEtfLoading] = useState(false);
+
+  // 获取可用ETF列表
+  useEffect(() => {
+    const fetchETFs = async () => {
+      setEtfLoading(true);
+      try {
+        const response = await etfAPI.getList();
+        if (response.success && response.data) {
+          setAvailableETFs(response.data);
+          // 设置默认值：取列表前3个（如果不足3个则取全部）
+          if (response.data.length > 0 && selectedETFs.length === 0) {
+            const defaultCount = Math.min(3, response.data.length);
+            const defaultETFs = response.data.slice(0, defaultCount).map(etf => etf.symbol);
+            setSelectedETFs(defaultETFs);
+          }
+        }
+      } catch {
+        message.error('获取ETF列表失败');
+      } finally {
+        setEtfLoading(false);
+      }
+    };
+    fetchETFs();
+  }, []);
 
   // 加载因子统计信息
   useEffect(() => {
@@ -124,6 +142,8 @@ const FactorAnalysis: React.FC = () => {
       const response = await factorAPI.getFactorStatistics({ five_factor: useFiveFactor });
       if (response.success && response.data) {
         setFactorStats(response.data);
+      } else if (response.error) {
+        console.error('加载因子统计失败:', response.error);
       }
     } catch (error) {
       console.error('加载因子统计失败:', error);
@@ -133,6 +153,7 @@ const FactorAnalysis: React.FC = () => {
   // 分析单个ETF
   const analyzeSingleETF = async (symbol: string) => {
     setLoading(true);
+    setError(null);
     try {
       const returns = generateReturns(36);
       const response = await factorAPI.analyzeFactor({
@@ -144,8 +165,15 @@ const FactorAnalysis: React.FC = () => {
       if (response.success && response.data) {
         setAttribution(response.data);
         setActiveTab('2');
+        message.success('因子分析完成');
+      } else {
+        setError(response.error || '分析失败');
+        message.error(response.error || '分析失败');
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '分析失败';
+      setError(errorMsg);
+      message.error(errorMsg);
       console.error('因子分析失败:', error);
     } finally {
       setLoading(false);
@@ -154,9 +182,13 @@ const FactorAnalysis: React.FC = () => {
 
   // 分析投资组合
   const analyzePortfolio = async () => {
-    if (selectedETFs.length === 0) return;
+    if (selectedETFs.length === 0) {
+      message.warning('请至少选择一个ETF');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
       const returns = generateReturns(36);
       const weights: Record<string, number> = {};
@@ -173,8 +205,15 @@ const FactorAnalysis: React.FC = () => {
       if (response.success && response.data) {
         setAttribution(response.data);
         setActiveTab('2');
+        message.success('组合因子分析完成');
+      } else {
+        setError(response.error || '分析失败');
+        message.error(response.error || '分析失败');
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '分析失败';
+      setError(errorMsg);
+      message.error(errorMsg);
       console.error('组合因子分析失败:', error);
     } finally {
       setLoading(false);
@@ -183,9 +222,13 @@ const FactorAnalysis: React.FC = () => {
 
   // 批量分析多个ETF
   const analyzeMultipleETFs = async () => {
-    if (selectedETFs.length === 0) return;
+    if (selectedETFs.length === 0) {
+      message.warning('请至少选择一个ETF');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
       const assets: Record<string, number[]> = {};
       selectedETFs.forEach(symbol => {
@@ -200,8 +243,15 @@ const FactorAnalysis: React.FC = () => {
       if (response.success && response.data) {
         setMultiAttribution(response.data);
         setActiveTab('3');
+        message.success('批量因子分析完成');
+      } else {
+        setError(response.error || '分析失败');
+        message.error(response.error || '分析失败');
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '分析失败';
+      setError(errorMsg);
+      message.error(errorMsg);
       console.error('批量因子分析失败:', error);
     } finally {
       setLoading(false);
@@ -261,6 +311,17 @@ const FactorAnalysis: React.FC = () => {
       <Container>
         <Title>Fama-French 因子归因分析</Title>
 
+        {error && (
+          <Alert
+            message="错误"
+            description={error}
+            type="error"
+            closable
+            onClose={() => setError(null)}
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="配置" key="1">
           <StyledCard title="分析配置">
@@ -273,8 +334,9 @@ const FactorAnalysis: React.FC = () => {
                   placeholder="选择要分析的ETF"
                   value={selectedETFs}
                   onChange={setSelectedETFs}
+                  loading={etfLoading}
                 >
-                  {PRESET_ETFS.map(etf => (
+                  {availableETFs.map(etf => (
                     <Option key={etf.symbol} value={etf.symbol}>
                       {etf.symbol} - {etf.name}
                     </Option>
@@ -300,8 +362,9 @@ const FactorAnalysis: React.FC = () => {
                   style={{ width: '100%', marginBottom: 16 }}
                   placeholder="选择ETF"
                   onChange={analyzeSingleETF}
+                  loading={etfLoading}
                 >
-                  {PRESET_ETFS.map(etf => (
+                  {availableETFs.map(etf => (
                     <Option key={etf.symbol} value={etf.symbol}>
                       {etf.symbol} - {etf.name}
                     </Option>

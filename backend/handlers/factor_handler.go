@@ -161,13 +161,27 @@ func (h *FactorHandler) AnalyzePortfolioFactors(c *gin.Context) {
 		return
 	}
 
+	// 验证输入数据
+	if len(req.PortfolioReturns) == 0 {
+		c.JSON(http.StatusBadRequest, PortfolioFactorAnalysisResponse{
+			Success: false,
+			Error:   "投资组合收益率数据不能为空",
+		})
+		return
+	}
+
 	// 设置模型
 	h.ffModel.SetFiveFactor(req.UseFiveFactor)
 
 	// 加载示例因子数据
 	periods := len(req.PortfolioReturns)
-	marketReturns, smbReturns, hmlReturns, riskFreeReturns := factor.GenerateSampleFactorData(periods)
-	h.ffModel.LoadFactorData(marketReturns, smbReturns, hmlReturns, riskFreeReturns)
+	if req.UseFiveFactor {
+		marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns := factor.GenerateSampleFiveFactorData(periods)
+		h.ffModel.LoadFiveFactorData(marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns)
+	} else {
+		marketReturns, smbReturns, hmlReturns, riskFreeReturns := factor.GenerateSampleFactorData(periods)
+		h.ffModel.LoadFactorData(marketReturns, smbReturns, hmlReturns, riskFreeReturns)
+	}
 
 	// 执行分析
 	result, err := h.ffModel.AnalyzePortfolio(req.PortfolioReturns, req.Weights)
@@ -217,6 +231,15 @@ func (h *FactorHandler) AnalyzeMultipleAssets(c *gin.Context) {
 		return
 	}
 
+	// 验证输入数据
+	if len(req.Assets) == 0 {
+		c.JSON(http.StatusBadRequest, MultiAssetFactorAnalysisResponse{
+			Success: false,
+			Error:   "资产数据不能为空",
+		})
+		return
+	}
+
 	// 设置模型
 	h.ffModel.SetFiveFactor(req.UseFiveFactor)
 
@@ -228,9 +251,22 @@ func (h *FactorHandler) AnalyzeMultipleAssets(c *gin.Context) {
 		}
 	}
 
+	if maxLen == 0 {
+		c.JSON(http.StatusBadRequest, MultiAssetFactorAnalysisResponse{
+			Success: false,
+			Error:   "资产收益率数据不能为空",
+		})
+		return
+	}
+
 	// 加载示例因子数据
-	marketReturns, smbReturns, hmlReturns, riskFreeReturns := factor.GenerateSampleFactorData(maxLen)
-	h.ffModel.LoadFactorData(marketReturns, smbReturns, hmlReturns, riskFreeReturns)
+	if req.UseFiveFactor {
+		marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns := factor.GenerateSampleFiveFactorData(maxLen)
+		h.ffModel.LoadFiveFactorData(marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns)
+	} else {
+		marketReturns, smbReturns, hmlReturns, riskFreeReturns := factor.GenerateSampleFactorData(maxLen)
+		h.ffModel.LoadFactorData(marketReturns, smbReturns, hmlReturns, riskFreeReturns)
+	}
 
 	// 批量分析
 	results := h.ffModel.ComparePortfolios(req.Assets)
