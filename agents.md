@@ -1,5 +1,19 @@
 ---
 
+## 📚 文档导航
+
+### 快速入口
+
+| 文档 | 描述 | 适用人群 |
+|------|------|----------|
+| [README.md](../README.md) | 项目总览和快速开始 | 所有人 |
+| [EVOLUTION_ROADMAP_2026.md](./roadmap/EVOLUTION_ROADMAP_2026.md) | 2026年演进路线图 | 项目管理者 |
+| [TEST_COVERAGE_PLAN.md](./TEST_COVERAGE_PLAN.md) | 测试覆盖提升计划 | 开发者 |
+| [MONITORING_ALERTING_PLAN.md](./MONITORING_ALERTING_PLAN.md) | 监控告警方案 | DevOps |
+| [DOCUMENT_INDEX.md](./DOCUMENT_INDEX.md) | 完整文档索引 | 所有人 |
+
+---
+
 ## 🔑 核心配置
 
 ### API Keys (重要!)
@@ -461,7 +475,7 @@ git push origin feature/your-feature-name
 ### 文档要求
 - **API 文档**: OpenAPI 3.0 规范
 - **代码注释**: 重要函数和复杂逻辑必须注释
-- **更新同步**: 架构修改必须更新 agents.md
+- **更新同步**: 架构修改必须更新 AGENTS.md
 
 ---
 
@@ -1465,7 +1479,7 @@ POST /api/data-logs/rollback
 ## 📞 技术支持
 
 ### 问题排查
-1. 检查 agents.md 文档是否包含相关信息
+1. 检查 AGENTS.md 文档是否包含相关信息
 2. 查看日志文件定位问题
 3. 验证数据源连接状态
 4. 检查数据库连接和配置
@@ -1484,7 +1498,7 @@ POST /api/data-logs/rollback
 ```
 用户请求 → 理解意图 → 查阅上下文 → 执行任务 → 验证结果 → 响应用户
     ↓           ↓            ↓           ↓           ↓           ↓
-  自然语言    提取关键信息   agents.md   工具调用    测试验证    清晰反馈
+  自然语言    提取关键信息   AGENTS.md   工具调用    测试验证    清晰反馈
 ```
 
 ### 2. 响应格式
@@ -1577,5 +1591,5 @@ POST /api/data-logs/rollback
 
 ---
 
-*本文档最后更新: 2026-04-17 (v2.5 数据操作日志规范版)*
+*本文档最后更新: 2026-04-21 (v2.5 数据操作日志规范版)*
 *强制上下文绑定版本: v2.0*

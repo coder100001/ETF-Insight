@@ -520,7 +520,7 @@ func (m *MockDataProvider) GetQuote(symbol string) (*Quote, error) {
 
 ### 内部文档
 
-- [agents.md](../agents.md) - 开发规范
+- [AGENTS.md](../AGENTS.md) - 开发规范
 - [v2.5_phase1_implementation.md](./development/v2.5_phase1_implementation.md) - 测试示例
 - [backend/README.md](../backend/README.md) - 后端测试说明
 

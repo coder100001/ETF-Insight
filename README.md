@@ -50,7 +50,7 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **股票代码验证**: 防止非法字符注入
 - ✅ **Swagger API文档**: OpenAPI 3.0规范，交互式API测试
 
-> **📚 开发者必读**: [agents.md](./agents.md) - 架构设计、数据模型、编码规则等核心文档
+> **📚 开发者必读**: [AGENTS.md](./AGENTS.md) - 架构设计、数据模型、编码规则等核心文档
 > **📖 API文档**: http://localhost:8080/swagger - 交互式API文档
 > **📊 实现文档**: [docs/development/v2.5_phase1_implementation.md](./docs/development/v2.5_phase1_implementation.md) - v2.5详细实现文档
 
@@ -288,13 +288,13 @@ npm run dev
 ETF-Insight/
 ├── backend/          # Go 后端服务
 ├── frontend/         # React 前端应用
-├── agents.md         # 项目核心上下文文档
+├── AGENTS.md         # 项目核心上下文文档
 ├── README.md         # 中文文档
 └── README_EN.md      # 英文文档
 ```
 
 ### 核心文档
-- **[agents.md](./agents.md)** - 项目架构、数据模型、开发规范
+- **[AGENTS.md](./AGENTS.md)** - 项目架构、数据模型、开发规范
 - **[docs/security/](./docs/security/)** - 安全文档和改进指南
 - **[docs/reviews/](./docs/reviews/)** - 代码审查报告
 - **[docs/roadmap/](./docs/roadmap/)** - 演进路线图

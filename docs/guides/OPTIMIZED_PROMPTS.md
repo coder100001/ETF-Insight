@@ -198,7 +198,7 @@ at PortfolioAnalysis.tsx:232
 分三个请求:
 1. [Bug] 启动失败，port already in use
 2. [优化] CalculateMetrics 性能
-3. [文档] 更新 agents.md
+3. [文档] 更新 AGENTS.md
 ```
 
 ---

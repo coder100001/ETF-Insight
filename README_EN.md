@@ -49,9 +49,9 @@ ETF-Insight is an open-source ETF analysis platform for professional investors, 
 - ✅ **Stock Symbol Validation**: Preventing illegal character injection
 - ✅ **Swagger API Documentation**: OpenAPI 3.0 specification, interactive API testing
 
-> **📚 For Developers**: This project uses **agents.md** as the core context document, containing architecture design, data models, coding rules, and other critical information.
+> **📚 For Developers**: This project uses **AGENTS.md** as the core context document, containing architecture design, data models, coding rules, and other critical information.
 >
-> 👉 [View agents.md](./agents.md) | 👉 [中文 README](./README.md)
+> 👉 [View AGENTS.md](./AGENTS.md) | 👉 [中文 README](./README.md)
 
 ---
 
@@ -249,13 +249,13 @@ npm run dev
 ETF-Insight/
 ├── backend/          # Go backend service
 ├── frontend/         # React frontend application
-├── agents.md         # Project core context document
+├── AGENTS.md         # Project core context document
 ├── README.md         # Chinese documentation
 └── README_EN.md      # English documentation
 ```
 
 ### Core Documentation
-- **[agents.md](./agents.md)** - Project architecture, data models, development standards
+- **[AGENTS.md](./AGENTS.md)** - Project architecture, data models, development standards
 - **[docs/openapi.yaml](./docs/openapi.yaml)** - API interface documentation
 
 ---

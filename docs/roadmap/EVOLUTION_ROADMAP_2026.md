@@ -474,7 +474,7 @@ type VisualizationPlugin interface {
 | 文档 | 状态 | 完整度 |
 |------|------|--------|
 | README.md | ✅ | 90% |
-| agents.md | ✅ | 85% |
+| AGENTS.md | ✅ | 85% |
 | backend/README.md | ✅ | 80% |
 | frontend/README.md | ✅ | 75% |
 | API 文档 (Swagger) | ✅ | 85% |

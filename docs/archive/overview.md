@@ -104,4 +104,4 @@ Client → Rate Limiter → CORS → Security Headers → Auth → Audit Log →
 
 ---
 
-**注意**: 本文档为历史归档文档，最新信息请参考 [README.md](../../README.md) 和 [agents.md](../../agents.md)
+**注意**: 本文档为历史归档文档，最新信息请参考 [README.md](../../README.md) 和 [AGENTS.md](../../AGENTS.md)

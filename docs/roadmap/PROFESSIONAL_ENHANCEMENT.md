@@ -310,7 +310,7 @@ v3.0 (2月): 完整生态建设
 - [安全改进指南](../security/SECURITY_IMPROVEMENTS.md)
 - [代码审查报告](../reviews/CODE_REVIEW_REPORT.md)
 - [API 文档](http://localhost:8080/swagger)
-- [贡献指南](../../agents.md#贡献指南)
+- [贡献指南](../../AGENTS.md#贡献指南)
 
 ---
 

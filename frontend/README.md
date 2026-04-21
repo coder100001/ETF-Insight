@@ -260,4 +260,4 @@ MIT License - 详见 [LICENSE](../LICENSE) 文件
 
 - [项目主页](https://github.com/coder100001/ETF-Insight)
 - [后端文档](../backend/README.md)
-- [架构文档](../agents.md)
+- [架构文档](../AGENTS.md)
