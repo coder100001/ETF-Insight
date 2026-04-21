@@ -299,17 +299,12 @@ func (h *FactorHandler) GetFactorStatistics(c *gin.Context) {
 
 	// 生成示例数据
 	periods := 120 // 10年月度数据
-	marketReturns, smbReturns, hmlReturns, riskFreeReturns := factor.GenerateSampleFactorData(periods)
 
 	if useFiveFactor {
-		rmwReturns := make([]float64, periods)
-		cmaReturns := make([]float64, periods)
-		for i := 0; i < periods; i++ {
-			rmwReturns[i] = 0.002
-			cmaReturns[i] = 0.001
-		}
+		marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns := factor.GenerateSampleFiveFactorData(periods)
 		h.ffModel.LoadFiveFactorData(marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns)
 	} else {
+		marketReturns, smbReturns, hmlReturns, riskFreeReturns := factor.GenerateSampleFactorData(periods)
 		h.ffModel.LoadFactorData(marketReturns, smbReturns, hmlReturns, riskFreeReturns)
 	}
 

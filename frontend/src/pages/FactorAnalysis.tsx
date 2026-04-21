@@ -288,8 +288,14 @@ const FactorAnalysis: React.FC = () => {
     { title: '市值暴露', dataIndex: 'size', key: 'size', render: (v: number) => v?.toFixed(3) },
     { title: '价值暴露', dataIndex: 'value', key: 'value', render: (v: number) => v?.toFixed(3) },
     ...(useFiveFactor ? [
-      { title: '盈利暴露', dataIndex: 'profitability', key: 'profitability', render: (v: number) => v?.toFixed(3) },
-      { title: '投资暴露', dataIndex: 'investment', key: 'investment', render: (v: number) => v?.toFixed(3) },
+      { title: '盈利暴露', dataIndex: 'profitability', key: 'profitability', render: (v: number) => {
+        if (v === undefined || v === null || isNaN(v) || !isFinite(v)) return '0.000';
+        return v.toFixed(3);
+      }},
+      { title: '投资暴露', dataIndex: 'investment', key: 'investment', render: (v: number) => {
+        if (v === undefined || v === null || isNaN(v) || !isFinite(v)) return '0.000';
+        return v.toFixed(3);
+      }},
     ] : []),
     { title: 'Alpha', dataIndex: 'alpha', key: 'alpha', render: (v: number) => `${(v * 100).toFixed(2)}%` },
     { title: 'R²', dataIndex: 'r2', key: 'r2', render: (v: number) => v?.toFixed(3) },
@@ -300,8 +306,8 @@ const FactorAnalysis: React.FC = () => {
     market: attr.exposures.market,
     size: attr.exposures.size,
     value: attr.exposures.value,
-    profitability: attr.exposures.profitability,
-    investment: attr.exposures.investment,
+    profitability: attr.exposures.profitability ?? 0,
+    investment: attr.exposures.investment ?? 0,
     alpha: attr.annualized_alpha,
     r2: attr.exposures.r2,
   }));
@@ -471,9 +477,18 @@ const FactorAnalysis: React.FC = () => {
                   ]}
                   columns={[
                     { title: '因子', dataIndex: 'factor', key: 'factor' },
-                    { title: '暴露', dataIndex: 'exposure', key: 'exposure', render: (v: number) => v?.toFixed(4) },
-                    { title: 'T统计量', dataIndex: 't_stat', key: 't_stat', render: (v: number) => v?.toFixed(2) },
-                    { title: 'P值', dataIndex: 'p_value', key: 'p_value', render: (v: number) => v?.toFixed(4) },
+                    { title: '暴露', dataIndex: 'exposure', key: 'exposure', render: (v: number) => {
+                      if (v === undefined || v === null || isNaN(v) || !isFinite(v)) return '0.0000';
+                      return v.toFixed(4);
+                    }},
+                    { title: 'T统计量', dataIndex: 't_stat', key: 't_stat', render: (v: number) => {
+                      if (v === undefined || v === null || isNaN(v) || !isFinite(v)) return '0.00';
+                      return v.toFixed(2);
+                    }},
+                    { title: 'P值', dataIndex: 'p_value', key: 'p_value', render: (v: number) => {
+                      if (v === undefined || v === null || isNaN(v) || !isFinite(v)) return '0.0000';
+                      return v.toFixed(4);
+                    }},
                     { title: '说明', dataIndex: 'description', key: 'description' },
                   ]}
                   rowKey="factor"

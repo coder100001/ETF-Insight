@@ -382,18 +382,30 @@ func (m *FamaFrenchModel) calculateFactorStats(name string, returns []float64) *
 	avgReturn := totalReturn / float64(len(returns))
 	annualizedReturn := avgReturn * 12
 
-	// 年化波动率
+	// 年化波动率 (使用样本标准差，除以 n-1)
 	variance := 0.0
 	for _, r := range returns {
 		variance += (r - avgReturn) * (r - avgReturn)
 	}
-	stdDev := math.Sqrt(variance / float64(len(returns)))
+
+	// 使用样本标准差 (n-1)，至少需要2个数据点
+	var stdDev float64
+	if len(returns) > 1 {
+		stdDev = math.Sqrt(variance / float64(len(returns)-1))
+	} else {
+		stdDev = 0
+	}
 	annualizedVol := stdDev * math.Sqrt(12)
 
 	// 夏普比率 (假设无风险利率为0)
+	// 设置最小波动率阈值，避免除以极小数产生异常大的夏普比率
+	const minVolatility = 0.001 // 最小0.1%的年化波动率
 	sharpe := 0.0
-	if annualizedVol > 0 {
+	if annualizedVol >= minVolatility {
 		sharpe = annualizedReturn / annualizedVol
+	} else if annualizedVol > 0 {
+		// 波动率过低，使用最小阈值计算夏普比率
+		sharpe = annualizedReturn / minVolatility
 	}
 
 	// 最大回撤
