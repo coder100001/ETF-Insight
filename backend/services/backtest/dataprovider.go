@@ -37,8 +37,26 @@ func (p *DBDataProvider) GetData(startDate, endDate time.Time) ([]*Bar, error) {
 		return nil, fmt.Errorf("查询历史数据失败: %w", err)
 	}
 
+	// 获取各ETF的股息率配置
+	dividendYields := p.getDividendYields()
+
 	bars := make([]*Bar, len(etfData))
 	for i, data := range etfData {
+		// 估算每股股息
+		// 假设股息按季度支付，每股股息 = 收盘价 * 年化股息率 / 4
+		dividend := decimal.Zero
+		if yield, ok := dividendYields[data.Symbol]; ok && yield.GreaterThan(decimal.Zero) {
+			// 检查是否为股息支付日（简化：假设每季度末支付）
+			month := data.Date.Month()
+			day := data.Date.Day()
+			// 季度末月份的最后几天（3月、6月、9月、12月）
+			isDividendMonth := month == 3 || month == 6 || month == 9 || month == 12
+			isEndOfMonth := day >= 25 // 假设月末几天支付
+			if isDividendMonth && isEndOfMonth {
+				dividend = data.ClosePrice.Mul(yield).Div(decimal.NewFromInt(4))
+			}
+		}
+
 		bars[i] = &Bar{
 			Symbol:   data.Symbol,
 			Date:     data.Date,
@@ -47,11 +65,78 @@ func (p *DBDataProvider) GetData(startDate, endDate time.Time) ([]*Bar, error) {
 			Low:      data.LowPrice,
 			Close:    data.ClosePrice,
 			Volume:   data.Volume,
-			Dividend: decimal.Zero, // 需要从其他数据源获取
+			Dividend: dividend,
 		}
 	}
 
 	return bars, nil
+}
+
+// getDividendYields 获取各ETF的股息率
+func (p *DBDataProvider) getDividendYields() map[string]decimal.Decimal {
+	yields := make(map[string]decimal.Decimal)
+
+	var etfConfigs []models.ETFConfig
+	if err := p.db.Find(&etfConfigs).Error; err != nil {
+		return yields
+	}
+
+	for _, config := range etfConfigs {
+		// 从ETF配置中获取股息率（如果有）
+		// 这里使用预设的股息率数据
+		yield := getDividendYieldByCategory(config.Symbol, config.Category)
+		if yield.GreaterThan(decimal.Zero) {
+			yields[config.Symbol] = yield
+		}
+	}
+
+	return yields
+}
+
+// getDividendYieldByCategory 根据ETF类别获取默认股息率
+func getDividendYieldByCategory(symbol, category string) decimal.Decimal {
+	// 预设股息率数据（年化）
+	dividendYields := map[string]decimal.Decimal{
+		// 高股息ETF
+		"SCHD": decimal.NewFromFloat(0.035), // Schwab US Dividend Equity
+		"VYM":  decimal.NewFromFloat(0.030), // Vanguard High Dividend Yield
+		"SPYD": decimal.NewFromFloat(0.040), // SPDR S&P 500 High Dividend
+		"HDV":  decimal.NewFromFloat(0.038), // iShares Core High Dividend
+		"VIG":  decimal.NewFromFloat(0.020), // Vanguard Dividend Appreciation
+		"DGRO": decimal.NewFromFloat(0.025), // iShares Core Dividend Growth
+		// 债券ETF
+		"BND": decimal.NewFromFloat(0.025), // Vanguard Total Bond Market
+		"AGG": decimal.NewFromFloat(0.024), // iShares Core US Aggregate Bond
+		"LQD": decimal.NewFromFloat(0.035), // iShares iBoxx Investment Grade
+		"HYG": decimal.NewFromFloat(0.050), // iShares iBoxx High Yield
+		// REIT ETF
+		"VNQ": decimal.NewFromFloat(0.040), // Vanguard Real Estate
+		"IYR": decimal.NewFromFloat(0.038), // iShares US Real Estate
+		// 其他
+		"SPY": decimal.NewFromFloat(0.015), // S&P 500
+		"IVV": decimal.NewFromFloat(0.015), // iShares Core S&P 500
+		"VOO": decimal.NewFromFloat(0.015), // Vanguard S&P 500
+		"QQQ": decimal.NewFromFloat(0.008), // Nasdaq 100
+		"IWM": decimal.NewFromFloat(0.012), // Russell 2000
+		"EFA": decimal.NewFromFloat(0.022), // iShares MSCI EAFE
+		"EEM": decimal.NewFromFloat(0.018), // iShares MSCI Emerging Markets
+	}
+
+	if yield, ok := dividendYields[symbol]; ok {
+		return yield
+	}
+
+	// 根据类别返回默认股息率
+	switch category {
+	case "股息", "备兑认购":
+		return decimal.NewFromFloat(0.035)
+	case "债券":
+		return decimal.NewFromFloat(0.030)
+	case "REIT":
+		return decimal.NewFromFloat(0.040)
+	default:
+		return decimal.Zero
+	}
 }
 
 // GetSymbols 获取可用标的列表
@@ -77,6 +162,9 @@ func NewMultiSymbolDataProvider(db *gorm.DB, symbols []string) *MultiSymbolDataP
 
 // LoadData 加载数据
 func (p *MultiSymbolDataProvider) LoadData(startDate, endDate time.Time) error {
+	// 获取各ETF的股息率配置
+	dividendYields := p.getDividendYields()
+
 	for _, symbol := range p.symbols {
 		var etfData []models.ETFData
 
@@ -91,6 +179,18 @@ func (p *MultiSymbolDataProvider) LoadData(startDate, endDate time.Time) error {
 
 		bars := make([]*Bar, len(etfData))
 		for i, data := range etfData {
+			// 估算每股股息
+			dividend := decimal.Zero
+			if yield, ok := dividendYields[data.Symbol]; ok && yield.GreaterThan(decimal.Zero) {
+				month := data.Date.Month()
+				day := data.Date.Day()
+				isDividendMonth := month == 3 || month == 6 || month == 9 || month == 12
+				isEndOfMonth := day >= 25
+				if isDividendMonth && isEndOfMonth {
+					dividend = data.ClosePrice.Mul(yield).Div(decimal.NewFromInt(4))
+				}
+			}
+
 			bars[i] = &Bar{
 				Symbol:   data.Symbol,
 				Date:     data.Date,
@@ -99,7 +199,7 @@ func (p *MultiSymbolDataProvider) LoadData(startDate, endDate time.Time) error {
 				Low:      data.LowPrice,
 				Close:    data.ClosePrice,
 				Volume:   data.Volume,
-				Dividend: decimal.Zero,
+				Dividend: dividend,
 			}
 		}
 
@@ -107,6 +207,25 @@ func (p *MultiSymbolDataProvider) LoadData(startDate, endDate time.Time) error {
 	}
 
 	return nil
+}
+
+// getDividendYields 获取各ETF的股息率
+func (p *MultiSymbolDataProvider) getDividendYields() map[string]decimal.Decimal {
+	yields := make(map[string]decimal.Decimal)
+
+	var etfConfigs []models.ETFConfig
+	if err := p.db.Find(&etfConfigs).Error; err != nil {
+		return yields
+	}
+
+	for _, config := range etfConfigs {
+		yield := getDividendYieldByCategory(config.Symbol, config.Category)
+		if yield.GreaterThan(decimal.Zero) {
+			yields[config.Symbol] = yield
+		}
+	}
+
+	return yields
 }
 
 // GetData 获取指定标的的数据

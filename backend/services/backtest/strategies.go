@@ -2,6 +2,7 @@ package backtest
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/shopspring/decimal"
 )
@@ -172,6 +173,7 @@ type MomentumStrategy struct {
 	TopN               int // 选择前N个动量最强的标的
 	RebalanceFreq      int // 调仓频率(天)
 	momentumCache      map[string]decimal.Decimal
+	priceHistory       map[string][]decimal.Decimal // 价格历史
 	daysSinceRebalance int
 }
 
@@ -193,11 +195,19 @@ func NewMomentumStrategy(lookbackPeriod, topN, rebalanceFreq int) *MomentumStrat
 func (s *MomentumStrategy) GenerateSignals(engine *BacktestEngine, bar *Bar) []*Signal {
 	signals := make([]*Signal, 0)
 
-	// 计算动量 (使用因子库)
-	_ = NewFactorLibrary(nil)
-	// 这里简化处理，实际应该使用历史价格数据
-	// factorLib := NewFactorLibrary(nil)
-	// momentum := factorLib.CalculateMomentumFactor(prices, s.LookbackPeriod)
+	// 更新价格历史用于动量计算
+	if s.priceHistory == nil {
+		s.priceHistory = make(map[string][]decimal.Decimal)
+	}
+	s.priceHistory[bar.Symbol] = append(s.priceHistory[bar.Symbol], bar.Close)
+
+	// 计算并缓存当前标的的动量值
+	if len(s.priceHistory[bar.Symbol]) >= s.LookbackPeriod {
+		prices := s.priceHistory[bar.Symbol]
+		// 动量 = (当前价格 / N天前价格) - 1
+		momentum := prices[len(prices)-1].Div(prices[len(prices)-s.LookbackPeriod]).Sub(decimal.NewFromInt(1))
+		s.momentumCache[bar.Symbol] = momentum
+	}
 
 	s.daysSinceRebalance++
 
@@ -205,31 +215,58 @@ func (s *MomentumStrategy) GenerateSignals(engine *BacktestEngine, bar *Bar) []*
 	if s.daysSinceRebalance >= s.RebalanceFreq {
 		s.daysSinceRebalance = 0
 
+		// 按动量值排序所有标的
+		type symbolMomentum struct {
+			symbol   string
+			momentum decimal.Decimal
+		}
+		var sortedSymbols []symbolMomentum
+		for symbol, momentum := range s.momentumCache {
+			sortedSymbols = append(sortedSymbols, symbolMomentum{symbol: symbol, momentum: momentum})
+		}
+
+		// 按动量降序排序（使用 sort.Slice，O(n log n)）
+		sort.Slice(sortedSymbols, func(i, j int) bool {
+			return sortedSymbols[i].momentum.GreaterThan(sortedSymbols[j].momentum)
+		})
+
+		// 获取前N个标的
+		topSymbols := make(map[string]bool)
+		for i := 0; i < s.TopN && i < len(sortedSymbols); i++ {
+			topSymbols[sortedSymbols[i].symbol] = true
+		}
+
 		// 卖出不在前N的持仓
 		positions := engine.GetAllPositions()
 		for symbol, position := range positions {
-			// 简化：卖出所有持仓
-			if position.Quantity.GreaterThan(decimal.Zero) {
+			if position.Quantity.GreaterThan(decimal.Zero) && !topSymbols[symbol] {
 				signals = append(signals, &Signal{
 					Type:     SignalSell,
 					Symbol:   symbol,
 					Quantity: position.Quantity,
-					Reason:   "动量调仓卖出",
+					Reason:   fmt.Sprintf("动量调仓卖出: 动量排名下降"),
 				})
 			}
 		}
 
-		// 买入动量最强的标的
-		// 简化：平均分配资金
-		capital := engine.GetCurrentCapital().Mul(decimal.NewFromFloat(0.9)) // 保留10%现金
-		quantity := capital.Div(bar.Close).Div(decimal.NewFromInt(int64(s.TopN))).Round(0)
-		if quantity.GreaterThan(decimal.Zero) {
-			signals = append(signals, &Signal{
-				Type:     SignalBuy,
-				Symbol:   bar.Symbol,
-				Quantity: quantity,
-				Reason:   "动量策略买入",
-			})
+		// 买入动量最强的标的（只买入当前bar对应的标的如果在topN中）
+		if topSymbols[bar.Symbol] {
+			// 检查是否已持有
+			position := engine.GetPosition(bar.Symbol)
+			if position == nil || position.Quantity.IsZero() {
+				// 平均分配资金
+				capital := engine.GetCurrentCapital().Mul(decimal.NewFromFloat(0.9)) // 保留10%现金
+				quantity := capital.Div(bar.Close).Div(decimal.NewFromInt(int64(s.TopN))).Round(0)
+				if quantity.GreaterThan(decimal.Zero) {
+					momentum := s.momentumCache[bar.Symbol]
+					signals = append(signals, &Signal{
+						Type:     SignalBuy,
+						Symbol:   bar.Symbol,
+						Quantity: quantity,
+						Reason:   fmt.Sprintf("动量策略买入: momentum=%.4f", momentum.InexactFloat64()),
+					})
+				}
+			}
 		}
 	}
 

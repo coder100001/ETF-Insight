@@ -3,6 +3,7 @@ package backtest
 import (
 	"fmt"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -530,14 +531,10 @@ func (e *BacktestEngine) GetFactor(name string) decimal.Decimal {
 // 辅助函数
 
 func sortDataByDate(data []*Bar) {
-	// 简单冒泡排序，实际应用中应使用更高效的排序
-	for i := 0; i < len(data)-1; i++ {
-		for j := i + 1; j < len(data); j++ {
-			if data[i].Date.After(data[j].Date) {
-				data[i], data[j] = data[j], data[i]
-			}
-		}
-	}
+	// 使用标准库的快速排序，性能更好 O(n log n)
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Date.Before(data[j].Date)
+	})
 }
 
 func calculateSharpeRatio(returns []float64) decimal.Decimal {

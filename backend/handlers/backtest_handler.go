@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -173,31 +174,144 @@ func (h *BacktestHandler) AnalyzeFactors(c *gin.Context) {
 		return
 	}
 
+	// 解析日期
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, FactorAnalysisResponse{
+			Success: false,
+			Error:   "开始日期格式错误: " + err.Error(),
+		})
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, FactorAnalysisResponse{
+			Success: false,
+			Error:   "结束日期格式错误: " + err.Error(),
+		})
+		return
+	}
+
 	// 创建因子库
 	factorLib := backtest.NewFactorLibrary(nil)
 
 	// 获取因子定义
 	definitions := factorLib.GetFactorDefinitions()
 
-	// TODO: 实现实际的因子分析逻辑
-	// 这里返回示例数据
+	// 获取历史数据
+	dataProvider := backtest.NewDBProvider(models.DB, req.Symbols)
+	data, err := dataProvider.GetData(startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, FactorAnalysisResponse{
+			Success: false,
+			Error:   "获取历史数据失败: " + err.Error(),
+		})
+		return
+	}
+
+	if len(data) == 0 {
+		c.JSON(http.StatusBadRequest, FactorAnalysisResponse{
+			Success: false,
+			Error:   "没有可用的历史数据",
+		})
+		return
+	}
+
+	// 计算因子暴露
 	factorExposures := make(map[string]map[string]float64)
-	for _, symbol := range req.Symbols {
+	factorReturns := make(map[string]float64)
+
+	// 按标的分组数据
+	dataBySymbol := make(map[string][]*backtest.Bar)
+	for _, bar := range data {
+		dataBySymbol[bar.Symbol] = append(dataBySymbol[bar.Symbol], bar)
+	}
+
+	// 计算每个标的的因子暴露
+	for symbol, bars := range dataBySymbol {
+		if len(bars) < 20 {
+			continue // 数据不足，跳过
+		}
+
+		// 提取价格序列
+		prices := make([]decimal.Decimal, len(bars))
+		for i, bar := range bars {
+			prices[i] = bar.Close
+		}
+
+		// 计算收益率
+		returns := make([]decimal.Decimal, len(prices)-1)
+		for i := 1; i < len(prices); i++ {
+			returns[i-1] = prices[i].Sub(prices[i-1]).Div(prices[i-1])
+		}
+
+		// 计算动量因子
+		momentum := factorLib.CalculateMomentumFactor(prices, 12*20)
+
+		// 计算低波因子
+		lowVol := factorLib.CalculateLowVolFactor(returns)
+
+		// 存储因子暴露
 		factorExposures[symbol] = map[string]float64{
-			string(backtest.FactorMarket):   1.0,
-			string(backtest.FactorSMB):      0.2,
-			string(backtest.FactorHML):      -0.1,
-			string(backtest.FactorMomentum): 0.3,
-			string(backtest.FactorLowVol):   0.15,
+			string(backtest.FactorMarket):   1.0, // 市场因子默认为1
+			string(backtest.FactorMomentum): momentum.InexactFloat64(),
+			string(backtest.FactorLowVol):   lowVol.InexactFloat64(),
 		}
 	}
 
-	factorReturns := map[string]float64{
-		string(backtest.FactorMarket):   0.08,
-		string(backtest.FactorSMB):      0.02,
-		string(backtest.FactorHML):      0.03,
-		string(backtest.FactorMomentum): 0.05,
-		string(backtest.FactorLowVol):   0.04,
+	// 计算市场平均因子收益
+	if len(factorExposures) > 0 {
+		avgMomentum := 0.0
+		avgLowVol := 0.0
+		count := 0
+
+		for _, exposures := range factorExposures {
+			if val, ok := exposures[string(backtest.FactorMomentum)]; ok {
+				avgMomentum += val
+			}
+			if val, ok := exposures[string(backtest.FactorLowVol)]; ok {
+				avgLowVol += val
+			}
+			count++
+		}
+
+		if count > 0 {
+			// 计算市场因子收益（基于数据期间的实际收益）
+			// 使用所有标的的等权平均收益率作为市场代理
+			marketReturn := 0.0
+			validSymbolCount := 0
+			if len(dataBySymbol) > 0 {
+				for _, bars := range dataBySymbol {
+					if len(bars) >= 2 {
+						firstPrice := bars[0].Close
+						lastPrice := bars[len(bars)-1].Close
+						symbolReturn := lastPrice.Sub(firstPrice).Div(firstPrice).InexactFloat64()
+						marketReturn += symbolReturn
+						validSymbolCount++
+					}
+				}
+				if validSymbolCount > 0 {
+					marketReturn /= float64(validSymbolCount)
+				}
+			}
+
+			// 年化市场收益
+			days := endDate.Sub(startDate).Hours() / 24
+			annualizedMarketReturn := 0.0
+			if days > 0 {
+				annualizedMarketReturn = math.Pow(1+marketReturn, 365.0/days) - 1
+			}
+
+			// 无风险利率（年化4.5%）
+			riskFreeRate := 0.045
+
+			factorReturns[string(backtest.FactorMarket)] = annualizedMarketReturn - riskFreeRate
+			factorReturns[string(backtest.FactorSMB)] = 0.02 // 规模因子收益（历史长期均值）
+			factorReturns[string(backtest.FactorHML)] = 0.03 // 价值因子收益（历史长期均值）
+			factorReturns[string(backtest.FactorMomentum)] = avgMomentum / float64(count)
+			factorReturns[string(backtest.FactorLowVol)] = avgLowVol / float64(count)
+		}
 	}
 
 	c.JSON(http.StatusOK, FactorAnalysisResponse{
