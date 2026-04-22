@@ -165,13 +165,22 @@ export const operationLogsAPI = {
    * @returns 日志类型列表响应
    */
   getLogTypes: async (): Promise<LogTypesResponse> => {
-    const response = await request<{ success: boolean; types?: LogTypesResponse['types'] }>('/logs/types');
+    const response = await request<{
+      success: boolean;
+      types?: { audit: number; operation: number };
+    }>('/logs/types');
 
     if (!response.success) {
       throw new Error('获取日志类型失败');
     }
 
-    return { types: response.types || [] };
+    const types = response.types || { audit: 0, operation: 0 };
+    return {
+      types: [
+        { value: 'audit', label: 'API日志', count: types.audit },
+        { value: 'operation', label: '操作日志', count: types.operation },
+      ],
+    };
   },
 
   /**
