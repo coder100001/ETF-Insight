@@ -113,7 +113,7 @@ export const operationLogsAPI = {
    * @param params 筛选参数
    * @returns 日志列表响应
    */
-  getLogs: async (params: LogFilterParams): Promise<PaginatedResponse<UnifiedLog>> => {
+  getLogs: async (params: LogFilterParams): Promise<{ data: UnifiedLog[]; total: number }> => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', params.page.toString());
     queryParams.append('pageSize', params.pageSize.toString());
@@ -126,13 +126,23 @@ export const operationLogsAPI = {
     if (params.logType) queryParams.append('log_type', params.logType);
     if (params.search) queryParams.append('search', params.search);
 
-    const response = await request<ApiResponse<PaginatedResponse<UnifiedLog>>>(`/logs?${queryParams.toString()}`);
+    const response = await request<{
+      success: boolean;
+      data: UnifiedLog[];
+      meta: {
+        pagination: { page: number; page_size: number; total: number; total_pages: number };
+        summary: { total_logs: number; total_audit: number; total_operation: number };
+      };
+    }>(`/logs?${queryParams.toString()}`);
 
-    if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || '获取日志失败');
+    if (!response.success) {
+      throw new Error('获取日志失败');
     }
 
-    return response.data;
+    return {
+      data: response.data || [],
+      total: response.meta?.pagination?.total || 0,
+    };
   },
 
   /**
@@ -155,13 +165,13 @@ export const operationLogsAPI = {
    * @returns 日志类型列表响应
    */
   getLogTypes: async (): Promise<LogTypesResponse> => {
-    const response = await request<ApiResponse<LogTypesResponse>>('/logs/log-types');
+    const response = await request<{ success: boolean; types?: LogTypesResponse['types'] }>('/logs/types');
 
-    if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || '获取日志类型失败');
+    if (!response.success) {
+      throw new Error('获取日志类型失败');
     }
 
-    return response.data;
+    return { types: response.types || [] };
   },
 
   /**
@@ -169,13 +179,19 @@ export const operationLogsAPI = {
    * @returns 操作类型列表响应
    */
   getActionTypes: async (): Promise<ActionTypesResponse> => {
-    const response = await request<ApiResponse<ActionTypesResponse>>('/logs/action-types');
+    const response = await request<{ success: boolean; action_types?: string[] }>('/logs/action-types');
 
-    if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || '获取操作类型失败');
+    if (!response.success) {
+      throw new Error('获取操作类型失败');
     }
 
-    return response.data;
+    return {
+      types: (response.action_types || []).map((t) => ({
+        value: t,
+        label: t,
+        count: 0,
+      })),
+    };
   },
 
   /**
@@ -183,13 +199,13 @@ export const operationLogsAPI = {
    * @returns 用户列表响应
    */
   getUsers: async (): Promise<UsersResponse> => {
-    const response = await request<ApiResponse<UsersResponse>>('/logs/users');
+    const response = await request<{ success: boolean; users?: string[] }>('/logs/users');
 
-    if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || '获取用户列表失败');
+    if (!response.success) {
+      throw new Error('获取用户列表失败');
     }
 
-    return response.data;
+    return { users: response.users || [] };
   },
 
   /**
