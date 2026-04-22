@@ -93,7 +93,7 @@ async function requestWithRetry<T>(
 }
 
 // 通用请求函数（带合并和重试）
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
+export async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const cacheKey = `${url}-${JSON.stringify(options)}`;
 
   return requestCoalescer.getOrSet(cacheKey, () =>

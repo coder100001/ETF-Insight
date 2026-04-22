@@ -120,7 +120,7 @@ const DetailSection = styled.div`
   margin-bottom: 16px;
 
   h3 {
-    font-size: ${theme.fonts.size.md};
+    font-size: ${theme.fonts.size.base};
     color: ${theme.colors.textPrimary};
     margin-bottom: 8px;
     font-weight: ${theme.fonts.weight.semibold};
@@ -588,9 +588,9 @@ const OperationLogs: React.FC = () => {
                   <strong>状态码:</strong> {selectedLog.status_code}
                 </p>
               )}
-              {selectedLog.duration && (
+              {selectedLog.duration_ms && (
                 <p>
-                  <strong>耗时:</strong> {selectedLog.duration}ms
+                  <strong>耗时:</strong> {selectedLog.duration_ms}ms
                 </p>
               )}
             </DetailSection>
