@@ -22,10 +22,10 @@ func NewOperationLogsHandler(service *services.OperationLogsService) *OperationL
 
 // GetLogsResponse 获取日志响应
 type GetLogsResponse struct {
-	Success bool                           `json:"success"`
-	Data    []services.UnifiedLog          `json:"data,omitempty"`
-	Meta    LogsResponseMeta               `json:"meta,omitempty"`
-	Error   string                         `json:"error,omitempty"`
+	Success bool                  `json:"success"`
+	Data    []services.UnifiedLog `json:"data,omitempty"`
+	Meta    LogsResponseMeta      `json:"meta,omitempty"`
+	Error   string                `json:"error,omitempty"`
 }
 
 // LogsResponseMeta 日志响应元数据
@@ -287,9 +287,9 @@ func (h *OperationLogsHandler) GetLogDetail(c *gin.Context) {
 
 // GetLogTypesResponse 获取日志类型响应
 type GetLogTypesResponse struct {
-	Success bool            `json:"success"`
+	Success bool             `json:"success"`
 	Types   map[string]int64 `json:"types,omitempty"`
-	Error   string          `json:"error,omitempty"`
+	Error   string           `json:"error,omitempty"`
 }
 
 // GetLogTypes 获取日志类型统计
@@ -317,9 +317,9 @@ func (h *OperationLogsHandler) GetLogTypes(c *gin.Context) {
 
 // GetActionTypesResponse 获取操作类型响应
 type GetActionTypesResponse struct {
-	Success    bool     `json:"success"`
+	Success     bool     `json:"success"`
 	ActionTypes []string `json:"action_types,omitempty"`
-	Error      string   `json:"error,omitempty"`
+	Error       string   `json:"error,omitempty"`
 }
 
 // GetActionTypes 获取操作类型列表

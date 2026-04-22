@@ -96,9 +96,9 @@ func (r *ProviderRegistry) SelectBestProvider(ctx context.Context, strategy Prov
 type ProviderSelectionStrategy int
 
 const (
-	PriorityStrategy ProviderSelectionStrategy = iota // 按优先级选择
-	WeightedRoundRobinStrategy                       // 加权轮询
-	LeastLoadedStrategy                              // 最少负载
+	PriorityStrategy           ProviderSelectionStrategy = iota // 按优先级选择
+	WeightedRoundRobinStrategy                                  // 加权轮询
+	LeastLoadedStrategy                                         // 最少负载
 )
 
 // selectByPriority 按优先级选择数据源

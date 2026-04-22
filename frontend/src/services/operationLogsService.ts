@@ -117,7 +117,7 @@ export const operationLogsAPI = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', params.page.toString());
     queryParams.append('pageSize', params.pageSize.toString());
-    
+
     if (params.startTime) queryParams.append('start_time', params.startTime);
     if (params.endTime) queryParams.append('end_time', params.endTime);
     if (params.user) queryParams.append('user', params.user);
@@ -125,13 +125,13 @@ export const operationLogsAPI = {
     if (params.status) queryParams.append('status', params.status);
     if (params.logType) queryParams.append('log_type', params.logType);
     if (params.search) queryParams.append('search', params.search);
-    
+
     const response = await request<ApiResponse<PaginatedResponse<UnifiedLog>>>(`/logs?${queryParams.toString()}`);
-    
+
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取日志失败');
     }
-    
+
     return response.data;
   },
 
@@ -142,11 +142,11 @@ export const operationLogsAPI = {
    */
   getLogDetail: async (id: number): Promise<UnifiedLog> => {
     const response = await request<GetLogDetailResponse>(`/logs/${id}/details`);
-    
+
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取日志详情失败');
     }
-    
+
     return response.data;
   },
 
@@ -156,11 +156,11 @@ export const operationLogsAPI = {
    */
   getLogTypes: async (): Promise<LogTypesResponse> => {
     const response = await request<ApiResponse<LogTypesResponse>>('/logs/log-types');
-    
+
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取日志类型失败');
     }
-    
+
     return response.data;
   },
 
@@ -170,11 +170,11 @@ export const operationLogsAPI = {
    */
   getActionTypes: async (): Promise<ActionTypesResponse> => {
     const response = await request<ApiResponse<ActionTypesResponse>>('/logs/action-types');
-    
+
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取操作类型失败');
     }
-    
+
     return response.data;
   },
 
@@ -184,11 +184,11 @@ export const operationLogsAPI = {
    */
   getUsers: async (): Promise<UsersResponse> => {
     const response = await request<ApiResponse<UsersResponse>>('/logs/users');
-    
+
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取用户列表失败');
     }
-    
+
     return response.data;
   },
 
@@ -281,7 +281,7 @@ export function formatDuration(ms: number): string {
 // 辅助函数：构建查询参数（用于URL）
 export function buildQueryParams(params: Partial<LogFilterParams>): string {
   const queryParams = new URLSearchParams();
-  
+
   if (params.page !== undefined) queryParams.append('page', params.page.toString());
   if (params.pageSize !== undefined) queryParams.append('page_size', params.pageSize.toString());
   if (params.startTime) queryParams.append('start_time', params.startTime);
@@ -290,6 +290,6 @@ export function buildQueryParams(params: Partial<LogFilterParams>): string {
   if (params.actionType) queryParams.append('action_type', params.actionType);
   if (params.status) queryParams.append('status', params.status);
   if (params.logType) queryParams.append('log_type', params.logType);
-  
+
   return queryParams.toString();
 }

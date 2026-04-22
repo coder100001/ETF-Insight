@@ -16,31 +16,31 @@ type AssetType string
 // 这是数据层抽象的核心，支持多种数据源接入
 type AssetProvider interface {
 	// ProviderInfo 提供者信息
-	Name() string                              // 数据源名称
-	Description() string                       // 描述
-	IsAvailable(ctx context.Context) bool      // 是否可用
-	RateLimit() int                            // 速率限制（每秒请求数）
-	Priority() int                             // 优先级（数值越小优先级越高）
+	Name() string                         // 数据源名称
+	Description() string                  // 描述
+	IsAvailable(ctx context.Context) bool // 是否可用
+	RateLimit() int                       // 速率限制（每秒请求数）
+	Priority() int                        // 优先级（数值越小优先级越高）
 
 	// 资产基本信息
-	GetAsset(ctx context.Context, symbol string) (*models.Asset, error)                         // 获取单个资产信息
-	SearchAssets(ctx context.Context, query string, limit int) ([]*models.Asset, error)         // 搜索资产
-	BatchGetAssets(ctx context.Context, symbols []string) ([]*models.Asset, error)              // 批量获取资产信息
+	GetAsset(ctx context.Context, symbol string) (*models.Asset, error)                 // 获取单个资产信息
+	SearchAssets(ctx context.Context, query string, limit int) ([]*models.Asset, error) // 搜索资产
+	BatchGetAssets(ctx context.Context, symbols []string) ([]*models.Asset, error)      // 批量获取资产信息
 
 	// 价格数据
-	GetPrice(ctx context.Context, symbol string, date time.Time) (*models.Price, error)         // 获取指定日期价格
+	GetPrice(ctx context.Context, symbol string, date time.Time) (*models.Price, error)                  // 获取指定日期价格
 	GetPrices(ctx context.Context, symbol string, startDate, endDate time.Time) ([]*models.Price, error) // 获取时间序列价格
-	GetLatestPrice(ctx context.Context, symbol string) (*models.Price, error)                   // 获取最新价格
-	BatchGetLatestPrices(ctx context.Context, symbols []string) ([]*models.Price, error)        // 批量获取最新价格
+	GetLatestPrice(ctx context.Context, symbol string) (*models.Price, error)                            // 获取最新价格
+	BatchGetLatestPrices(ctx context.Context, symbols []string) ([]*models.Price, error)                 // 批量获取最新价格
 
 	// 持仓数据（ETF特有）
-	GetHoldings(ctx context.Context, etfSymbol string, date time.Time) ([]*models.Holding, error) // 获取ETF持仓
-	GetLatestHoldings(ctx context.Context, etfSymbol string) ([]*models.Holding, error)           // 获取最新持仓
+	GetHoldings(ctx context.Context, etfSymbol string, date time.Time) ([]*models.Holding, error)                     // 获取ETF持仓
+	GetLatestHoldings(ctx context.Context, etfSymbol string) ([]*models.Holding, error)                               // 获取最新持仓
 	GetHoldingHistory(ctx context.Context, etfSymbol string, startDate, endDate time.Time) ([]*models.Holding, error) // 获取持仓历史
 
 	// 元数据
-	GetAssetMetadata(ctx context.Context, symbol string) (*models.AssetMetadata, error)          // 获取资产元数据
-	GetDividendInfo(ctx context.Context, symbol string) (*models.ETFDividend, error)              // 获取分红信息
+	GetAssetMetadata(ctx context.Context, symbol string) (*models.AssetMetadata, error)                              // 获取资产元数据
+	GetDividendInfo(ctx context.Context, symbol string) (*models.ETFDividend, error)                                 // 获取分红信息
 	GetCorporateActions(ctx context.Context, symbol string, startDate, endDate time.Time) ([]CorporateAction, error) // 获取公司行动
 }
 
@@ -62,19 +62,19 @@ type ETFProvider interface {
 	AssetProvider
 
 	// ETF特定功能
-	GetETFList(ctx context.Context, filter ETFListFilter) ([]*models.Asset, error)                // 获取ETF列表
-	GetETFOverview(ctx context.Context, symbol string) (*ETFOverview, error)                      // 获取ETF概览
+	GetETFList(ctx context.Context, filter ETFListFilter) ([]*models.Asset, error)                                    // 获取ETF列表
+	GetETFOverview(ctx context.Context, symbol string) (*ETFOverview, error)                                          // 获取ETF概览
 	GetETFHoldingsReport(ctx context.Context, symbol string, reportDate time.Time) (*models.ETFHoldingsReport, error) // 获取持仓报告
-	GetETFPerformance(ctx context.Context, symbol string, period string) (*ETFPerformance, error) // 获取表现数据
+	GetETFPerformance(ctx context.Context, symbol string, period string) (*ETFPerformance, error)                     // 获取表现数据
 }
 
 // ETFListFilter ETF列表筛选条件
 type ETFListFilter struct {
-	AssetClass  models.AssetClass
-	Region      models.Region
-	ETFType     models.ETFType
-	Sector      string
-	Provider    string
+	AssetClass      models.AssetClass
+	Region          models.Region
+	ETFType         models.ETFType
+	Sector          string
+	Provider        string
 	MinExpenseRatio decimal.Decimal
 	MaxExpenseRatio decimal.Decimal
 	MinAUM          decimal.Decimal
@@ -95,35 +95,35 @@ type ETFOverview struct {
 
 // ETFPerformance ETF表现数据
 type ETFPerformance struct {
-	Period           string
-	Return           decimal.Decimal
-	BenchmarkReturn  decimal.Decimal
-	TrackingError    decimal.Decimal
-	SharpeRatio      decimal.Decimal
-	Volatility       decimal.Decimal
-	MaxDrawdown      decimal.Decimal
-	Alpha            decimal.Decimal
-	Beta             decimal.Decimal
+	Period          string
+	Return          decimal.Decimal
+	BenchmarkReturn decimal.Decimal
+	TrackingError   decimal.Decimal
+	SharpeRatio     decimal.Decimal
+	Volatility      decimal.Decimal
+	MaxDrawdown     decimal.Decimal
+	Alpha           decimal.Decimal
+	Beta            decimal.Decimal
 }
 
 // RiskMetrics 风险指标
 type RiskMetrics struct {
-	VaR95          decimal.Decimal // 95%置信度VaR
-	CVaR95         decimal.Decimal // 95%置信度CVaR
+	VaR95             decimal.Decimal // 95%置信度VaR
+	CVaR95            decimal.Decimal // 95%置信度CVaR
 	StandardDeviation decimal.Decimal // 标准差
-	Skewness       decimal.Decimal // 偏度
-	Kurtosis       decimal.Decimal // 峰度
+	Skewness          decimal.Decimal // 偏度
+	Kurtosis          decimal.Decimal // 峰度
 	DownsideDeviation decimal.Decimal // 下行偏差
 }
 
 // HoldingsStats 持仓统计
 type HoldingsStats struct {
-	TotalHoldings    int
-	Top10Weight      decimal.Decimal
-	Concentration    decimal.Decimal // 赫芬达尔指数
+	TotalHoldings       int
+	Top10Weight         decimal.Decimal
+	Concentration       decimal.Decimal // 赫芬达尔指数
 	SectorConcentration decimal.Decimal // 行业集中度
-	TurnoverRate     decimal.Decimal // 换手率
-	AvgMarketCap     decimal.Decimal // 平均市值
+	TurnoverRate        decimal.Decimal // 换手率
+	AvgMarketCap        decimal.Decimal // 平均市值
 }
 
 // AssetProviderFactory 资产数据源工厂
@@ -290,7 +290,7 @@ func (f *FallbackProvider) GetAsset(ctx context.Context, symbol string) (*models
 	if f.baseProvider.IsAvailable(ctx) {
 		return f.baseProvider.GetAsset(ctx, symbol)
 	}
-	
+
 	// 否则返回错误或基础信息
 	return nil, ErrProviderUnavailable
 }

@@ -25,10 +25,10 @@ const (
 
 // Event 事件结构
 type Event struct {
-	Type      EventType                 `json:"type"`
-	Source    string                    `json:"source"`     // 触发源：api, sync, manual, etc.
-	Timestamp time.Time                 `json:"timestamp"`
-	Payload   map[string]interface{}    `json:"payload"`
+	Type      EventType              `json:"type"`
+	Source    string                 `json:"source"` // 触发源：api, sync, manual, etc.
+	Timestamp time.Time              `json:"timestamp"`
+	Payload   map[string]interface{} `json:"payload"`
 }
 
 // EventHandler 事件处理器接口
@@ -53,7 +53,7 @@ func NewEventBus(db *gorm.DB) *EventBus {
 		db:       db,
 		cache:    cache,
 	}
-	
+
 	bus.registerDefaultHandlers()
 	return bus
 }
@@ -67,13 +67,13 @@ func (bus *EventBus) registerDefaultHandlers() {
 func (bus *EventBus) RegisterHandler(handler EventHandler) {
 	bus.mu.Lock()
 	defer bus.mu.Unlock()
-	
+
 	eventTypes := []EventType{
 		EventETFHoldingsUpdated,
 		EventETFDataUpdated,
 		EventCacheInvalidation,
 	}
-	
+
 	for _, eventType := range eventTypes {
 		if handler.CanHandle(eventType) {
 			bus.handlers[eventType] = append(bus.handlers[eventType], handler)
@@ -86,50 +86,50 @@ func (bus *EventBus) Publish(ctx context.Context, event *Event) error {
 	if event == nil {
 		return nil
 	}
-	
+
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
-	
-	utils.Info("Event published", 
+
+	utils.Info("Event published",
 		"type", string(event.Type),
 		"source", event.Source,
 		"timestamp", event.Timestamp,
 	)
-	
+
 	bus.mu.RLock()
 	handlers := bus.handlers[event.Type]
 	bus.mu.RUnlock()
-	
+
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(handlers))
-	
+
 	for _, handler := range handlers {
 		wg.Add(1)
 		go func(h EventHandler) {
 			defer wg.Done()
 			if err := h.Handle(ctx, event); err != nil {
 				errChan <- err
-				utils.Error("Event handler failed", err, 
+				utils.Error("Event handler failed", err,
 					"handler", h.CanHandle(event.Type),
 					"event_type", string(event.Type),
 				)
 			}
 		}(handler)
 	}
-	
+
 	wg.Wait()
 	close(errChan)
-	
+
 	var errors []error
 	for err := range errChan {
 		errors = append(errors, err)
 	}
-	
+
 	if len(errors) > 0 {
 		return errors[0]
 	}
-	
+
 	return nil
 }
 
@@ -168,13 +168,13 @@ func (h *CacheInvalidationHandler) Handle(ctx context.Context, event *Event) err
 		if !ok || symbol == "" {
 			return nil
 		}
-		
+
 		if err := h.cache.InvalidateOverlapCache(ctx, symbol); err != nil {
 			utils.Warn("Failed to invalidate cache for ETF", "symbol", symbol, "error", err)
 		} else {
 			utils.Info("Cache invalidated due to ETF holdings update", "symbol", symbol)
 		}
-		
+
 	case EventETFDataUpdated:
 		symbol, _ := event.Payload["symbol"].(string)
 		if symbol == "" {
@@ -189,7 +189,7 @@ func (h *CacheInvalidationHandler) Handle(ctx context.Context, event *Event) err
 			}
 		}
 	}
-	
+
 	return nil
 }
 

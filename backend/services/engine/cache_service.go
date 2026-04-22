@@ -22,7 +22,7 @@ type CacheValue interface{}
 // CacheService 缓存服务接口
 type CacheService interface {
 	Engine
-	
+
 	// 基本操作
 	Get(ctx context.Context, key CacheKey) (CacheValue, error)
 	Set(ctx context.Context, key CacheKey, value CacheValue, ttl time.Duration) error
@@ -41,14 +41,14 @@ type CacheService interface {
 
 // CacheStats 缓存统计
 type CacheStats struct {
-	Hits          int64     // 命中次数
-	Misses        int64     // 未命中次数
-	HitRate       float64   // 命中率
-	TotalItems    int64     // 总缓存项数
-	TotalSize     int64     // 总缓存大小（字节）
-	Evictions     int64     // 驱逐次数
-	MemoryUsage   float64   // 内存使用率
-	AvgLoadTimeMs float64   // 平均加载时间
+	Hits          int64   // 命中次数
+	Misses        int64   // 未命中次数
+	HitRate       float64 // 命中率
+	TotalItems    int64   // 总缓存项数
+	TotalSize     int64   // 总缓存大小（字节）
+	Evictions     int64   // 驱逐次数
+	MemoryUsage   float64 // 内存使用率
+	AvgLoadTimeMs float64 // 平均加载时间
 }
 
 // ================================
@@ -57,20 +57,20 @@ type CacheStats struct {
 
 // MaterializedView 物化视图接口
 type MaterializedView interface {
-	Name() string                    // 视图名称
-	Description() string             // 视图描述
-	Schema() string                  // 视图模式
+	Name() string                      // 视图名称
+	Description() string               // 视图描述
+	Schema() string                    // 视图模式
 	Refresh(ctx context.Context) error // 刷新视图
-	IsValid() bool                   // 视图是否有效
-	LastRefreshed() time.Time        // 最后刷新时间
-	NextRefresh() time.Time          // 下次刷新时间
-	Size() int64                     // 视图大小
+	IsValid() bool                     // 视图是否有效
+	LastRefreshed() time.Time          // 最后刷新时间
+	NextRefresh() time.Time            // 下次刷新时间
+	Size() int64                       // 视图大小
 }
 
 // MaterializedViewManager 物化视图管理器
 type MaterializedViewManager interface {
 	Engine
-	
+
 	// 视图管理
 	CreateView(ctx context.Context, view MaterializedView) error
 	UpdateView(ctx context.Context, view MaterializedView) error
@@ -90,13 +90,13 @@ type MaterializedViewManager interface {
 
 // ViewStats 视图统计
 type ViewStats struct {
-	Name          string        // 视图名称
-	Rows          int64         // 行数
-	SizeBytes     int64         // 大小（字节）
-	LastRefresh   time.Time     // 最后刷新时间
-	RefreshTimeMs int64         // 刷新耗时（毫秒）
-	IsValid       bool          // 是否有效
-	Error         string        // 错误信息
+	Name          string    // 视图名称
+	Rows          int64     // 行数
+	SizeBytes     int64     // 大小（字节）
+	LastRefresh   time.Time // 最后刷新时间
+	RefreshTimeMs int64     // 刷新耗时（毫秒）
+	IsValid       bool      // 是否有效
+	Error         string    // 错误信息
 }
 
 // ================================
@@ -105,54 +105,54 @@ type ViewStats struct {
 
 // ETFOverlapView ETF重叠度物化视图
 type ETFOverlapView struct {
-	ETF1ID       uint            `json:"etf1_id"`
-	ETF2ID       uint            `json:"etf2_id"`
-	ETF1Symbol   string          `json:"etf1_symbol"`
-	ETF2Symbol   string          `json:"etf2_symbol"`
-	AsOfDate     time.Time       `json:"as_of_date"`
-	TotalOverlap decimal.Decimal `json:"total_overlap"`
+	ETF1ID          uint            `json:"etf1_id"`
+	ETF2ID          uint            `json:"etf2_id"`
+	ETF1Symbol      string          `json:"etf1_symbol"`
+	ETF2Symbol      string          `json:"etf2_symbol"`
+	AsOfDate        time.Time       `json:"as_of_date"`
+	TotalOverlap    decimal.Decimal `json:"total_overlap"`
 	WeightedOverlap decimal.Decimal `json:"weighted_overlap"`
-	JaccardIndex decimal.Decimal `json:"jaccard_index"`
-	SectorOverlap decimal.Decimal `json:"sector_overlap"`
-	CountryOverlap decimal.Decimal `json:"country_overlap"`
-	CommonHoldings int           `json:"common_holdings"`
-	CreatedAt    time.Time       `json:"created_at"`
+	JaccardIndex    decimal.Decimal `json:"jaccard_index"`
+	SectorOverlap   decimal.Decimal `json:"sector_overlap"`
+	CountryOverlap  decimal.Decimal `json:"country_overlap"`
+	CommonHoldings  int             `json:"common_holdings"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
 // PortfolioExposureView 组合暴露度物化视图
 type PortfolioExposureView struct {
-	PortfolioID  uint            `json:"portfolio_id"`
-	AsOfDate     time.Time       `json:"as_of_date"`
-	Sector       string          `json:"sector"`
-	Weight       decimal.Decimal `json:"weight"`
-	MarketValue  decimal.Decimal `json:"market_value"`
-	NumAssets    int             `json:"num_assets"`
-	CreatedAt    time.Time       `json:"created_at"`
+	PortfolioID uint            `json:"portfolio_id"`
+	AsOfDate    time.Time       `json:"as_of_date"`
+	Sector      string          `json:"sector"`
+	Weight      decimal.Decimal `json:"weight"`
+	MarketValue decimal.Decimal `json:"market_value"`
+	NumAssets   int             `json:"num_assets"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 // FactorExposureView 因子暴露度物化视图
 type FactorExposureView struct {
-	PortfolioID  uint            `json:"portfolio_id"`
-	FactorName   string          `json:"factor_name"`
-	AsOfDate     time.Time       `json:"as_of_date"`
-	Exposure     decimal.Decimal `json:"exposure"`
+	PortfolioID      uint            `json:"portfolio_id"`
+	FactorName       string          `json:"factor_name"`
+	AsOfDate         time.Time       `json:"as_of_date"`
+	Exposure         decimal.Decimal `json:"exposure"`
 	RiskContribution decimal.Decimal `json:"risk_contribution"`
-	ActiveExposure decimal.Decimal `json:"active_exposure"`
-	CreatedAt    time.Time       `json:"created_at"`
+	ActiveExposure   decimal.Decimal `json:"active_exposure"`
+	CreatedAt        time.Time       `json:"created_at"`
 }
 
 // PriceStatsView 价格统计物化视图
 type PriceStatsView struct {
-	AssetID     uint            `json:"asset_id"`
-	Symbol      string          `json:"symbol"`
-	Period      string          `json:"period"` // daily/weekly/monthly
-	AsOfDate    time.Time       `json:"as_of_date"`
-	Return      decimal.Decimal `json:"return"`
-	Volatility  decimal.Decimal `json:"volatility"`
-	SharpeRatio decimal.Decimal `json:"sharpe_ratio"`
-	MaxDrawdown decimal.Decimal `json:"max_drawdown"`
-	Correlations string         `json:"correlations"` // JSON格式
-	CreatedAt   time.Time       `json:"created_at"`
+	AssetID      uint            `json:"asset_id"`
+	Symbol       string          `json:"symbol"`
+	Period       string          `json:"period"` // daily/weekly/monthly
+	AsOfDate     time.Time       `json:"as_of_date"`
+	Return       decimal.Decimal `json:"return"`
+	Volatility   decimal.Decimal `json:"volatility"`
+	SharpeRatio  decimal.Decimal `json:"sharpe_ratio"`
+	MaxDrawdown  decimal.Decimal `json:"max_drawdown"`
+	Correlations string          `json:"correlations"` // JSON格式
+	CreatedAt    time.Time       `json:"created_at"`
 }
 
 // ================================
@@ -386,21 +386,21 @@ func (g *CacheKeyGenerator) GenerateKey(parts ...string) CacheKey {
 // 常用缓存键模式
 var (
 	// 资产相关
-	AssetKeyPrefix       = "asset"
-	PriceKeyPrefix       = "price"
-	HoldingsKeyPrefix    = "holdings"
-	
+	AssetKeyPrefix    = "asset"
+	PriceKeyPrefix    = "price"
+	HoldingsKeyPrefix = "holdings"
+
 	// 组合相关
 	PortfolioKeyPrefix   = "portfolio"
 	PositionKeyPrefix    = "position"
 	PerformanceKeyPrefix = "performance"
-	
+
 	// 分析相关
-	AnalysisKeyPrefix    = "analysis"
-	OverlapKeyPrefix     = "overlap"
-	ExposureKeyPrefix    = "exposure"
-	FactorKeyPrefix      = "factor"
-	
+	AnalysisKeyPrefix = "analysis"
+	OverlapKeyPrefix  = "overlap"
+	ExposureKeyPrefix = "exposure"
+	FactorKeyPrefix   = "factor"
+
 	// 计算相关
 	CalculationKeyPrefix = "calc"
 	StatsKeyPrefix       = "stats"

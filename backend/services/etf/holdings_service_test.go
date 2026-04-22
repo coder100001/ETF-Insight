@@ -47,18 +47,18 @@ func createTestETF(db *gorm.DB, symbol, name string) (*models.Asset, error) {
 
 // createTestHoldings 创建测试持仓数据
 func createTestHoldings(db *gorm.DB, etfID uint, holdings []struct {
-	Symbol  string
-	Name    string
-	Weight  float64
-	Date    time.Time
+	Symbol string
+	Name   string
+	Weight float64
+	Date   time.Time
 }) error {
 	for _, h := range holdings {
 		holding := models.ETFHolding{
-			ETFID:   etfID,
-			Symbol:  h.Symbol,
-			Name:    h.Name,
-			Weight:  decimal.NewFromFloat(h.Weight),
-			Date:    h.Date,
+			ETFID:  etfID,
+			Symbol: h.Symbol,
+			Name:   h.Name,
+			Weight: decimal.NewFromFloat(h.Weight),
+			Date:   h.Date,
 		}
 		if err := db.Create(&holding).Error; err != nil {
 			return err

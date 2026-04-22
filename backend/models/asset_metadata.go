@@ -9,23 +9,23 @@ import (
 // AssetMetadata 资产元数据表
 // 用于存储资产的扩展信息，如行业、国家、因子暴露等
 type AssetMetadata struct {
-	ID        uint            `json:"id" gorm:"primaryKey"`
-	AssetID   uint            `json:"asset_id" gorm:"uniqueIndex"`      // 资产ID
-	Sector    string          `json:"sector" gorm:"size:50"`            // 行业分类
-	Industry  string          `json:"industry" gorm:"size:50"`          // 细分行业
-	Country   string          `json:"country" gorm:"size:50"`           // 所属国家
-	Region    string          `json:"region" gorm:"size:50"`            // 所属地区
-	Style     string          `json:"style" gorm:"size:20"`             // 风格：value/growth/blend
-	MarketCap string          `json:"market_cap" gorm:"size:20"`        // 市值分类：large/mid/small
+	ID        uint   `json:"id" gorm:"primaryKey"`
+	AssetID   uint   `json:"asset_id" gorm:"uniqueIndex"` // 资产ID
+	Sector    string `json:"sector" gorm:"size:50"`       // 行业分类
+	Industry  string `json:"industry" gorm:"size:50"`     // 细分行业
+	Country   string `json:"country" gorm:"size:50"`      // 所属国家
+	Region    string `json:"region" gorm:"size:50"`       // 所属地区
+	Style     string `json:"style" gorm:"size:20"`        // 风格：value/growth/blend
+	MarketCap string `json:"market_cap" gorm:"size:20"`   // 市值分类：large/mid/small
 
 	// 因子暴露（JSON格式存储，灵活扩展）
 	FactorExposure string `json:"factor_exposure" gorm:"type:text"` // JSON: {"momentum": 0.5, "value": -0.3}
 
 	// ESG评分
-	ESGScore      decimal.Decimal `json:"esg_score" gorm:"type:decimal(5,2)"`
+	ESGScore         decimal.Decimal `json:"esg_score" gorm:"type:decimal(5,2)"`
 	EnvironmentScore decimal.Decimal `json:"environment_score" gorm:"type:decimal(5,2)"`
-	SocialScore   decimal.Decimal `json:"social_score" gorm:"type:decimal(5,2)"`
-	GovernanceScore decimal.Decimal `json:"governance_score" gorm:"type:decimal(5,2)"`
+	SocialScore      decimal.Decimal `json:"social_score" gorm:"type:decimal(5,2)"`
+	GovernanceScore  decimal.Decimal `json:"governance_score" gorm:"type:decimal(5,2)"`
 
 	// 基本面数据
 	PERatio       decimal.Decimal `json:"pe_ratio" gorm:"type:decimal(10,2)"`
@@ -46,12 +46,12 @@ func (AssetMetadata) TableName() string {
 // SectorAllocation 行业配置表
 // 用于存储资产的行业分布
 type SectorAllocation struct {
-	ID       uint            `json:"id" gorm:"primaryKey"`
-	AssetID  uint            `json:"asset_id" gorm:"index:idx_sector_date"` // 资产ID
-	Date     time.Time       `json:"date" gorm:"index:idx_sector_date"`     // 日期
-	Sector   string          `json:"sector" gorm:"size:50"`                 // 行业名称
-	Weight   decimal.Decimal `json:"weight" gorm:"type:decimal(5,2)"`       // 权重(%)
-	SubSector string         `json:"sub_sector" gorm:"size:50"`             // 子行业
+	ID        uint            `json:"id" gorm:"primaryKey"`
+	AssetID   uint            `json:"asset_id" gorm:"index:idx_sector_date"` // 资产ID
+	Date      time.Time       `json:"date" gorm:"index:idx_sector_date"`     // 日期
+	Sector    string          `json:"sector" gorm:"size:50"`                 // 行业名称
+	Weight    decimal.Decimal `json:"weight" gorm:"type:decimal(5,2)"`       // 权重(%)
+	SubSector string          `json:"sub_sector" gorm:"size:50"`             // 子行业
 
 	CreatedAt time.Time `json:"created_at"`
 }

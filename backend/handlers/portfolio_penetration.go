@@ -14,14 +14,14 @@ import (
 
 // PortfolioPenetrationHandler 投资组合穿透处理器
 type PortfolioPenetrationHandler struct {
-	db         *gorm.DB
+	db                 *gorm.DB
 	penetrationService *portfolio.PortfolioPenetrationService
 }
 
 // NewPortfolioPenetrationHandler 创建投资组合穿透处理器
 func NewPortfolioPenetrationHandler(db *gorm.DB) *PortfolioPenetrationHandler {
 	return &PortfolioPenetrationHandler{
-		db:         db,
+		db:                 db,
 		penetrationService: portfolio.NewPortfolioPenetrationService(db),
 	}
 }
@@ -107,11 +107,11 @@ func (h *PortfolioPenetrationHandler) AnalyzePortfolioPenetration(c *gin.Context
 	var topHoldings []gin.H
 	for _, h := range result.TopHoldings {
 		topHoldings = append(topHoldings, gin.H{
-			"symbol":     h.Symbol,
-			"name":       h.Name,
-			"weight":     h.Weight,
-			"sector":     h.Sector,
-			"country":    h.Country,
+			"symbol":      h.Symbol,
+			"name":        h.Name,
+			"weight":      h.Weight,
+			"sector":      h.Sector,
+			"country":     h.Country,
 			"source_etfs": h.SourceETFs,
 		})
 	}
@@ -210,9 +210,9 @@ func (h *PortfolioPenetrationHandler) ComparePortfolios(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"portfolio_a":      formatPenetrationResult(comparison.PortfolioA),
-			"portfolio_b":      formatPenetrationResult(comparison.PortfolioB),
-			"common_holdings":  comparison.CommonHoldings,
+			"portfolio_a":       formatPenetrationResult(comparison.PortfolioA),
+			"portfolio_b":       formatPenetrationResult(comparison.PortfolioB),
+			"common_holdings":   comparison.CommonHoldings,
 			"unique_holdings_a": comparison.UniqueHoldingsA,
 			"unique_holdings_b": comparison.UniqueHoldingsB,
 		},
@@ -276,7 +276,7 @@ func (h *PortfolioPenetrationHandler) GetSectorExposure(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"sector":  req.Sector,
+			"sector":   req.Sector,
 			"exposure": exposure,
 		},
 	})

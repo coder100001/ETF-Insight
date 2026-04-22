@@ -155,7 +155,7 @@ func TestAnalyzePortfolio(t *testing.T) {
 		// 验证基本统计
 		assert.Equal(t, "test_portfolio", result.PortfolioID)
 		assert.Equal(t, 2, result.TotalETFs)
-		assert.Equal(t, 9, result.TotalHoldings) // 5 + 4
+		assert.Equal(t, 9, result.TotalHoldings)  // 5 + 4
 		assert.Equal(t, 6, result.UniqueHoldings) // AAPL, MSFT, GOOGL, AMZN, NVDA, TSM
 
 		// 验证行业分布

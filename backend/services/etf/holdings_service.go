@@ -99,14 +99,14 @@ func (s *HoldingsService) SaveHoldings(ctx context.Context, etfSymbol string, ho
 
 // CalculateOverlapResult 重叠度计算结果
 type CalculateOverlapResult struct {
-	ETFA          string                `json:"etf_a"`           // ETF A代码
-	ETFB          string                `json:"etf_b"`           // ETF B代码
-	OverlapScore  decimal.Decimal       `json:"overlap_score"`   // 重叠度分数(0-100)
-	CommonHoldings int                  `json:"common_holdings"` // 共同持仓数量
-	TotalWeightA  decimal.Decimal       `json:"total_weight_a"`  // A中重叠权重
-	TotalWeightB  decimal.Decimal       `json:"total_weight_b"`  // B中重叠权重
-	Details       []OverlapHoldingDetail `json:"details"`         // 重叠持仓明细
-	CalculatedAt  time.Time             `json:"calculated_at"`   // 计算时间
+	ETFA           string                 `json:"etf_a"`           // ETF A代码
+	ETFB           string                 `json:"etf_b"`           // ETF B代码
+	OverlapScore   decimal.Decimal        `json:"overlap_score"`   // 重叠度分数(0-100)
+	CommonHoldings int                    `json:"common_holdings"` // 共同持仓数量
+	TotalWeightA   decimal.Decimal        `json:"total_weight_a"`  // A中重叠权重
+	TotalWeightB   decimal.Decimal        `json:"total_weight_b"`  // B中重叠权重
+	Details        []OverlapHoldingDetail `json:"details"`         // 重叠持仓明细
+	CalculatedAt   time.Time              `json:"calculated_at"`   // 计算时间
 }
 
 // OverlapHoldingDetail 重叠持仓明细

@@ -31,16 +31,16 @@ type LogFilterParams struct {
 	EndTime    *time.Time `json:"end_time" form:"end_time"`
 	User       string     `json:"user" form:"user"`
 	ActionType string     `json:"action_type" form:"action_type"`
-	Status     string     `json:"status" form:"status"` // "success" 或 "failure"
+	Status     string     `json:"status" form:"status"`     // "success" 或 "failure"
 	LogType    string     `json:"log_type" form:"log_type"` // "audit" 或 "operation" 或 ""（全部）
 }
 
 // LogQueryResult 日志查询结果
 type LogQueryResult struct {
-	Logs        []UnifiedLog
-	TotalAudit  int64
-	TotalOp     int64
-	Total       int64
+	Logs       []UnifiedLog
+	TotalAudit int64
+	TotalOp    int64
+	Total      int64
 }
 
 // OperationLogsService 操作日志服务
@@ -69,7 +69,7 @@ func (s *OperationLogsService) QueryLogs(params LogFilterParams) (*LogQueryResul
 
 	// 合并结果
 	allLogs := append(auditLogs, operationLogs...)
-	
+
 	// 根据时间戳排序（新到旧）
 	s.sortLogsByTimestampDesc(allLogs)
 
@@ -77,13 +77,13 @@ func (s *OperationLogsService) QueryLogs(params LogFilterParams) (*LogQueryResul
 	offset := params.GetOffset()
 	limit := params.GetLimit()
 	total := auditTotal + opTotal
-	
+
 	if offset >= len(allLogs) {
 		return &LogQueryResult{
-			Logs:        []UnifiedLog{},
-			TotalAudit:  auditTotal,
-			TotalOp:     opTotal,
-			Total:       total,
+			Logs:       []UnifiedLog{},
+			TotalAudit: auditTotal,
+			TotalOp:    opTotal,
+			Total:      total,
 		}, nil
 	}
 
@@ -95,10 +95,10 @@ func (s *OperationLogsService) QueryLogs(params LogFilterParams) (*LogQueryResul
 	pagedLogs := allLogs[offset:end]
 
 	return &LogQueryResult{
-		Logs:        pagedLogs,
-		TotalAudit:  auditTotal,
-		TotalOp:     opTotal,
-		Total:       total,
+		Logs:       pagedLogs,
+		TotalAudit: auditTotal,
+		TotalOp:    opTotal,
+		Total:      total,
 	}, nil
 }
 
