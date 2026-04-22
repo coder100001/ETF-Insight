@@ -32,7 +32,7 @@ func TestAuthMiddleware_GenerateToken(t *testing.T) {
 	}
 	auth := NewAuthMiddleware(cfg)
 
-	token, err := auth.GenerateToken("user123", "testuser", "admin")
+	token, err := auth.GenerateToken("user123", "testuser", "admin", []string{"read", "write"})
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -46,7 +46,7 @@ func TestAuthMiddleware_ValidateToken(t *testing.T) {
 	auth := NewAuthMiddleware(cfg)
 
 	// 生成token
-	token, err := auth.GenerateToken("user123", "testuser", "admin")
+	token, err := auth.GenerateToken("user123", "testuser", "admin", []string{"read", "write"})
 	assert.NoError(t, err)
 
 	// 验证token
@@ -130,7 +130,7 @@ func TestAuthMiddleware_AuthRequired_ValidToken(t *testing.T) {
 	auth := NewAuthMiddleware(cfg)
 
 	// 生成有效token
-	token, err := auth.GenerateToken("user123", "testuser", "admin")
+	token, err := auth.GenerateToken("user123", "testuser", "admin", []string{"read", "write"})
 	assert.NoError(t, err)
 
 	router := gin.New()
@@ -158,7 +158,7 @@ func TestAuthMiddleware_RoleRequired(t *testing.T) {
 	auth := NewAuthMiddleware(cfg)
 
 	// 生成admin token
-	token, err := auth.GenerateToken("user123", "testuser", "admin")
+	token, err := auth.GenerateToken("user123", "testuser", "admin", []string{"read", "write"})
 	assert.NoError(t, err)
 
 	router := gin.New()
@@ -186,7 +186,7 @@ func TestAuthMiddleware_RoleRequired_Forbidden(t *testing.T) {
 	auth := NewAuthMiddleware(cfg)
 
 	// 生成user token (不是admin)
-	token, err := auth.GenerateToken("user123", "testuser", "user")
+	token, err := auth.GenerateToken("user123", "testuser", "user", []string{"read"})
 	assert.NoError(t, err)
 
 	router := gin.New()

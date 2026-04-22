@@ -59,6 +59,10 @@ func (m *MockDataSourceProvider) GetRateLimit() int {
 	return 100
 }
 
+func (m *MockDataSourceProvider) GetETFHoldings(ctx context.Context, symbol string, date time.Time) ([]*datasource.ETFHoldingData, error) {
+	return []*datasource.ETFHoldingData{}, nil
+}
+
 func setupTestDB(t *testing.T) {
 	// 初始化内存数据库
 	err := models.InitDB(":memory:")
