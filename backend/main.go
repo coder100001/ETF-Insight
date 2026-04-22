@@ -273,17 +273,13 @@ func main() {
 	router.GET("/api/exchange-rates/datasource-status", exchangeRateHandler.GetDataSourceStatus)
 	router.GET("/api/currency-pairs", exchangeRateHandler.GetCurrencyPairs)
 
-	// 操作日志路由（需要认证）
-	authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
-	logsGroup := router.Group("/api/logs")
-	logsGroup.Use(authMiddleware.AuthRequired())
-	logsGroup.Use(authMiddleware.RequirePermission("logs_view")) // 需要logs_view权限
-	logsGroup.GET("/", operationLogsHandler.GetLogs)
-	logsGroup.GET("/types", operationLogsHandler.GetLogTypes)
-	logsGroup.GET("/action-types", operationLogsHandler.GetActionTypes)
-	logsGroup.GET("/users", operationLogsHandler.GetUsers)
-	logsGroup.POST("/export", operationLogsHandler.ExportLogs)
-	logsGroup.GET("/:type/:id", operationLogsHandler.GetLogDetail)
+	// 操作日志路由（无需认证 - 内部工具）
+	router.GET("/api/logs/", operationLogsHandler.GetLogs)
+	router.GET("/api/logs/types", operationLogsHandler.GetLogTypes)
+	router.GET("/api/logs/action-types", operationLogsHandler.GetActionTypes)
+	router.GET("/api/logs/users", operationLogsHandler.GetUsers)
+	router.POST("/api/logs/export", operationLogsHandler.ExportLogs)
+	router.GET("/api/logs/:type/:id", operationLogsHandler.GetLogDetail)
 
 	// Swagger API 文档路由
 	docs.RegisterSwaggerRoutes(router)
