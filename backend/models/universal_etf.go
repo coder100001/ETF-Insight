@@ -49,6 +49,7 @@ const (
 // UniversalETF 通用ETF模型
 type UniversalETF struct {
 	ID       uint   `json:"id" gorm:"primaryKey"`
+	AssetID  uint   `json:"asset_id" gorm:"index"`             // 关联Asset表
 	Symbol   string `json:"symbol" gorm:"uniqueIndex;size:20"` // ETF代码
 	Name     string `json:"name" gorm:"size:100"`              // ETF名称
 	FullName string `json:"full_name" gorm:"size:200"`         // 完整名称

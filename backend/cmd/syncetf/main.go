@@ -65,13 +65,13 @@ func NewSyncApplication() (*SyncApplication, error) {
 	}
 
 	// 注册后备提供者
-	factory.Register("fallback", datasource.NewFallbackProvider())
+	factory.Register("fallback", datasource.NewMockDataProvider())
 
 	// 创建同步服务（自动选择可用数据源）
 	syncService, err := sync.NewSyncServiceWithFactory(factory)
 	if err != nil {
 		fmt.Printf("警告: %v，将使用后备数据源\n", err)
-		syncService = sync.NewSyncService(datasource.NewFallbackProvider())
+		syncService = sync.NewSyncService(datasource.NewMockDataProvider())
 	}
 
 	return &SyncApplication{

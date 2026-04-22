@@ -18,6 +18,7 @@ import (
 	"etf-insight/models"
 	"etf-insight/services"
 	"etf-insight/services/datasource"
+	"etf-insight/services/event"
 	erdatasource "etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
 	"etf-insight/utils"
@@ -48,6 +49,10 @@ func main() {
 	}
 	utils.Info("Default data initialized")
 
+	// 初始化事件总线
+	event.InitEventBus(models.DB)
+	utils.Info("Event bus initialized")
+
 	// 初始化汇率相关表
 	if err := models.InitExchangeRateTables(); err != nil {
 		utils.Fatal("Failed to initialize exchange rate tables", err)
@@ -74,14 +79,14 @@ func main() {
 	// 创建数据源工厂
 	providerFactory := datasource.NewProviderFactory()
 	providerFactory.Register("finage", finageProvider)
-	providerFactory.Register("fallback", datasource.NewFallbackProvider())
+	providerFactory.Register("fallback", datasource.NewMockDataProvider())
 
 	// 获取可用的数据源
 	ctx := context.Background()
 	defaultProvider, err := providerFactory.GetDefault(ctx)
 	if err != nil {
-		utils.Warn("No data source available, using fallback", "error", err)
-		defaultProvider = datasource.NewFallbackProvider()
+		utils.Warn("No data source available, using mock provider", "error", err)
+		defaultProvider = datasource.NewMockDataProvider()
 	} else {
 		utils.Info("Using data source", "provider", defaultProvider.GetName())
 	}
@@ -118,6 +123,10 @@ func main() {
 	portfolioHandler := handlers.NewPortfolioHandler(analysisService)
 	optimizerHandler := handlers.NewPortfolioOptimizerHandler(optimizer)
 	optimizationHandler := handlers.NewOptimizationHandler()
+
+	// 初始化操作日志Handler
+	operationLogsService := services.NewOperationLogsService(models.DB)
+	operationLogsHandler := handlers.NewOperationLogsHandler(operationLogsService)
 
 	router.GET("/health", handlers.HealthHandler)
 	router.GET("/ready", handlers.ReadyHandler)
@@ -171,6 +180,26 @@ func main() {
 	router.GET("/api/factor/statistics", factorHandler.GetFactorStatistics)
 	router.POST("/api/factor/risk-decomposition", factorHandler.DecomposeRisk)
 	router.POST("/api/factor/compare", factorHandler.CompareFactorAttribution)
+
+	// ETF持仓穿透路由
+	etfHoldingHandler := handlers.NewETFHoldingHandler(models.DB)
+	router.GET("/api/etf/:symbol/holdings", etfHoldingHandler.GetETFHoldings)
+	router.GET("/api/etf/overlap", etfHoldingHandler.GetETFOverlap)
+	router.GET("/api/etf/:symbol/top-holdings", etfHoldingHandler.GetTopHoldings)
+	router.GET("/api/etf/:symbol/sector-allocation", etfHoldingHandler.GetSectorAllocation)
+	router.POST("/api/etf/holdings/comparison", etfHoldingHandler.GetETFHoldingsComparison)
+	router.POST("/api/etf/:symbol/holdings", etfHoldingHandler.SaveETFHoldings)
+
+	// 投资组合穿透分析路由
+	portfolioPenetrationHandler := handlers.NewPortfolioPenetrationHandler(models.DB)
+	router.POST("/api/portfolio/penetration", portfolioPenetrationHandler.AnalyzePortfolioPenetration)
+	router.POST("/api/portfolio/compare", portfolioPenetrationHandler.ComparePortfolios)
+	router.POST("/api/portfolio/sector-exposure", portfolioPenetrationHandler.GetSectorExposure)
+
+	// 缓存管理路由
+	router.GET("/api/cache/overlap/stats", etfHoldingHandler.GetCacheStats)
+	router.POST("/api/cache/overlap/invalidate", etfHoldingHandler.InvalidateCache)
+	router.POST("/api/cache/overlap/clean", etfHoldingHandler.CleanExpiredCache)
 
 	// 回测路由
 	backtestHandler := handlers.NewBacktestHandler()
@@ -243,6 +272,18 @@ func main() {
 	router.GET("/api/exchange-rates/currencies", exchangeRateHandler.GetSupportedCurrencies)
 	router.GET("/api/exchange-rates/datasource-status", exchangeRateHandler.GetDataSourceStatus)
 	router.GET("/api/currency-pairs", exchangeRateHandler.GetCurrencyPairs)
+
+	// 操作日志路由（需要认证）
+	authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
+	logsGroup := router.Group("/api/logs")
+	logsGroup.Use(authMiddleware.AuthRequired())
+	logsGroup.Use(authMiddleware.RequirePermission("logs_view")) // 需要logs_view权限
+	logsGroup.GET("/", operationLogsHandler.GetLogs)
+	logsGroup.GET("/types", operationLogsHandler.GetLogTypes)
+	logsGroup.GET("/action-types", operationLogsHandler.GetActionTypes)
+	logsGroup.GET("/users", operationLogsHandler.GetUsers)
+	logsGroup.POST("/export", operationLogsHandler.ExportLogs)
+	logsGroup.GET("/:type/:id", operationLogsHandler.GetLogDetail)
 
 	// Swagger API 文档路由
 	docs.RegisterSwaggerRoutes(router)

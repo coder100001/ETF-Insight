@@ -43,6 +43,17 @@ type ETFInfo struct {
 	ExpenseRatio float64
 }
 
+// ETFHoldingData ETF持仓数据
+// 标准化的ETF底层持仓数据结构
+type ETFHoldingData struct {
+	Symbol      string    // 底层资产代码
+	Name        string    // 底层资产名称
+	Weight      float64   // 权重(%)
+	Shares      int64     // 持股数量
+	MarketValue float64   // 市值
+	Date        time.Time // 持仓日期
+}
+
 // DataSourceProvider 数据源提供者接口
 // 实现此接口即可接入同步系统
 type DataSourceProvider interface {
@@ -54,6 +65,11 @@ type DataSourceProvider interface {
 
 	// GetQuotes 批量获取股票报价
 	GetQuotes(ctx context.Context, symbols []string) ([]*QuoteData, error)
+
+	// GetETFHoldings 获取ETF底层持仓数据
+	// symbol: ETF代码
+	// date: 持仓日期（如果为零值，则返回最新持仓）
+	GetETFHoldings(ctx context.Context, symbol string, date time.Time) ([]*ETFHoldingData, error)
 
 	// IsAvailable 检查数据源是否可用
 	IsAvailable(ctx context.Context) bool

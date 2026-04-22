@@ -49,7 +49,7 @@ type SyncDetail struct {
 func NewSyncService(provider datasource.DataSourceProvider) *SyncService {
 	factory := datasource.NewProviderFactory()
 	factory.Register(provider.GetName(), provider)
-	factory.Register("fallback", datasource.NewFallbackProvider())
+	factory.Register("fallback", datasource.NewMockDataProvider())
 
 	return &SyncService{
 		provider:  provider,

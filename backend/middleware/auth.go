@@ -13,9 +13,10 @@ import (
 )
 
 type Claims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID      string   `json:"user_id"`
+	Username    string   `json:"username"`
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions"`
 	jwt.RegisteredClaims
 }
 
@@ -31,11 +32,12 @@ func NewAuthMiddleware(cfg *config.JWTConfig) *AuthMiddleware {
 	}
 }
 
-func (m *AuthMiddleware) GenerateToken(userID, username, role string) (string, error) {
+func (m *AuthMiddleware) GenerateToken(userID, username, role string, permissions []string) (string, error) {
 	claims := &Claims{
-		UserID:   userID,
-		Username: username,
-		Role:     role,
+		UserID:      userID,
+		Username:    username,
+		Role:        role,
+		Permissions: permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -104,6 +106,7 @@ func (m *AuthMiddleware) AuthRequired() gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
+		c.Set("permissions", claims.Permissions)
 		c.Next()
 	}
 }
@@ -132,6 +135,7 @@ func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
+		c.Set("permissions", claims.Permissions)
 		c.Next()
 	}
 }
@@ -160,6 +164,48 @@ func (m *AuthMiddleware) RequireRole(roles ...string) gin.HandlerFunc {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
 			"error":   "权限不足",
+			"code":    "INSUFFICIENT_PERMISSION",
+		})
+		c.Abort()
+	}
+}
+
+// RequirePermission 要求特定权限的中间件
+func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		permissionsInterface, exists := c.Get("permissions")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error":   "无权限访问",
+				"code":    "FORBIDDEN",
+			})
+			c.Abort()
+			return
+		}
+
+		permissions, ok := permissionsInterface.([]string)
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error":   "权限信息无效",
+				"code":    "INVALID_PERMISSIONS",
+			})
+			c.Abort()
+			return
+		}
+
+		// 检查是否拥有所需权限
+		for _, p := range permissions {
+			if p == permission {
+				c.Next()
+				return
+			}
+		}
+
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error":   "权限不足，需要权限：" + permission,
 			"code":    "INSUFFICIENT_PERMISSION",
 		})
 		c.Abort()

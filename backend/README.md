@@ -25,7 +25,16 @@ ETF-Insight 后端坚持以下设计理念：
 - **多因子模型**: Fama-French 三因子/五因子模型、归因分析
 - **回测引擎**: 事件驱动架构、完整订单系统、滑点/手续费模型
 
-### 数据服务
+### 数据服务 (v2.6 重构)
+- **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
+- **ETF持仓穿透**: 底层持仓明细查询、权重分析
+- **重叠度计算**: 两只ETF持仓重叠度分析(最小权重法)
+- **组合穿透分析**: 投资组合底层资产行业/地理分布
+- **集中度指标**: Top10/Top20权重、Herfindahl指数、有效持仓数
+- **智能缓存**: 重叠度计算结果缓存(7天TTL)、自动失效
+- **事件驱动**: 持仓更新自动触发缓存失效
+
+### 数据源服务
 - **多数据源支持**: Finage 主数据源 + 备用数据源故障转移
 - **汇率服务**: 多数据源汇率，自动故障转移
 - **A股ETF支持**: AKShare/TuShare接入、中证红利、红利低波等主流红利ETF
@@ -48,13 +57,19 @@ backend/
 ├── models/                # 数据模型 (GORM)
 │   ├── models.go          # ETFConfig, ETFData, OperationLog
 │   ├── db.go              # 数据库初始化与迁移
+│   ├── asset.go           # 统一资产模型 (v2.6)
+│   ├── etf_holding.go     # ETF持仓穿透模型 (v2.6)
+│   ├── asset_metadata.go  # 资产元数据模型 (v2.6)
+│   ├── cache.go           # 缓存模型 (v2.6)
 │   ├── exchange_rate.go   # 汇率相关模型
 │   ├── a_share_dividend_etf.go  # A股ETF模型
 │   ├── audit_log.go       # 审计日志模型
 │   └── pagination.go      # 分页模型
 ├── handlers/              # HTTP 处理器
 │   ├── etf_handler.go     # ETF 行情/历史/指标接口
+│   ├── etf_holding_handler.go  # ETF持仓穿透接口 (v2.6)
 │   ├── portfolio_handler.go     # 投资组合分析接口
+│   ├── portfolio_penetration.go # 组合穿透分析接口 (v2.6)
 │   ├── a_share_portfolio_handler.go  # A股ETF组合接口
 │   ├── exchange_rate.go   # 汇率管理接口
 │   ├── health_handler.go  # 健康检查
@@ -74,6 +89,12 @@ backend/
 │   ├── factor/            # 因子分析(Fama-French)
 │   ├── ashare/            # A股数据源(AKShare/TuShare)
 │   ├── etf/               # ETF服务(跨资产类别)
+│   │   ├── holdings_service.go  # 持仓服务 (v2.6)
+│   │   └── cache_service.go     # 缓存服务 (v2.6)
+│   ├── portfolio/         # 组合服务
+│   │   └── penetration.go       # 穿透分析服务 (v2.6)
+│   ├── event/             # 事件服务 (v2.6)
+│   │   └── trigger.go           # 事件总线
 │   ├── etf_analysis.go    # ETF分析服务
 │   ├── portfolio_optimizer.go  # 组合优化服务
 │   ├── portfolio_analytics.go  # 组合分析服务(金融公式计算)
@@ -143,6 +164,24 @@ go build -o etf-insight
 - `GET /api/etf/history/:symbol` - 历史数据
 - `GET /api/etf/metrics/:symbol` - 风险指标
 - `GET /api/etf/compare` - ETF对比分析
+
+### ETF持仓穿透接口 (v2.6 新增)
+- `GET /api/etf/:symbol/holdings` - 获取ETF底层持仓明细
+- `GET /api/etf/overlap?sym1=&sym2=` - 计算两只ETF持仓重叠度
+- `GET /api/etf/:symbol/top-holdings` - 获取前N大持仓
+- `GET /api/etf/:symbol/sector-allocation` - 获取行业配置
+- `POST /api/etf/holdings/comparison` - 多ETF持仓对比
+- `POST /api/etf/:symbol/holdings` - 保存持仓数据
+
+### 投资组合穿透接口 (v2.6 新增)
+- `POST /api/portfolio/penetration` - 组合穿透分析(行业/地理分布)
+- `POST /api/portfolio/compare` - 组合对比分析
+- `POST /api/portfolio/sector-exposure` - 行业暴露查询
+
+### 缓存管理接口 (v2.6 新增)
+- `GET /api/cache/overlap/stats` - 缓存统计信息
+- `POST /api/cache/overlap/invalidate` - 手动失效缓存
+- `POST /api/cache/overlap/clean` - 清理过期缓存
 
 ### 投资组合接口
 - `POST /api/portfolio/optimize` - 组合优化
@@ -245,10 +284,12 @@ func init() {
 
 ## 🧪 测试
 
-### 测试覆盖率 (2026-04-21)
+### 测试覆盖率 (2026-04-22)
 
 | 模块 | 覆盖率 | 关键功能 |
 |------|--------|----------|
+| services/portfolio | **84.9%** | 组合穿透分析、集中度指标 |
+| services/event | **73.2%** | 事件总线、缓存失效 |
 | services/factor | **80.8%** | Fama-French 三因子/五因子模型 |
 | services/technical | 100% | RSI、MACD、布林带 |
 | services/risk | 100% | VaR、CVaR、风险指标 |
@@ -264,8 +305,11 @@ go test -v ./...
 # 运行特定包测试
 go test -v ./services/...
 
-# 运行因子分析测试
-go test -v ./services/factor
+# 运行组合穿透分析测试
+go test -v ./services/portfolio
+
+# 运行事件服务测试
+go test -v ./services/event
 
 # 生成覆盖率报告
 go test -coverprofile=coverage.out ./...

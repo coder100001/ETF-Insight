@@ -24,6 +24,15 @@ var (
 
 	// ErrNetwork 网络错误
 	ErrNetwork = errors.New("network error")
+	
+	// ErrNoETFProvider 没有ETF数据源
+	ErrNoETFProvider = errors.New("no ETF data provider available")
+	
+	// ErrProviderUnavailable 数据源不可用
+	ErrProviderUnavailable = errors.New("data provider unavailable")
+
+	// ErrNotImplemented 功能未实现
+	ErrNotImplemented = errors.New("feature not implemented")
 )
 
 // DataSourceError 数据源错误

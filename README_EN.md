@@ -1,4 +1,4 @@
-# ETF-Insight (v2.5.0) 🚀
+# ETF-Insight (v2.6.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
@@ -12,6 +12,16 @@ ETF-Insight is an open-source ETF analysis platform for professional investors, 
 > 🎯 **Vision**: Become the most professional open-source ETF quantitative analysis tool, providing transparent and verifiable analysis capabilities
 
 ## 📢 Latest Updates
+
+**v2.6 Data Layer Refactoring & Penetration Analysis**:
+- ✅ **Unified Asset Model**: Asset base table supports stock/ETF/index and other asset types
+- ✅ **ETF Holdings Penetration**: Underlying holdings details query, weight analysis
+- ✅ **Overlap Calculation**: Two ETF holdings overlap analysis (minimum weight method)
+- ✅ **Portfolio Penetration Analysis**: Portfolio underlying asset sector/geographic distribution
+- ✅ **Concentration Metrics**: Top10/Top20 weight, Herfindahl Index, effective holdings count
+- ✅ **Smart Caching**: Overlap calculation result caching (7-day TTL), auto-invalidation
+- ✅ **Event-Driven**: Holdings update auto-triggers cache invalidation
+- ✅ **Test Coverage**: portfolio 84.9%, event 73.2%
 
 **v2.5 Real-time Data & Quantitative Analysis Upgrade**:
 - ✅ **Real-time Data Acquisition**: Finage API integration, 3-year historical data sync (~388 days)

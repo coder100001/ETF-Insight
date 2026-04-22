@@ -8,13 +8,15 @@ import (
 	"etf-insight/models"
 )
 
-type FallbackProvider struct {
+// MockDataProvider 模拟数据源提供者
+// 当所有主要数据源都不可用时使用，返回模拟数据用于开发和测试
+type MockDataProvider struct {
 	basePrices map[string]float64
 	rnd        *rand.Rand
 }
 
-func NewFallbackProvider() *FallbackProvider {
-	provider := &FallbackProvider{
+func NewMockDataProvider() *MockDataProvider {
+	provider := &MockDataProvider{
 		basePrices: make(map[string]float64),
 		rnd:        rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
@@ -22,19 +24,19 @@ func NewFallbackProvider() *FallbackProvider {
 	return provider
 }
 
-func (f *FallbackProvider) GetName() string {
-	return "fallback"
+func (f *MockDataProvider) GetName() string {
+	return "mock"
 }
 
-func (f *FallbackProvider) IsAvailable(ctx context.Context) bool {
+func (f *MockDataProvider) IsAvailable(ctx context.Context) bool {
 	return true
 }
 
-func (f *FallbackProvider) GetRateLimit() int {
+func (f *MockDataProvider) GetRateLimit() int {
 	return 1000
 }
 
-func (f *FallbackProvider) GetQuote(ctx context.Context, symbol string) (*QuoteData, error) {
+func (f *MockDataProvider) GetQuote(ctx context.Context, symbol string) (*QuoteData, error) {
 	if symbol == "" {
 		return nil, ErrInvalidSymbol
 	}
@@ -47,7 +49,7 @@ func (f *FallbackProvider) GetQuote(ctx context.Context, symbol string) (*QuoteD
 	return f.generateQuote(symbol, basePrice), nil
 }
 
-func (f *FallbackProvider) GetQuotes(ctx context.Context, symbols []string) ([]*QuoteData, error) {
+func (f *MockDataProvider) GetQuotes(ctx context.Context, symbols []string) ([]*QuoteData, error) {
 	if len(symbols) == 0 {
 		return nil, ErrInvalidSymbol
 	}
@@ -64,7 +66,7 @@ func (f *FallbackProvider) GetQuotes(ctx context.Context, symbols []string) ([]*
 	return results, nil
 }
 
-func (f *FallbackProvider) generateQuote(symbol string, basePrice float64) *QuoteData {
+func (f *MockDataProvider) generateQuote(symbol string, basePrice float64) *QuoteData {
 	previousClose := basePrice
 
 	openChange := (f.rnd.Float64() - 0.5) * 0.02
@@ -97,15 +99,34 @@ func (f *FallbackProvider) generateQuote(symbol string, basePrice float64) *Quot
 		Currency:      "USD",
 		Exchange:      "NASDAQ",
 		Timestamp:     time.Now(),
-		DataSource:    "fallback",
+		DataSource:    "mock",
 	}
 }
 
-func (f *FallbackProvider) SetBasePrice(symbol string, price float64) {
+// GetETFHoldings 获取ETF底层持仓数据
+// Mock provider 返回模拟持仓数据，用于开发和测试
+func (f *MockDataProvider) GetETFHoldings(ctx context.Context, symbol string, date time.Time) ([]*ETFHoldingData, error) {
+	if symbol == "" {
+		return nil, ErrInvalidSymbol
+	}
+
+	// 返回模拟持仓数据，便于前端开发和测试
+	holdings := []*ETFHoldingData{
+		{Symbol: "AAPL", Name: "Apple Inc.", Weight: 12.5, Shares: 1000000, MarketValue: 215000000, Date: time.Now()},
+		{Symbol: "MSFT", Name: "Microsoft Corp.", Weight: 11.2, Shares: 800000, MarketValue: 304000000, Date: time.Now()},
+		{Symbol: "GOOGL", Name: "Alphabet Inc.", Weight: 8.7, Shares: 500000, MarketValue: 82500000, Date: time.Now()},
+		{Symbol: "AMZN", Name: "Amazon.com Inc.", Weight: 7.3, Shares: 400000, MarketValue: 76000000, Date: time.Now()},
+		{Symbol: "NVDA", Name: "NVIDIA Corp.", Weight: 6.8, Shares: 300000, MarketValue: 36000000, Date: time.Now()},
+	}
+
+	return holdings, nil
+}
+
+func (f *MockDataProvider) SetBasePrice(symbol string, price float64) {
 	f.basePrices[symbol] = price
 }
 
-func (f *FallbackProvider) loadBasePricesFromDB() {
+func (f *MockDataProvider) loadBasePricesFromDB() {
 	var configs []models.ETFConfig
 	if err := models.DB.Where("status = ?", 1).Find(&configs).Error; err != nil || len(configs) == 0 {
 		f.basePrices = defaultBasePrices()

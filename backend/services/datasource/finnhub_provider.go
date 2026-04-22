@@ -289,6 +289,17 @@ func (f *FinnhubProvider) convertToQuoteData(symbol string, quote *FinnhubQuote)
 	}
 }
 
+// GetETFHoldings 获取ETF底层持仓数据
+// 当前版本返回 ErrNotImplemented，作为接口占位实现
+func (f *FinnhubProvider) GetETFHoldings(ctx context.Context, symbol string, date time.Time) ([]*ETFHoldingData, error) {
+	return nil, &DataSourceError{
+		Provider: f.GetName(),
+		Op:       "GetETFHoldings",
+		Err:      ErrNotImplemented,
+		Symbol:   symbol,
+	}
+}
+
 // getProxyURL 获取代理URL
 func getProxyURL() string {
 	// 按优先级检查环境变量

@@ -35,7 +35,7 @@ func main() {
 	fmt.Println("✅ Finage provider registered")
 
 	// 注册 fallback provider
-	factory.Register("fallback", datasource.NewFallbackProvider())
+	factory.Register("fallback", datasource.NewMockDataProvider())
 	fmt.Println("✅ Fallback provider registered")
 
 	fmt.Println()

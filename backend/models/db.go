@@ -57,6 +57,7 @@ func InitDB(dsn string) error {
 // AutoMigrate 自动迁移数据库表结构
 func AutoMigrate() error {
 	return DB.AutoMigrate(
+		// 原有模型
 		&ETFConfig{},
 		&ETFData{},
 		&OperationLog{},
@@ -72,6 +73,16 @@ func AutoMigrate() error {
 		&ETFHistoricalData{},
 		&ETFDividend{},
 		&ETFAssetAllocation{},
+		// 新增统一数据层模型
+		&Asset{},
+		&AssetMetadata{},
+		&Holding{},
+		&HoldingSnapshot{},
+		&ETFHoldingsReport{},
+		&HoldingChange{},
+		&Price{},
+		&Portfolio{},
+		&PortfolioPosition{},
 	)
 }
 
