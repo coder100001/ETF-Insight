@@ -147,11 +147,12 @@ export const operationLogsAPI = {
 
   /**
    * 获取日志详情
+   * @param type 日志类型 (audit/operation)
    * @param id 日志ID
    * @returns 日志详情响应
    */
-  getLogDetail: async (id: number): Promise<UnifiedLog> => {
-    const response = await request<GetLogDetailResponse>(`/logs/${id}/details`);
+  getLogDetail: async (type: string, id: number): Promise<UnifiedLog> => {
+    const response = await request<GetLogDetailResponse>(`/logs/${type}/${id}`);
 
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取日志详情失败');

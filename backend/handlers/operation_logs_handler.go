@@ -3,6 +3,7 @@ package handlers
 import (
 	"etf-insight/models"
 	"etf-insight/services"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -248,21 +249,53 @@ func (h *OperationLogsHandler) GetLogDetail(c *gin.Context) {
 		return
 	}
 
-	var logDetail interface{}
+	var unifiedLog services.UnifiedLog
 	var found bool
 
 	if logType == "audit" {
-		// 查询AuditLog
 		var auditLog models.AuditLog
 		result := models.DB.First(&auditLog, uint(id))
 		found = result.RowsAffected > 0
-		logDetail = auditLog
+		if found {
+			unifiedLog = services.UnifiedLog{
+				ID:           auditLog.ID,
+				LogType:      "audit",
+				Timestamp:    auditLog.CreatedAt,
+				User:         auditLog.Username,
+				Module:       auditLog.Resource,
+				ActionType:   auditLog.Action,
+				Details:      fmt.Sprintf("%s %s", auditLog.Method, auditLog.Path),
+				IP:           auditLog.IP,
+				Status:       "success",
+				StatusCode:   auditLog.StatusCode,
+				ErrorMessage: auditLog.Error,
+				Duration:     0,
+			}
+		}
 	} else if logType == "operation" {
-		// 查询OperationLog
 		var opLog models.OperationLog
 		result := models.DB.First(&opLog, uint(id))
 		found = result.RowsAffected > 0
-		logDetail = opLog
+		if found {
+			status := "success"
+			if opLog.Status == 2 {
+				status = "failure"
+			}
+			unifiedLog = services.UnifiedLog{
+				ID:           opLog.ID,
+				LogType:      "operation",
+				Timestamp:    opLog.StartTime,
+				User:         opLog.Operator,
+				Module:       opLog.OperationName,
+				ActionType:   opLog.OperationType,
+				Details:      opLog.Details,
+				IP:           "",
+				Status:       status,
+				StatusCode:   opLog.Status,
+				ErrorMessage: opLog.ErrorMessage,
+				Duration:     opLog.DurationMs,
+			}
+		}
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -281,7 +314,7 @@ func (h *OperationLogsHandler) GetLogDetail(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    logDetail,
+		"data":    unifiedLog,
 	})
 }
 

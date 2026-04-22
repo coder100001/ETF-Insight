@@ -249,7 +249,7 @@ const OperationLogs: React.FC = () => {
   // 查看详情
   const handleViewDetail = async (log: UnifiedLog) => {
     try {
-      const detail = await operationLogsAPI.getLogDetail(log.id);
+      const detail = await operationLogsAPI.getLogDetail(log.log_type, log.id);
       setSelectedLog(detail);
       setDetailModalVisible(true);
     } catch (error) {
