@@ -48,8 +48,10 @@ func NewASharePriceService() *ASharePriceService {
 		client:  &http.Client{Timeout: 30 * time.Second},
 		baseURL: "",
 		providers: []PriceProvider{
-			NewSinaProvider(),      // 新浪财经
-			NewEastMoneyProvider(), // 东方财富
+			NewSinaProvider(),      // 新浪财经（主数据源）
+			NewEastMoneyProvider(), // 东方财富（备份1）
+			NewTencentProvider(),   // 腾讯财经（备份2）
+			NewNetEaseProvider(),   // 网易财经（备份3）
 		},
 	}
 }
@@ -79,22 +81,29 @@ func (s *ASharePriceService) UpdateAllETFPrices() error {
 func (s *ASharePriceService) UpdateETFPrice(etf *models.AShareDividendETF) error {
 	var priceData *PriceData
 	var lastErr error
+	var successProvider string
 
-	// 尝试所有数据源
+	// 尝试所有数据源（故障转移）
 	for _, provider := range s.providers {
 		if !provider.IsAvailable() {
+			utils.Info("数据源不可用，跳过", "provider", provider.GetName())
 			continue
 		}
 
 		data, err := provider.GetPrice(etf.Symbol)
-		if err == nil && data != nil {
+		if err == nil && data != nil && data.CurrentPrice > 0 {
 			priceData = data
+			successProvider = provider.GetName()
 			utils.Info("获取价格成功",
 				"symbol", etf.Symbol,
 				"provider", provider.GetName(),
 				"price", data.CurrentPrice)
 			break
 		}
+		utils.Warn("数据源获取失败，尝试下一个",
+			"symbol", etf.Symbol,
+			"provider", provider.GetName(),
+			"error", err)
 		lastErr = err
 	}
 
@@ -117,7 +126,53 @@ func (s *ASharePriceService) UpdateETFPrice(etf *models.AShareDividendETF) error
 		return fmt.Errorf("保存价格数据失败: %w", err)
 	}
 
+	utils.Info("价格更新成功",
+		"symbol", etf.Symbol,
+		"provider", successProvider,
+		"price", priceData.CurrentPrice)
+
 	return nil
+}
+
+// GetProviderStatus 获取所有数据源状态
+func (s *ASharePriceService) GetProviderStatus() []ProviderStatus {
+	statuses := make([]ProviderStatus, 0, len(s.providers))
+
+	// 使用测试代码检查数据源可用性
+	testSymbol := "515080" // 中证红利ETF
+
+	for _, provider := range s.providers {
+		status := ProviderStatus{
+			Name:  provider.GetName(),
+			Order: len(statuses) + 1,
+		}
+
+		// 尝试获取测试数据
+		data, err := provider.GetPrice(testSymbol)
+		if err == nil && data != nil && data.CurrentPrice > 0 {
+			status.Available = true
+			status.LastPrice = data.CurrentPrice
+			status.LastCheck = time.Now()
+		} else {
+			status.Available = false
+			status.Error = fmt.Sprintf("获取测试数据失败: %v", err)
+			status.LastCheck = time.Now()
+		}
+
+		statuses = append(statuses, status)
+	}
+
+	return statuses
+}
+
+// ProviderStatus 数据源状态
+type ProviderStatus struct {
+	Name      string    `json:"name"`
+	Available bool      `json:"available"`
+	Order     int       `json:"order"`
+	LastPrice float64   `json:"last_price,omitempty"`
+	LastCheck time.Time `json:"last_check"`
+	Error     string    `json:"error,omitempty"`
 }
 
 // ==================== 新浪财经数据源 ====================
@@ -241,7 +296,14 @@ func (p *EastMoneyProvider) GetPrice(symbol string) (*PriceData, error) {
 	url := fmt.Sprintf("https://push2.eastmoney.com/api/qt/stock/get?secid=%s&fields=f43,f44,f45,f46,f47,f48,f57,f58,f60,f170",
 		p.convertSymbol(symbol))
 
-	resp, err := p.client.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", "https://quote.eastmoney.com/")
+
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -268,14 +330,18 @@ func (p *EastMoneyProvider) GetPrice(symbol string) (*PriceData, error) {
 		return nil, fmt.Errorf("获取价格失败")
 	}
 
-	priceChange := result.Data.CurrentPrice - result.Data.PreviousClose
+	// 东方财富 API 返回的价格和涨跌幅都是放大 100 倍的整数，需要除以 100
+	currentPrice := result.Data.CurrentPrice / 100
+	previousClose := result.Data.PreviousClose / 100
+	priceChangePct := result.Data.PriceChangePct / 100
+	priceChange := currentPrice - previousClose
 
 	return &PriceData{
 		Symbol:         symbol,
-		CurrentPrice:   result.Data.CurrentPrice,
-		PreviousClose:  result.Data.PreviousClose,
+		CurrentPrice:   currentPrice,
+		PreviousClose:  previousClose,
 		PriceChange:    priceChange,
-		PriceChangePct: result.Data.PriceChangePct,
+		PriceChangePct: priceChangePct,
 		Volume:         result.Data.Volume,
 		Turnover:       result.Data.Turnover,
 		NAV:            0,
@@ -304,4 +370,190 @@ func parseInt(s string) int64 {
 	var i int64
 	fmt.Sscanf(s, "%d", &i)
 	return i
+}
+
+// ==================== 腾讯财经数据源 ====================
+
+type TencentProvider struct {
+	client *http.Client
+}
+
+func NewTencentProvider() *TencentProvider {
+	return &TencentProvider{
+		client: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+func (p *TencentProvider) GetName() string {
+	return "tencent"
+}
+
+func (p *TencentProvider) IsAvailable() bool {
+	return true
+}
+
+// GetPrice 从腾讯财经获取ETF价格
+func (p *TencentProvider) GetPrice(symbol string) (*PriceData, error) {
+	// 腾讯财经API格式
+	code := p.convertSymbol(symbol)
+	url := fmt.Sprintf("https://web.sqt.gtimg.cn/q=%s", code)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Referer", "https://gu.qq.com/")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.parseTencentData(string(body), symbol)
+}
+
+func (p *TencentProvider) convertSymbol(symbol string) string {
+	// 腾讯格式：sh515080 或 sz159545
+	if strings.HasPrefix(symbol, "5") || strings.HasPrefix(symbol, "6") {
+		return "sh" + symbol
+	}
+	return "sz" + symbol
+}
+
+func (p *TencentProvider) parseTencentData(data, symbol string) (*PriceData, error) {
+	// 腾讯返回格式：v_sh515080="1~名称~代码~当前价~昨收~今开~成交量~成交额~..."
+	prefix := fmt.Sprintf("v_%s=\"", p.convertSymbol(symbol))
+	if !strings.Contains(data, prefix) {
+		return nil, fmt.Errorf("无效的数据格式")
+	}
+
+	data = strings.TrimPrefix(data, prefix)
+	data = strings.TrimSuffix(data, "\";")
+	fields := strings.Split(data, "~")
+
+	if len(fields) < 10 {
+		return nil, fmt.Errorf("数据字段不足")
+	}
+
+	currentPrice := parseFloat(fields[3])  // 当前价
+	previousClose := parseFloat(fields[4]) // 昨收
+	volume := parseInt(fields[6])          // 成交量
+	turnover := parseFloat(fields[7])      // 成交额
+
+	priceChange := currentPrice - previousClose
+	priceChangePct := 0.0
+	if previousClose > 0 {
+		priceChangePct = (priceChange / previousClose) * 100
+	}
+
+	return &PriceData{
+		Symbol:         symbol,
+		CurrentPrice:   currentPrice,
+		PreviousClose:  previousClose,
+		PriceChange:    priceChange,
+		PriceChangePct: priceChangePct,
+		Volume:         volume,
+		Turnover:       turnover,
+		NAV:            0,
+		PremiumRate:    0,
+		UpdateTime:     time.Now(),
+	}, nil
+}
+
+// ==================== 网易财经数据源（东方财富备用接口）====================
+
+type NetEaseProvider struct {
+	client *http.Client
+}
+
+func NewNetEaseProvider() *NetEaseProvider {
+	return &NetEaseProvider{
+		client: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+func (p *NetEaseProvider) GetName() string {
+	return "eastmoney-quote"
+}
+
+func (p *NetEaseProvider) IsAvailable() bool {
+	return true
+}
+
+// GetPrice 从东方财富行情接口获取ETF价格（备用接口）
+func (p *NetEaseProvider) GetPrice(symbol string) (*PriceData, error) {
+	// 东方财富行情中心备用接口
+	code := p.convertSymbol(symbol)
+	url := fmt.Sprintf("https://qt.gtimg.cn/q=%s", code)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Referer", "https://gu.qq.com/")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.parseData(string(body), symbol)
+}
+
+func (p *NetEaseProvider) convertSymbol(symbol string) string {
+	if strings.HasPrefix(symbol, "5") || strings.HasPrefix(symbol, "6") {
+		return "sh" + symbol
+	}
+	return "sz" + symbol
+}
+
+func (p *NetEaseProvider) parseData(data, symbol string) (*PriceData, error) {
+	// 腾讯 qt.gtimg.cn 格式与 web.sqt.gtimg.cn 相同
+	prefix := fmt.Sprintf("v_%s=\"", p.convertSymbol(symbol))
+	if !strings.Contains(data, prefix) {
+		return nil, fmt.Errorf("无效的数据格式")
+	}
+
+	data = strings.TrimPrefix(data, prefix)
+	data = strings.TrimSuffix(data, "\";")
+	fields := strings.Split(data, "~")
+
+	if len(fields) < 10 {
+		return nil, fmt.Errorf("数据字段不足")
+	}
+
+	currentPrice := parseFloat(fields[3])
+	previousClose := parseFloat(fields[4])
+	volume := parseInt(fields[6])
+	turnover := parseFloat(fields[7])
+
+	priceChange := currentPrice - previousClose
+	priceChangePct := 0.0
+	if previousClose > 0 {
+		priceChangePct = (priceChange / previousClose) * 100
+	}
+
+	return &PriceData{
+		Symbol:         symbol,
+		CurrentPrice:   currentPrice,
+		PreviousClose:  previousClose,
+		PriceChange:    priceChange,
+		PriceChangePct: priceChangePct,
+		Volume:         volume,
+		Turnover:       turnover,
+		UpdateTime:     time.Now(),
+	}, nil
 }

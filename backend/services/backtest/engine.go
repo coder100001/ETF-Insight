@@ -172,7 +172,11 @@ func (e *BacktestEngine) Run(startDate, endDate time.Time) (*BacktestResult, err
 
 		// 执行交易
 		for _, signal := range signals {
-			e.executeSignal(signal, bar)
+			if err := e.executeSignal(signal, bar); err != nil {
+				// 记录交易失败，但不中断回测
+				// 可以选择记录到日志或统计中
+				continue
+			}
 		}
 
 		// 处理股息

@@ -483,6 +483,17 @@ func (h *ASharePortfolioHandler) RefreshETFPrices(c *gin.Context) {
 	})
 }
 
+// GetProviderStatus 获取数据源状态
+func (h *ASharePortfolioHandler) GetProviderStatus(c *gin.Context) {
+	priceService := services.NewASharePriceService()
+	statuses := priceService.GetProviderStatus()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"providers": statuses,
+	})
+}
+
 // UpdateHolding 更新持仓金额
 func (h *ASharePortfolioHandler) UpdateHolding(c *gin.Context) {
 	symbol := c.Param("symbol")

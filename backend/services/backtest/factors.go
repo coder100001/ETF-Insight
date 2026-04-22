@@ -2,6 +2,7 @@ package backtest
 
 import (
 	"math"
+	"sort"
 
 	"github.com/shopspring/decimal"
 )
@@ -382,18 +383,14 @@ func calculateMedian(values []decimal.Decimal) decimal.Decimal {
 		return decimal.Zero
 	}
 
-	// 简单排序取中位数
+	// 复制并排序
 	sorted := make([]decimal.Decimal, len(values))
 	copy(sorted, values)
 
-	// 冒泡排序
-	for i := 0; i < len(sorted)-1; i++ {
-		for j := i + 1; j < len(sorted); j++ {
-			if sorted[i].GreaterThan(sorted[j]) {
-				sorted[i], sorted[j] = sorted[j], sorted[i]
-			}
-		}
-	}
+	// 使用 sort.Slice，O(n log n)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].LessThan(sorted[j])
+	})
 
 	mid := len(sorted) / 2
 	if len(sorted)%2 == 0 {
@@ -407,17 +404,14 @@ func calculatePercentile(values []decimal.Decimal, p float64) decimal.Decimal {
 		return decimal.Zero
 	}
 
-	// 排序
+	// 复制并排序
 	sorted := make([]decimal.Decimal, len(values))
 	copy(sorted, values)
 
-	for i := 0; i < len(sorted)-1; i++ {
-		for j := i + 1; j < len(sorted); j++ {
-			if sorted[i].GreaterThan(sorted[j]) {
-				sorted[i], sorted[j] = sorted[j], sorted[i]
-			}
-		}
-	}
+	// 使用 sort.Slice，O(n log n)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].LessThan(sorted[j])
+	})
 
 	// 计算分位数位置
 	index := float64(len(sorted)-1) * p

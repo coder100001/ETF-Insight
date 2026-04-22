@@ -188,6 +188,7 @@ func NewMomentumStrategy(lookbackPeriod, topN, rebalanceFreq int) *MomentumStrat
 		TopN:           topN,
 		RebalanceFreq:  rebalanceFreq,
 		momentumCache:  make(map[string]decimal.Decimal),
+		priceHistory:   make(map[string][]decimal.Decimal),
 	}
 }
 
@@ -196,10 +197,14 @@ func (s *MomentumStrategy) GenerateSignals(engine *BacktestEngine, bar *Bar) []*
 	signals := make([]*Signal, 0)
 
 	// 更新价格历史用于动量计算
-	if s.priceHistory == nil {
-		s.priceHistory = make(map[string][]decimal.Decimal)
-	}
 	s.priceHistory[bar.Symbol] = append(s.priceHistory[bar.Symbol], bar.Close)
+
+	// 限制历史长度，防止内存无限增长（保留 lookbackPeriod * 2 的数据足够）
+	maxHistoryLen := s.LookbackPeriod * 2
+	if len(s.priceHistory[bar.Symbol]) > maxHistoryLen {
+		// 只保留最近的数据
+		s.priceHistory[bar.Symbol] = s.priceHistory[bar.Symbol][len(s.priceHistory[bar.Symbol])-maxHistoryLen:]
+	}
 
 	// 计算并缓存当前标的的动量值
 	if len(s.priceHistory[bar.Symbol]) >= s.LookbackPeriod {
@@ -385,7 +390,7 @@ func (s *FactorBasedStrategy) GetFactorNames() []string {
 // BuyAndHoldStrategy 买入持有策略
 type BuyAndHoldStrategy struct {
 	BaseStrategy
-	bought bool
+	boughtSymbols map[string]bool // 每个标的的买入状态
 }
 
 // NewBuyAndHoldStrategy 创建买入持有策略
@@ -395,7 +400,7 @@ func NewBuyAndHoldStrategy() *BuyAndHoldStrategy {
 			name:        "Buy and Hold",
 			description: "Simple buy and hold strategy",
 		},
-		bought: false,
+		boughtSymbols: make(map[string]bool),
 	}
 }
 
@@ -403,7 +408,8 @@ func NewBuyAndHoldStrategy() *BuyAndHoldStrategy {
 func (s *BuyAndHoldStrategy) GenerateSignals(engine *BacktestEngine, bar *Bar) []*Signal {
 	signals := make([]*Signal, 0)
 
-	if !s.bought {
+	// 检查当前标的是否已买入
+	if !s.boughtSymbols[bar.Symbol] {
 		// 全仓买入
 		capital := engine.GetCurrentCapital().Mul(decimal.NewFromFloat(0.95)) // 保留5%现金
 		quantity := capital.Div(bar.Close).Round(0)
@@ -414,7 +420,7 @@ func (s *BuyAndHoldStrategy) GenerateSignals(engine *BacktestEngine, bar *Bar) [
 				Quantity: quantity,
 				Reason:   "买入持有策略初始买入",
 			})
-			s.bought = true
+			s.boughtSymbols[bar.Symbol] = true
 		}
 	}
 

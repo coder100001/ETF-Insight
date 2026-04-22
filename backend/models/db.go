@@ -116,6 +116,20 @@ func InitDefaultData() error {
 			if err := DB.Create(&etf).Error; err != nil {
 				log.Printf("Failed to create default ETF %s: %v", etf.Symbol, err)
 			}
+		} else {
+			// 记录已存在，更新关键字段（如 expense_ratio）
+			if err := DB.Model(&ETFConfig{}).Where("symbol = ?", etf.Symbol).Updates(map[string]interface{}{
+				"expense_ratio": etf.ExpenseRatio,
+				"name":          etf.Name,
+				"description":   etf.Description,
+				"strategy":      etf.Strategy,
+				"focus":         etf.Focus,
+				"category":      etf.Category,
+				"provider":      etf.Provider,
+				"updated_at":    time.Now(),
+			}).Error; err != nil {
+				log.Printf("Failed to update ETF %s: %v", etf.Symbol, err)
+			}
 		}
 	}
 
