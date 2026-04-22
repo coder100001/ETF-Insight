@@ -28,7 +28,6 @@ import {
   operationLogsAPI,
   type LogFilterParams,
   type UnifiedLog,
-  type PaginatedResponse,
   type LogTypesResponse,
   type ActionTypesResponse,
   type UsersResponse,

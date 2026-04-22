@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { UnifiedLog } from '../services/operationLogsService';
+import type { UnifiedLog } from '../services/operationLogsService';
 import { formatLogTime } from '../services/operationLogsService';
 
 /**
@@ -53,7 +53,6 @@ export function exportLogsToExcel(logs: UnifiedLog[], filename = '操作日志')
     XLSX.utils.book_append_sheet(workbook, worksheet, '操作日志');
 
     // 添加标题行样式（可选）
-    const headerRow = Object.keys(exportData[0]);
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
