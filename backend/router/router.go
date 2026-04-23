@@ -1,0 +1,317 @@
+package router
+
+import (
+	"etf-insight/config"
+	"etf-insight/docs"
+	"etf-insight/handlers"
+	"etf-insight/middleware"
+	"etf-insight/models"
+	"etf-insight/services"
+	"etf-insight/services/datasource"
+	erdatasource "etf-insight/services/exchange_rate/datasource"
+	"etf-insight/tasks"
+
+	"github.com/gin-gonic/gin"
+)
+
+type Handlers struct {
+	ETF             *handlers.ETFHandler
+	Portfolio       *handlers.PortfolioHandler
+	Optimizer       *handlers.PortfolioOptimizerHandler
+	Optimization    *handlers.OptimizationHandler
+	Factor          *handlers.FactorHandler
+	ETFHolding      *handlers.ETFHoldingHandler
+	PortfolioPen    *handlers.PortfolioPenetrationHandler
+	Backtest        *handlers.BacktestHandler
+	ETFConfig       *handlers.ETFConfigHandler
+	ASharePortfolio *handlers.ASharePortfolioHandler
+	AShareData      *handlers.AShareDataHandler
+	UniversalETF    *handlers.UniversalETFHandler
+	ExchangeRate    *handlers.ExchangeRateHandler
+	OperationLogs   *handlers.OperationLogsHandler
+	Auth            *handlers.AuthHandler
+}
+
+type Router struct {
+	engine   *gin.Engine
+	handlers *Handlers
+	config   *config.Config
+}
+
+func NewRouter(
+	cfg *config.Config,
+	analysisService *services.ETFAnalysisService,
+	optimizer *services.PortfolioOptimizer,
+	exchangeService *services.ExchangeRateService,
+	provider datasource.DataSourceProvider,
+	exchangeRateConfig *erdatasource.DataSourceConfig,
+	exchangeRateTask *tasks.ExchangeRateTask,
+) *Router {
+	gin.SetMode(gin.ReleaseMode)
+	engine := gin.New()
+
+	engine.Use(gin.Recovery())
+	engine.Use(handlers.LoggerMiddleware())
+	engine.Use(handlers.CORSMiddleware())
+	engine.Use(middleware.SecurityHeaders())
+	engine.Use(middleware.RateLimiter())
+
+	h := &Handlers{
+		ETF:             handlers.NewETFHandler(analysisService, provider),
+		Portfolio:       handlers.NewPortfolioHandler(analysisService),
+		Optimizer:       handlers.NewPortfolioOptimizerHandler(optimizer),
+		Optimization:    handlers.NewOptimizationHandler(),
+		Factor:          handlers.NewFactorHandler(),
+		ETFHolding:      handlers.NewETFHoldingHandler(models.DB),
+		PortfolioPen:    handlers.NewPortfolioPenetrationHandler(models.DB),
+		Backtest:        handlers.NewBacktestHandler(),
+		ETFConfig:       handlers.NewETFConfigHandler(),
+		ASharePortfolio: handlers.NewASharePortfolioHandler(),
+		AShareData:      handlers.NewAShareDataHandler(),
+		UniversalETF:    handlers.NewUniversalETFHandler(),
+		ExchangeRate:    handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask),
+		OperationLogs:   handlers.NewOperationLogsHandler(services.NewOperationLogsService(models.DB)),
+		Auth:            handlers.NewAuthHandler(&cfg.JWT),
+	}
+
+	return &Router{engine: engine, handlers: h, config: cfg}
+}
+
+func (r *Router) GetEngine() *gin.Engine {
+	return r.engine
+}
+
+func (r *Router) RegisterRoutes() {
+	r.registerHealthRoutes()
+	r.registerAuthRoutes()
+	r.registerETFRoutes()
+	r.registerPortfolioRoutes()
+	r.registerOptimizationRoutes()
+	r.registerFactorRoutes()
+	r.registerETFHoldingRoutes()
+	r.registerPortfolioPenetrationRoutes()
+	r.registerCacheRoutes()
+	r.registerBacktestRoutes()
+	r.registerETFConfigRoutes()
+	r.registerAShareRoutes()
+	r.registerUniversalETFRoutes()
+	r.registerExchangeRateRoutes()
+	r.registerOperationLogsRoutes()
+	r.registerStaticRoutes()
+	docs.RegisterSwaggerRoutes(r.engine)
+}
+
+func (r *Router) registerHealthRoutes() {
+	r.engine.GET("/health", handlers.HealthHandler)
+	r.engine.GET("/ready", handlers.ReadyHandler)
+	r.engine.GET("/live", handlers.LiveHandler)
+}
+
+func (r *Router) registerAuthRoutes() {
+	authMiddleware := middleware.NewAuthMiddleware(&r.config.JWT)
+	auth := r.engine.Group("/api/auth")
+	{
+		auth.POST("/login", r.handlers.Auth.Login)
+		auth.POST("/logout", r.handlers.Auth.Logout)
+		auth.POST("/refresh", authMiddleware.AuthRequired(), r.handlers.Auth.RefreshToken)
+	}
+}
+
+func (r *Router) registerETFRoutes() {
+	etf := r.engine.Group("/api/etf")
+	{
+		etf.GET("/list", r.handlers.ETF.GetETFList)
+		etf.GET("/comparison", r.handlers.ETF.GetETFComparison)
+		etf.POST("/update-realtime", r.handlers.ETF.UpdateRealtimeData)
+		etf.POST("/portfolio", r.handlers.Portfolio.AnalyzePortfolio)
+		etf.GET("/:symbol/realtime", r.handlers.ETF.GetETFRealtime)
+		etf.GET("/:symbol/history", r.handlers.ETF.GetETFHistory)
+		etf.GET("/:symbol/metrics", r.handlers.ETF.GetETFMetrics)
+		etf.GET("/:symbol/forecast", r.handlers.ETF.GetETFForecast)
+		etf.GET("/:symbol/risk", r.handlers.ETF.GetETFRisk)
+	}
+}
+
+func (r *Router) registerPortfolioRoutes() {
+	portfolio := r.engine.Group("/api/portfolio")
+	{
+		portfolio.POST("/scenarios", r.handlers.Portfolio.AnalyzeScenarios)
+		portfolio.GET("/default-templates", r.handlers.Portfolio.GetDefaultPortfolioTemplates)
+		portfolio.POST("/risk", r.handlers.Portfolio.AnalyzePortfolioRisk)
+		portfolio.POST("/optimize", r.handlers.Optimizer.OptimizePortfolio)
+		portfolio.POST("/efficient-frontier", r.handlers.Optimizer.GetEfficientFrontier)
+	}
+
+	configs := r.engine.Group("/api/portfolio-configs")
+	{
+		configs.GET("/", r.handlers.Portfolio.GetPortfolioConfigs)
+		configs.POST("/", r.handlers.Portfolio.CreatePortfolioConfig)
+		configs.GET("/:id", r.handlers.Portfolio.GetPortfolioConfig)
+		configs.PUT("/:id", r.handlers.Portfolio.UpdatePortfolioConfig)
+		configs.DELETE("/:id", r.handlers.Portfolio.DeletePortfolioConfig)
+		configs.POST("/:id/toggle-status", r.handlers.Portfolio.TogglePortfolioConfigStatus)
+		configs.POST("/:id/analyze", r.handlers.Portfolio.AnalyzePortfolioConfig)
+	}
+}
+
+func (r *Router) registerOptimizationRoutes() {
+	opt := r.engine.Group("/api/optimization")
+	{
+		opt.POST("/mpt", r.handlers.Optimization.MPTOptimize)
+		opt.POST("/efficient-frontier", r.handlers.Optimization.EfficientFrontier)
+		opt.POST("/covariance", r.handlers.Optimization.CalculateCovarianceMatrix)
+		opt.POST("/etf-statistics", r.handlers.Optimization.GetETFStatistics)
+		opt.POST("/risk-parity", r.handlers.Optimization.RiskParityOptimize)
+		opt.POST("/black-litterman", r.handlers.Optimization.BlackLittermanOptimize)
+		opt.POST("/market-implied-returns", r.handlers.Optimization.MarketImpliedReturns)
+	}
+}
+
+func (r *Router) registerFactorRoutes() {
+	factor := r.engine.Group("/api/factor")
+	{
+		factor.POST("/analyze", r.handlers.Factor.AnalyzeFactorExposure)
+		factor.POST("/portfolio", r.handlers.Factor.AnalyzePortfolioFactors)
+		factor.POST("/multi-asset", r.handlers.Factor.AnalyzeMultipleAssets)
+		factor.GET("/statistics", r.handlers.Factor.GetFactorStatistics)
+		factor.POST("/risk-decomposition", r.handlers.Factor.DecomposeRisk)
+		factor.POST("/compare", r.handlers.Factor.CompareFactorAttribution)
+	}
+}
+
+func (r *Router) registerETFHoldingRoutes() {
+	etf := r.engine.Group("/api/etf")
+	{
+		etf.GET("/:symbol/holdings", r.handlers.ETFHolding.GetETFHoldings)
+		etf.GET("/overlap", r.handlers.ETFHolding.GetETFOverlap)
+		etf.GET("/:symbol/top-holdings", r.handlers.ETFHolding.GetTopHoldings)
+		etf.GET("/:symbol/sector-allocation", r.handlers.ETFHolding.GetSectorAllocation)
+		etf.POST("/holdings/comparison", r.handlers.ETFHolding.GetETFHoldingsComparison)
+		etf.POST("/:symbol/holdings", r.handlers.ETFHolding.SaveETFHoldings)
+	}
+}
+
+func (r *Router) registerPortfolioPenetrationRoutes() {
+	portfolio := r.engine.Group("/api/portfolio")
+	{
+		portfolio.POST("/penetration", r.handlers.PortfolioPen.AnalyzePortfolioPenetration)
+		portfolio.POST("/compare", r.handlers.PortfolioPen.ComparePortfolios)
+		portfolio.POST("/sector-exposure", r.handlers.PortfolioPen.GetSectorExposure)
+	}
+}
+
+func (r *Router) registerCacheRoutes() {
+	cache := r.engine.Group("/api/cache")
+	{
+		cache.GET("/overlap/stats", r.handlers.ETFHolding.GetCacheStats)
+		cache.POST("/overlap/invalidate", r.handlers.ETFHolding.InvalidateCache)
+		cache.POST("/overlap/clean", r.handlers.ETFHolding.CleanExpiredCache)
+	}
+}
+
+func (r *Router) registerBacktestRoutes() {
+	backtest := r.engine.Group("/api/backtest")
+	{
+		backtest.POST("/run", r.handlers.Backtest.RunBacktest)
+		backtest.POST("/event-driven", r.handlers.Backtest.RunEventDrivenBacktest)
+		backtest.GET("/strategies", r.handlers.Backtest.ListStrategies)
+		backtest.POST("/factors", r.handlers.Backtest.AnalyzeFactors)
+	}
+}
+
+func (r *Router) registerETFConfigRoutes() {
+	configs := r.engine.Group("/api/etf-configs")
+	{
+		configs.GET("/", r.handlers.ETFConfig.GetETFConfigs)
+		configs.POST("/", r.handlers.ETFConfig.CreateETFConfig)
+		configs.GET("/:id", r.handlers.ETFConfig.GetETFConfig)
+		configs.PUT("/:id", r.handlers.ETFConfig.UpdateETFConfig)
+		configs.DELETE("/:id", r.handlers.ETFConfig.DeleteETFConfig)
+		configs.POST("/:id/toggle-status", r.handlers.ETFConfig.ToggleETFConfigStatus)
+		configs.POST("/:id/auto-update", r.handlers.ETFConfig.ToggleETFConfigAutoUpdate)
+	}
+}
+
+func (r *Router) registerAShareRoutes() {
+	aShare := r.engine.Group("/api/a-share")
+	{
+		aShare.GET("/etfs", r.handlers.ASharePortfolio.GetDefaultETFs)
+		aShare.GET("/portfolio/default", r.handlers.ASharePortfolio.GetDefaultPortfolio)
+		aShare.POST("/portfolio/analyze", r.handlers.ASharePortfolio.AnalyzePortfolio)
+		aShare.POST("/portfolio/holding/:symbol", r.handlers.ASharePortfolio.UpdateHolding)
+		aShare.GET("/dividend/:frequency", r.handlers.ASharePortfolio.CalculateDividendByFrequency)
+		aShare.GET("/prices", r.handlers.ASharePortfolio.GetETFPrices)
+		aShare.GET("/prices/:symbol", r.handlers.ASharePortfolio.GetETFPriceBySymbol)
+		aShare.POST("/prices/refresh", r.handlers.ASharePortfolio.RefreshETFPrices)
+		aShare.POST("/enable-akshare", r.handlers.AShareData.EnableAKShare)
+		aShare.POST("/sync-etf-list", r.handlers.AShareData.SyncETFList)
+		aShare.POST("/sync-prices", r.handlers.AShareData.SyncETFPrices)
+		aShare.POST("/refresh-all", r.handlers.AShareData.RefreshAllData)
+		aShare.GET("/price/:symbol", r.handlers.AShareData.GetETFPrice)
+		aShare.GET("/all-prices", r.handlers.AShareData.GetAllETFPrices)
+		aShare.POST("/historical/:symbol", r.handlers.AShareData.GetHistoricalData)
+		aShare.GET("/search", r.handlers.AShareData.SearchETFs)
+		aShare.GET("/by-frequency/:frequency", r.handlers.AShareData.GetETFsByFrequency)
+		aShare.GET("/dividend-yield/:symbol", r.handlers.AShareData.CalculateDividendYield)
+		aShare.GET("/data-source-status", r.handlers.AShareData.GetDataSourceStatus)
+	}
+}
+
+func (r *Router) registerUniversalETFRoutes() {
+	universal := r.engine.Group("/api/universal-etf")
+	{
+		universal.POST("/initialize", r.handlers.UniversalETF.InitializeDefaultETFs)
+		universal.GET("/", r.handlers.UniversalETF.GetAllETFs)
+		universal.GET("/:symbol", r.handlers.UniversalETF.GetETFBySymbol)
+		universal.GET("/asset-class/:asset_class", r.handlers.UniversalETF.GetETFsByAssetClass)
+		universal.GET("/region/:region", r.handlers.UniversalETF.GetETFsByRegion)
+		universal.GET("/type/:etf_type", r.handlers.UniversalETF.GetETFsByType)
+		universal.GET("/search", r.handlers.UniversalETF.SearchETFs)
+		universal.POST("/filter", r.handlers.UniversalETF.FilterETFs)
+		universal.GET("/distribution/asset-class", r.handlers.UniversalETF.GetAssetClassDistribution)
+		universal.GET("/distribution/region", r.handlers.UniversalETF.GetRegionDistribution)
+		universal.POST("/compare", r.handlers.UniversalETF.CompareETFs)
+		universal.GET("/portfolio-allocation", r.handlers.UniversalETF.GetPortfolioAllocation)
+		universal.GET("/categories", r.handlers.UniversalETF.GetCategories)
+		universal.GET("/top-performers", r.handlers.UniversalETF.GetTopPerformers)
+	}
+}
+
+func (r *Router) registerExchangeRateRoutes() {
+	exchange := r.engine.Group("/api/exchange-rates")
+	{
+		exchange.GET("/", r.handlers.ExchangeRate.GetExchangeRates)
+		exchange.GET("/:from/:to", r.handlers.ExchangeRate.GetExchangeRate)
+		exchange.POST("/convert", r.handlers.ExchangeRate.ConvertCurrency)
+		exchange.POST("/sync", r.handlers.ExchangeRate.TriggerSync)
+		exchange.GET("/summary", r.handlers.ExchangeRate.GetExchangeRatesSummary)
+		exchange.GET("/currencies", r.handlers.ExchangeRate.GetSupportedCurrencies)
+		exchange.GET("/datasource-status", r.handlers.ExchangeRate.GetDataSourceStatus)
+	}
+	r.engine.GET("/api/currency-pairs", r.handlers.ExchangeRate.GetCurrencyPairs)
+}
+
+func (r *Router) registerOperationLogsRoutes() {
+	// 操作日志路由（需要认证）
+	authMiddleware := middleware.NewAuthMiddleware(&r.config.JWT)
+	logs := r.engine.Group("/api/logs")
+	logs.Use(authMiddleware.AuthRequired())
+	logs.Use(authMiddleware.RequirePermission("logs_view")) // 需要 logs_view 权限
+	{
+		logs.GET("/", r.handlers.OperationLogs.GetLogs)
+		logs.GET("/types", r.handlers.OperationLogs.GetLogTypes)
+		logs.GET("/action-types", r.handlers.OperationLogs.GetActionTypes)
+		logs.GET("/users", r.handlers.OperationLogs.GetUsers)
+		logs.POST("/export", r.handlers.OperationLogs.ExportLogs)
+		logs.GET("/:type/:id", r.handlers.OperationLogs.GetLogDetail)
+	}
+}
+
+func (r *Router) registerStaticRoutes() {
+	r.engine.Static("/assets", "../frontend/dist/assets")
+	r.engine.StaticFile("/favicon.svg", "../frontend/dist/favicon.svg")
+	r.engine.StaticFile("/icons.svg", "../frontend/dist/icons.svg")
+	r.engine.NoRoute(func(c *gin.Context) {
+		c.File("../frontend/dist/index.html")
+	})
+}

@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp } from 'antd';
 import { theme } from './styles/theme';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ETFDashboard from './pages/ETFDashboard';
 import PortfolioAnalysis from './pages/PortfolioAnalysis';
@@ -18,6 +19,7 @@ import TechnicalAnalysis from './pages/TechnicalAnalysis';
 import RiskAnalysis from './pages/RiskAnalysis';
 import PortfolioOptimization from './pages/PortfolioOptimization';
 import FactorAnalysis from './pages/FactorAnalysis';
+import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 // 配置Ant Design主题 - 匹配Django模板风格
@@ -50,36 +52,32 @@ const App: FC = () => {
       <AntdApp>
         <Router>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/login" element={<Login />} />
 
-            {/* ETF相关路由 */}
-            <Route path="/etf-dashboard" element={<ETFDashboard />} />
-            <Route path="/etf-market" element={<ETFDashboard />} />
-            <Route path="/etf-comparison" element={<ETFComparison />} />
-            <Route path="/etf-detail/:symbol" element={<ETFDetail />} />
-            <Route path="/etf-config" element={<ETFConfig />} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-            {/* 投资组合路由 */}
-            <Route path="/portfolio-analysis" element={<PortfolioAnalysis />} />
-            <Route path="/portfolio-config" element={<PortfolioConfig />} />
-            <Route path="/a-share-portfolio" element={<ASharePortfolio />} />
+            <Route path="/etf-dashboard" element={<ProtectedRoute><ETFDashboard /></ProtectedRoute>} />
+            <Route path="/etf-market" element={<ProtectedRoute><ETFDashboard /></ProtectedRoute>} />
+            <Route path="/etf-comparison" element={<ProtectedRoute><ETFComparison /></ProtectedRoute>} />
+            <Route path="/etf-detail/:symbol" element={<ProtectedRoute><ETFDetail /></ProtectedRoute>} />
+            <Route path="/etf-config" element={<ProtectedRoute><ETFConfig /></ProtectedRoute>} />
 
-            {/* 工作流路由 */}
-            <Route path="/workflows" element={<WorkflowList />} />
-            <Route path="/instances" element={<InstanceList />} />
+            <Route path="/portfolio-analysis" element={<ProtectedRoute><PortfolioAnalysis /></ProtectedRoute>} />
+            <Route path="/portfolio-config" element={<ProtectedRoute><PortfolioConfig /></ProtectedRoute>} />
+            <Route path="/a-share-portfolio" element={<ProtectedRoute><ASharePortfolio /></ProtectedRoute>} />
 
-            {/* 分析工具路由 */}
-            <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
-            <Route path="/risk-analysis" element={<RiskAnalysis />} />
-            <Route path="/portfolio-optimization" element={<PortfolioOptimization />} />
-            <Route path="/factor-analysis" element={<FactorAnalysis />} />
+            <Route path="/workflows" element={<ProtectedRoute><WorkflowList /></ProtectedRoute>} />
+            <Route path="/instances" element={<ProtectedRoute><InstanceList /></ProtectedRoute>} />
 
-            {/* 其他路由 */}
-            <Route path="/operation-logs" element={<OperationLogs />} />
-            <Route path="/exchange-rate" element={<ExchangeRate />} />
+            <Route path="/technical-analysis" element={<ProtectedRoute><TechnicalAnalysis /></ProtectedRoute>} />
+            <Route path="/risk-analysis" element={<ProtectedRoute><RiskAnalysis /></ProtectedRoute>} />
+            <Route path="/portfolio-optimization" element={<ProtectedRoute><PortfolioOptimization /></ProtectedRoute>} />
+            <Route path="/factor-analysis" element={<ProtectedRoute><FactorAnalysis /></ProtectedRoute>} />
 
-            {/* 默认重定向 */}
+            <Route path="/operation-logs" element={<ProtectedRoute><OperationLogs /></ProtectedRoute>} />
+            <Route path="/exchange-rate" element={<ProtectedRoute><ExchangeRate /></ProtectedRoute>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

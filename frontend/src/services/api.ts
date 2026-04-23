@@ -16,6 +16,7 @@ interface RetryConfig {
   maxRetries?: number;
   baseDelay?: number;
   maxDelay?: number;
+  handleUnauthorized?: boolean;
 }
 
 // 请求合并器 - 避免重复请求
@@ -58,7 +59,12 @@ async function requestWithRetry<T>(
   options?: RequestInit,
   config: RetryConfig = {}
 ): Promise<T> {
-  const { maxRetries = 3, baseDelay = 1000, maxDelay = 10000 } = config;
+  const {
+    maxRetries = 3,
+    baseDelay = 1000,
+    maxDelay = 10000,
+    handleUnauthorized = true,
+  } = config;
 
   let lastError: Error | null = null;
 
@@ -73,6 +79,13 @@ async function requestWithRetry<T>(
       });
 
       if (!response.ok) {
+        if (response.status === 401 && handleUnauthorized) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('token_expiry');
+          window.location.href = '/login';
+          throw new Error('认证已过期，请重新登录');
+        }
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(error.error || `HTTP ${response.status}`);
       }
@@ -81,7 +94,10 @@ async function requestWithRetry<T>(
     } catch (error) {
       lastError = error as Error;
 
-      // 如果不是最后一次尝试，等待后重试（指数退避）
+      if (lastError.message === '认证已过期，请重新登录') {
+        throw lastError;
+      }
+
       if (attempt < maxRetries) {
         const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -93,12 +109,37 @@ async function requestWithRetry<T>(
 }
 
 // 通用请求函数（带合并和重试）
-export async function request<T>(url: string, options?: RequestInit): Promise<T> {
+export async function request<T>(url: string, options?: RequestInit, config?: RetryConfig): Promise<T> {
   const cacheKey = `${url}-${JSON.stringify(options)}`;
 
   return requestCoalescer.getOrSet(cacheKey, () =>
-    requestWithRetry<T>(url, options)
+    requestWithRetry<T>(url, options, config)
   );
+}
+
+// 获取认证Token
+function getAuthToken(): string | null {
+  return localStorage.getItem('auth_token');
+}
+
+// 认证请求函数（自动添加Token）
+export async function authRequest<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken();
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options?.headers,
+  };
+
+  // 添加Authorization头
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return requestWithRetry<T>(url, {
+    ...options,
+    headers,
+  });
 }
 
 // ETF相关API

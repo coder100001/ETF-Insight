@@ -1,4 +1,4 @@
-import { request } from './api';
+import { authRequest } from './api';
 
 // API响应类型
 interface ApiResponse<T> {
@@ -116,7 +116,7 @@ export const operationLogsAPI = {
   getLogs: async (params: LogFilterParams): Promise<{ data: UnifiedLog[]; total: number }> => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', params.page.toString());
-    queryParams.append('pageSize', params.pageSize.toString());
+    queryParams.append('page_size', params.pageSize.toString());
 
     if (params.startTime) queryParams.append('start_time', params.startTime);
     if (params.endTime) queryParams.append('end_time', params.endTime);
@@ -126,7 +126,7 @@ export const operationLogsAPI = {
     if (params.logType) queryParams.append('log_type', params.logType);
     if (params.search) queryParams.append('search', params.search);
 
-    const response = await request<{
+    const response = await authRequest<{
       success: boolean;
       data: UnifiedLog[];
       meta: {
@@ -152,7 +152,7 @@ export const operationLogsAPI = {
    * @returns 日志详情响应
    */
   getLogDetail: async (type: string, id: number): Promise<UnifiedLog> => {
-    const response = await request<GetLogDetailResponse>(`/logs/${type}/${id}`);
+    const response = await authRequest<GetLogDetailResponse>(`/logs/${type}/${id}`);
 
     if (!response.success || !response.data) {
       throw new Error(response.message || response.error || '获取日志详情失败');
@@ -166,7 +166,7 @@ export const operationLogsAPI = {
    * @returns 日志类型列表响应
    */
   getLogTypes: async (): Promise<LogTypesResponse> => {
-    const response = await request<{
+    const response = await authRequest<{
       success: boolean;
       types?: { audit: number; operation: number };
     }>('/logs/types');
@@ -189,7 +189,7 @@ export const operationLogsAPI = {
    * @returns 操作类型列表响应
    */
   getActionTypes: async (): Promise<ActionTypesResponse> => {
-    const response = await request<{ success: boolean; action_types?: string[] }>('/logs/action-types');
+    const response = await authRequest<{ success: boolean; action_types?: string[] }>('/logs/action-types');
 
     if (!response.success) {
       throw new Error('获取操作类型失败');
@@ -209,7 +209,7 @@ export const operationLogsAPI = {
    * @returns 用户列表响应
    */
   getUsers: async (): Promise<UsersResponse> => {
-    const response = await request<{ success: boolean; users?: string[] }>('/logs/users');
+    const response = await authRequest<{ success: boolean; users?: string[] }>('/logs/users');
 
     if (!response.success) {
       throw new Error('获取用户列表失败');
@@ -224,16 +224,24 @@ export const operationLogsAPI = {
    * @returns 文件下载响应
    */
   exportLogs: async (params: ExportLogsRequest): Promise<Blob> => {
+    const token = localStorage.getItem('auth_token') || '';
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'}/logs/export`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(params),
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('token_expiry');
+        window.location.href = '/login';
+        throw new Error('认证已过期，请重新登录');
+      }
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(error.error || `HTTP ${response.status}`);
     }
