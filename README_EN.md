@@ -160,7 +160,7 @@ ETF-Insight aims to become a powerful ETF analysis tool for professional investo
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Go | >= 1.21 | Core language |
-| Gin | v1.12.0 | Web framework |
+| Gin | v1.9.1 | Web framework |
 | GORM | v1.30.0 | ORM framework (SQLite/PostgreSQL) |
 | go-cache | v2.1.0 | In-memory caching |
 | cron/v3 | v3.0.1 | Scheduled task scheduling |
@@ -272,20 +272,39 @@ ETF-Insight/
 
 ## 🎯 Evolution Roadmap
 
-### v2.3 (Current Version)
-- ✅ Exchange rate service multi-data source failover
-- ✅ Race condition fixes and performance optimization
-- ✅ Comprehensive code quality optimization
+### v2.4 ✅
+- ✅ Security upgrade (JWT, audit logging, rate limiting)
+- ✅ Swagger/OpenAPI 3.0 API documentation
+- ✅ Code quality optimization
 
-### v2.5 (Planned)
-- 🔄 Intelligent analysis engine development
-- 🔄 Backtesting framework integration
-- 🔄 Microservices architecture preparation
+### v2.5 ✅
+- ✅ Test coverage improvement to 80%
+- ✅ Technical indicators library (RSI/MACD/Bollinger Bands)
+- ✅ Risk models (VaR/CVaR)
+- ✅ Financial calculation optimization (portfolio variance, max drawdown fix)
+- ✅ New risk-adjusted metrics (Sortino Ratio, Calmar Ratio)
+- ✅ Rolling window metrics (30/60/90/180/252-day)
+- ✅ Statistical metrics (skewness, kurtosis)
+- ✅ Improved dividend reinvestment model (quarterly/monthly)
 
-### v3.0 (Long-term Planning)
-- 🔄 Cloud-native transformation
-- 🔄 Open platform development
-- 🔄 Business model exploration
+### v2.6 (Completed) ✅
+- ✅ Unified Asset Model (Asset base table supports multiple asset types)
+- ✅ ETF Holdings Penetration (underlying holdings details, weight analysis)
+- ✅ Overlap Calculation (minimum weight method)
+- ✅ Portfolio Penetration Analysis (sector/geographic distribution)
+- ✅ Concentration Metrics (Top10/Top20, Herfindahl Index)
+- ✅ Smart Caching & event-driven invalidation
+
+### v2.7-2.8 (3-6 months) 📋
+- 📋 Backtest engine frontend UI
+- 📋 Cross-asset ETF frontend page
+- 📋 Strategy framework implementation
+- 📋 Performance monitoring integration
+
+### v3.0 (6-12 months) 🚀
+- 🚀 Plugin system architecture
+- 🚀 Open-source ecosystem
+- 🚀 Academic collaboration support
 
 ---
 

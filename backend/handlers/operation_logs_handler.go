@@ -278,8 +278,13 @@ func (h *OperationLogsHandler) GetLogDetail(c *gin.Context) {
 		found = result.RowsAffected > 0
 		if found {
 			status := "success"
-			if opLog.Status == 2 {
+			statusCode := 200
+			if opLog.Status == 0 {
+				status = "processing"
+				statusCode = 202
+			} else if opLog.Status == 2 {
 				status = "failure"
+				statusCode = 500
 			}
 			unifiedLog = services.UnifiedLog{
 				ID:           opLog.ID,
@@ -291,7 +296,7 @@ func (h *OperationLogsHandler) GetLogDetail(c *gin.Context) {
 				Details:      opLog.Details,
 				IP:           "",
 				Status:       status,
-				StatusCode:   opLog.Status,
+				StatusCode:   statusCode,
 				ErrorMessage: opLog.ErrorMessage,
 				Duration:     opLog.DurationMs,
 			}

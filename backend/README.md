@@ -160,10 +160,13 @@ go build -o etf-insight
 
 ### ETF 分析接口
 - `GET /api/etf/list` - ETF列表（支持分页）
-- `GET /api/etf/detail/:symbol` - ETF详情
-- `GET /api/etf/history/:symbol` - 历史数据
-- `GET /api/etf/metrics/:symbol` - 风险指标
-- `GET /api/etf/compare` - ETF对比分析
+- `GET /api/etf/comparison` - ETF对比分析
+- `GET /api/etf/:symbol/realtime` - ETF实时数据
+- `GET /api/etf/:symbol/history` - 历史数据
+- `GET /api/etf/:symbol/metrics` - 风险指标
+- `GET /api/etf/:symbol/forecast` - ETF预测
+- `GET /api/etf/:symbol/risk` - ETF风险指标(VaR/CVaR)
+- `POST /api/etf/update-realtime` - 手动刷新实时数据
 
 ### ETF持仓穿透接口 (v2.6 新增)
 - `GET /api/etf/:symbol/holdings` - 获取ETF底层持仓明细
@@ -184,57 +187,108 @@ go build -o etf-insight
 - `POST /api/cache/overlap/clean` - 清理过期缓存
 
 ### 投资组合接口
-- `POST /api/portfolio/optimize` - 组合优化
-- `POST /api/portfolio/efficient-frontier` - 有效前沿
+- `POST /api/etf/portfolio` - 组合分析
 - `POST /api/portfolio/scenarios` - 投资组合情景分析(蒙特卡洛模拟)
 - `GET /api/portfolio/default-templates` - 获取默认投资组合模板
-- `GET /api/portfolio/analysis` - 组合分析
+- `POST /api/portfolio/risk` - 组合风险分析
+- `POST /api/portfolio/optimize` - 组合优化(旧接口)
+- `POST /api/portfolio/efficient-frontier` - 有效前沿(旧接口)
 
-### 技术指标接口
-- `GET /api/etf/:symbol/technical` - 获取ETF技术指标(RSI/MACD/布林带)
-- `GET /api/etf/:symbol/risk` - 获取ETF风险指标(VaR/CVaR)
+### 投资组合配置接口
+- `GET /api/portfolio-configs/` - 组合配置列表
+- `POST /api/portfolio-configs/` - 创建组合配置
+- `GET /api/portfolio-configs/:id` - 获取组合配置
+- `PUT /api/portfolio-configs/:id` - 更新组合配置
+- `DELETE /api/portfolio-configs/:id` - 删除组合配置
+- `POST /api/portfolio-configs/:id/toggle-status` - 切换状态
+- `POST /api/portfolio-configs/:id/analyze` - 分析组合配置
 
-### 实时数据接口
-- `POST /api/etf/update-realtime` - 手动刷新实时数据
-- `GET /api/etf/list` - ETF列表（包含实时价格）
+### 组合优化接口
+- `POST /api/optimization/mpt` - MPT均值-方差优化
+- `POST /api/optimization/efficient-frontier` - 有效前沿计算
+- `POST /api/optimization/covariance` - 协方差矩阵计算
+- `POST /api/optimization/etf-statistics` - ETF统计信息
+- `POST /api/optimization/risk-parity` - 风险平价优化
+- `POST /api/optimization/black-litterman` - Black-Litterman优化
+- `POST /api/optimization/market-implied-returns` - 市场隐含收益
+
+### 因子分析接口
+- `POST /api/factor/analyze` - 因子暴露度分析
+- `POST /api/factor/portfolio` - 组合因子分析
+- `POST /api/factor/multi-asset` - 多资产因子分析
+- `GET /api/factor/statistics` - 因子统计信息
+- `POST /api/factor/risk-decomposition` - 风险分解
+- `POST /api/factor/compare` - 因子归因对比
 
 ### 回测引擎接口
 - `POST /api/backtest/run` - 运行回测
 - `POST /api/backtest/event-driven` - 事件驱动回测
-- `GET /api/backtest/result/:id` - 获取回测结果
-- `GET /api/backtest/compare` - 对比多个策略
+- `GET /api/backtest/strategies` - 策略列表
+- `POST /api/backtest/factors` - 因子分析
 
-### 组合优化接口
-- `POST /api/portfolio/mpt-optimize` - MPT均值-方差优化
-- `POST /api/portfolio/efficient-frontier` - 有效前沿计算
-- `POST /api/portfolio/risk-parity` - 风险平价优化
-- `POST /api/portfolio/black-litterman` - Black-Litterman优化
-
-### 因子分析接口
-- `POST /api/factor/fama-french` - Fama-French因子分析
-- `GET /api/factor/models` - 获取可用模型
-- `GET /api/factor/factors` - 获取因子定义
+### ETF配置管理接口
+- `GET /api/etf-configs/` - ETF配置列表
+- `POST /api/etf-configs/` - 创建ETF配置
+- `GET /api/etf-configs/:id` - 获取ETF配置
+- `PUT /api/etf-configs/:id` - 更新ETF配置
+- `DELETE /api/etf-configs/:id` - 删除ETF配置
+- `POST /api/etf-configs/:id/toggle-status` - 切换状态
+- `POST /api/etf-configs/:id/auto-update` - 切换自动更新
 
 ### A股ETF接口
 - `GET /api/a-share/etfs` - A股ETF列表
-- `GET /api/a-share/prices` - ETF价格
+- `GET /api/a-share/portfolio/default` - 默认组合
+- `POST /api/a-share/portfolio/analyze` - 分析组合
+- `POST /api/a-share/portfolio/holding/:symbol` - 更新持仓
+- `GET /api/a-share/dividend/:frequency` - 按频率计算分红
+- `GET /api/a-share/prices` - ETF价格列表
+- `GET /api/a-share/prices/:symbol` - 单只ETF价格
 - `POST /api/a-share/prices/refresh` - 刷新价格
 - `POST /api/a-share/enable-akshare` - 启用AKShare数据源
 - `POST /api/a-share/sync-etf-list` - 同步ETF列表
+- `POST /api/a-share/sync-prices` - 同步价格
+- `POST /api/a-share/refresh-all` - 刷新所有数据
+- `GET /api/a-share/price/:symbol` - 单只ETF价格(数据服务)
+- `GET /api/a-share/all-prices` - 所有ETF价格(数据服务)
+- `POST /api/a-share/historical/:symbol` - 历史数据
 - `GET /api/a-share/search` - 搜索ETF
+- `GET /api/a-share/by-frequency/:frequency` - 按分红频率筛选
+- `GET /api/a-share/dividend-yield/:symbol` - 计算股息率
+- `GET /api/a-share/data-source-status` - 数据源状态
 
 ### 跨资产类别ETF接口
 - `POST /api/universal-etf/initialize` - 初始化ETF数据
 - `GET /api/universal-etf` - 获取所有ETF
+- `GET /api/universal-etf/:symbol` - 获取单个ETF
 - `GET /api/universal-etf/asset-class/:asset_class` - 按资产类别筛选
 - `GET /api/universal-etf/region/:region` - 按地区筛选
+- `GET /api/universal-etf/type/:etf_type` - 按类型筛选
+- `GET /api/universal-etf/search` - 搜索ETF
 - `POST /api/universal-etf/filter` - 多条件筛选
+- `GET /api/universal-etf/distribution/asset-class` - 资产类别分布
+- `GET /api/universal-etf/distribution/region` - 地区分布
 - `POST /api/universal-etf/compare` - ETF对比
 - `GET /api/universal-etf/portfolio-allocation` - 组合配置建议
+- `GET /api/universal-etf/categories` - 获取分类列表
+- `GET /api/universal-etf/top-performers` - 获取表现最佳ETF
 
 ### 汇率接口
 - `GET /api/exchange-rates` - 汇率列表
-- `GET /api/exchange-rates/:currency` - 单币种汇率
+- `GET /api/exchange-rates/:from/:to` - 货币对汇率
+- `POST /api/exchange-rates/convert` - 货币转换
+- `POST /api/exchange-rates/sync` - 手动同步
+- `GET /api/exchange-rates/summary` - 汇率摘要
+- `GET /api/exchange-rates/currencies` - 支持的货币列表
+- `GET /api/exchange-rates/datasource-status` - 数据源状态
+- `GET /api/currency-pairs` - 货币对列表
+
+### 操作日志接口
+- `GET /api/logs/` - 日志列表(支持筛选)
+- `GET /api/logs/types` - 日志类型统计
+- `GET /api/logs/action-types` - 操作类型列表
+- `GET /api/logs/users` - 用户列表
+- `POST /api/logs/export` - 导出日志
+- `GET /api/logs/:type/:id` - 日志详情
 
 ### 健康检查
 - `GET /health` - 服务健康状态

@@ -113,16 +113,21 @@ frontend/
 │   │   ├── Dashboard.tsx          # 仪表盘
 │   │   ├── ETFDashboard.tsx       # ETF市场总览
 │   │   ├── ETFComparison.tsx      # ETF对比分析
+│   │   ├── ETFComparisonReport.tsx # ETF对比报告
 │   │   ├── ETFDetail.tsx          # ETF详情
+│   │   ├── ETFConfig.tsx          # ETF配置管理
 │   │   ├── PortfolioAnalysis.tsx   # 投资组合情景分析(动态ETF选择+实时价格)
+│   │   ├── PortfolioConfig.tsx     # 投资组合配置
+│   │   ├── PortfolioOptimization.tsx # 组合优化(MPT/风险平价/BL)
 │   │   ├── TechnicalAnalysis.tsx   # 技术分析(RSI/MACD/布林带)
 │   │   ├── RiskAnalysis.tsx        # 风险分析(VaR/CVaR)
-│   │   ├── BacktestEngine.tsx      # 回测引擎(v2.5新增)
-│   │   ├── PortfolioOptimization.tsx # 组合优化(MPT/风险平价/BL)(v2.5新增)
-│   │   ├── FactorAnalysis.tsx      # 因子分析(v2.5新增)
+│   │   ├── FactorAnalysis.tsx      # 因子分析
 │   │   ├── ASharePortfolio.tsx     # A股红利ETF组合
-│   │   ├── UniversalETF.tsx        # 跨资产类别ETF(v2.5新增)
+│   │   ├── InvestmentStrategy.tsx  # 投资策略
 │   │   ├── ExchangeRate.tsx        # 汇率管理
+│   │   ├── OperationLogs.tsx       # 操作日志
+│   │   ├── WorkflowList.tsx        # 工作流列表
+│   │   ├── InstanceList.tsx        # 实例列表
 │   │   └── ...
 │   ├── components/         # 公共组件
 │   │   ├── Layout.tsx             # 布局组件

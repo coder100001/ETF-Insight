@@ -251,8 +251,13 @@ func (s *OperationLogsService) queryOperationLogs(params LogFilterParams) ([]Uni
 	unifiedLogs := make([]UnifiedLog, 0, len(operationLogs))
 	for _, log := range operationLogs {
 		status := "failure"
+		statusCode := 500
 		if log.Status == 1 {
 			status = "success"
+			statusCode = 200
+		} else if log.Status == 0 {
+			status = "processing"
+			statusCode = 202
 		}
 
 		unifiedLogs = append(unifiedLogs, UnifiedLog{
@@ -263,9 +268,9 @@ func (s *OperationLogsService) queryOperationLogs(params LogFilterParams) ([]Uni
 			Module:       log.OperationName,
 			ActionType:   log.OperationType,
 			Details:      log.Details,
-			IP:           "", // OperationLog没有IP字段
+			IP:           "",
 			Status:       status,
-			StatusCode:   log.Status,
+			StatusCode:   statusCode,
 			ErrorMessage: log.ErrorMessage,
 			Duration:     log.DurationMs,
 		})
