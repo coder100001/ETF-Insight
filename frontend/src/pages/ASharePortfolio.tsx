@@ -294,7 +294,7 @@ export default function ASharePortfolioPage() {
         weight: weight / Object.values(newInvestments).reduce((a, b) => a + b, 0),
       }));
       const totalInvestment = Object.values(newInvestments).reduce((a, b) => a + b, 0);
-      
+
       const response = await aShareAPI.analyzePortfolio(etfs, totalInvestment);
       if (response.success && response.data) {
         // 将API返回的数据转换为组件期望的格式

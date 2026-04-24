@@ -151,10 +151,10 @@ const FactorAnalysis: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const factors = useFiveFactor 
+      const factors = useFiveFactor
         ? ['market', 'size', 'value', 'profitability', 'investment']
         : ['market', 'size', 'value'];
-      
+
       const response = await factorAPI.analyzeExposure(symbol, factors);
 
       if (response.success && response.data) {

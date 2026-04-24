@@ -173,7 +173,7 @@ python scripts/consistency_checker.py --module etf --report
    - 建议：将 `/api/v1/etf` 改为 `/api/v2/etf`
    - 优先级：高
 
-### 内容问题  
+### 内容问题
 - [ ] 问题描述：功能描述过于简略
    - 位置：功能特性章节
    - 建议：增加使用场景和限制条件说明
@@ -253,13 +253,13 @@ python scripts/consistency_checker.py --module etf --report
 ## 发现的问题
 ### 高优先级
 1. [问题描述]
-   - 位置: 
-   - 建议: 
+   - 位置:
+   - 建议:
 
 ### 中优先级
 1. [问题描述]
-   - 位置: 
-   - 建议: 
+   - 位置:
+   - 建议:
 
 ## 评审结论
 - [ ] 通过
@@ -277,6 +277,6 @@ python scripts/consistency_checker.py --module etf --report
 ### 联系信息
 
 - **文档负责人**: [姓名/邮箱]
-- **技术评审联系人**: [姓名/邮箱] 
+- **技术评审联系人**: [姓名/邮箱]
 - **业务评审联系人**: [姓名/邮箱]
 - **紧急问题**: [紧急联系方式]

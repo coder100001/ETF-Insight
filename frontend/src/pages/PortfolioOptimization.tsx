@@ -4,12 +4,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 import { optimizationAPI, etfAPI } from '../services/api';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
-import type { 
-  ETFStatistics, 
-  OptimizationResult, 
-  EfficientFrontierPoint, 
-  RiskParityResult, 
-  BlackLittermanResult 
+import type {
+  ETFStatistics,
+  OptimizationResult,
+  EfficientFrontierPoint,
+  RiskParityResult,
+  BlackLittermanResult
 } from '../types';
 
 const { TabPane } = Tabs;

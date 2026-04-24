@@ -29,7 +29,7 @@ jobs:
     - name: Run documentation consistency check
       id: check-docs
       run: |
-        echo "🔍 开始文档一致性检查..."
+        echo "Starting documentation consistency check..."
         ./tools/doccheck/doccheck --project-root . --strict --output docs_consistency_report.md
 
     - name: Upload consistency report
@@ -49,23 +49,14 @@ jobs:
           try {
             report = fs.readFileSync('docs_consistency_report.md', 'utf8');
           } catch(e) {
-            report = '报告生成失败，请手动运行检查工具';
+            report = 'Report generation failed';
           }
 
           await github.rest.issues.create({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            title: '📝 文档一致性检查发现问题',
-            body: `## 文档一致性检查报告
-
-定期检查发现文档与代码存在不一致问题：
-
-${report}
-
-请及时更新相关文档以确保一致性。
-
-**检查时间**: ${new Date().toISOString()}
-**触发方式**: 定时检查`,
+            title: 'Documentation Consistency Check Issues Found',
+            body: 'Documentation consistency issues found. Please update relevant documentation.\n\n' + report + '\n\n**Check Time**: ' + new Date().toISOString() + '\n**Trigger**: Scheduled',
             labels: ['documentation', 'consistency', 'automated']
           });
 
@@ -79,18 +70,12 @@ ${report}
           try {
             report = fs.readFileSync('docs_consistency_report.md', 'utf8');
           } catch(e) {
-            report = '报告生成失败，请手动运行检查工具';
+            report = 'Report generation failed';
           }
 
           await github.rest.issues.createComment({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: context.issue.number,
-            body: `## 📝 文档一致性检查
-
-检查发现文档与代码存在不一致问题，请更新相关文档：
-
-${report}
-
-**注意**: 高优先级问题需要解决后才能合并。`
+            body: 'Documentation consistency issues found. Please update relevant documentation.\n\n' + report + '\n\n**Note**: High priority issues must be resolved before merging.',
           });

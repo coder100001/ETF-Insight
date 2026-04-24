@@ -11,7 +11,7 @@
           "required_documentation": ["功能说明", "请求参数", "响应格式", "错误码"]
         },
         "services": {
-          "document_section": "业务逻辑实现", 
+          "document_section": "业务逻辑实现",
           "description": "核心业务逻辑服务层",
           "required_documentation": ["功能描述", "输入参数", "输出结果", "算法说明"]
         },
@@ -33,7 +33,7 @@
           "description": "ETF数据获取和分析处理器"
         },
         "PortfolioHandler": {
-          "document_files": ["README.md", "backend/README.md"], 
+          "document_files": ["README.md", "backend/README.md"],
           "sections": ["投资组合分析", "组合优化"],
           "description": "投资组合管理和分析处理器"
         },
@@ -50,7 +50,7 @@
       }
     },
     "frontend": {
-      "description": "前端应用代码与文档映射规则", 
+      "description": "前端应用代码与文档映射规则",
       "modules": {
         "components": {
           "document_section": "UI组件",
@@ -68,7 +68,7 @@
           "required_documentation": ["接口说明", "参数格式", "错误处理"]
         },
         "types": {
-          "document_section": "类型定义", 
+          "document_section": "类型定义",
           "description": "TypeScript类型定义",
           "required_documentation": ["类型说明", "使用场景"]
         }
