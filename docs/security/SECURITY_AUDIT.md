@@ -19,8 +19,6 @@
 
 | 检查项 | 状态 | 说明 |
 |--------|------|------|
-| 认证授权 | ✅ | JWT 完整实现 |
-| 访问控制 | ✅ | 角色权限控制 |
 | 输入验证 | ✅ | 通用验证中间件 |
 | 日志安全 | ✅ | 自动脱敏处理 |
 | 传输安全 | ✅ | HTTPS/TLS 支持 |
@@ -31,32 +29,7 @@
 
 ## 🔐 安全功能清单
 
-### 1. JWT 身份认证
-
-**实现**: `backend/middleware/auth.go`
-
-```go
-type AuthMiddleware struct {
-    jwtConfig *config.JWTConfig
-}
-
-// 三种认证模式
-func (m *AuthMiddleware) AuthRequired() gin.HandlerFunc     // 必须认证
-func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc    // 可选认证
-func (m *AuthMiddleware) RequireRole(roles ...Role) gin.HandlerFunc // 角色控制
-```
-
-**配置**:
-```yaml
-jwt:
-  secret_key: "${JWT_SECRET_KEY}"
-  expiry_hours: 24
-  refresh_expiry_hours: 168
-```
-
----
-
-### 2. 审计日志
+### 1. 审计日志
 
 **实现**: `backend/middleware/audit.go`
 
@@ -76,7 +49,7 @@ sensitiveFields := []string{
 
 ---
 
-### 3. 速率限制
+### 2. 速率限制
 
 **实现**: `backend/middleware/ratelimit.go`
 
@@ -90,7 +63,7 @@ router.Use(middleware.RateLimiterHandler(100, time.Minute))
 
 ---
 
-### 4. 数据验证
+### 3. 数据验证
 
 **实现**: `backend/middleware/validation.go`
 
@@ -107,7 +80,7 @@ router.POST("/api/etf", middleware.ValidateInput([]middleware.ValidationRule{
 
 ---
 
-### 5. CORS 配置
+### 4. CORS 配置
 
 **实现**: `backend/handlers/middleware.go`
 
@@ -121,7 +94,7 @@ allowedOrigins := []string{
 
 ---
 
-### 6. 安全响应头
+### 5. 安全响应头
 
 **实现**: `backend/middleware/security.go`
 
@@ -164,10 +137,6 @@ curl -I http://localhost:8080/api/etf/list
 
 # 验证速率限制
 for i in {1..110}; do curl -s http://localhost:8080/api/etf/list; done
-
-# 检查 JWT 验证
-curl http://localhost:8080/api/etf/list
-# 应返回 401
 ```
 
 ---
@@ -177,7 +146,6 @@ curl http://localhost:8080/api/etf/list
 ### 部署前检查
 
 - [x] API Key 使用环境变量
-- [x] JWT Secret 强度足够
 - [x] CORS 限制允许的域名
 - [x] 速率限制已启用
 - [x] 审计日志已配置

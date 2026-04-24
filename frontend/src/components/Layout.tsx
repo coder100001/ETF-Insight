@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 import {
@@ -14,12 +14,8 @@ import {
   SwapOutlined,
   FundOutlined,
   LineChartOutlined,
-  UserOutlined,
-  LogoutOutlined,
 } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
-import { authAPI } from '../services/authService';
-import { message } from 'antd';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -83,45 +79,6 @@ const Divider = styled.hr`
   margin: 10px 20px;
 `;
 
-const UserSection = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 15px 20px;
-  border-top: 1px solid #34495e;
-  background: rgba(0, 0, 0, 0.2);
-`;
-
-const UserInfo = styled.div`
-  color: #ecf0f1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-`;
-
-const UserName = styled.span`
-  flex: 1;
-  font-size: 14px;
-`;
-
-const LogoutButton = styled.button`
-  background: transparent;
-  border: none;
-  color: #ecf0f1;
-  cursor: pointer;
-  padding: 5px 10px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: color 0.3s;
-
-  &:hover {
-    color: #e74c3c;
-  }
-`;
-
 const MainContent = styled.div`
   margin-left: ${theme.layout.sidebarWidth};
   padding: 20px;
@@ -135,9 +92,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const currentPath = location.pathname;
-  const currentUser = authAPI.getCurrentUser();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -146,22 +101,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return currentPath.startsWith(path);
   };
 
-  const handleLogout = async () => {
-    try {
-      await authAPI.logout();
-      message.success('已退出登录');
-      navigate('/login');
-    } catch {
-      message.error('退出登录失败');
-    }
-  };
-
   return (
     <LayoutContainer>
       <Sidebar>
         <Brand>
           <DashboardOutlined />
-          ETF工作流
+          ETF Insight
         </Brand>
         <Nav>
           <NavLink to="/" $active={isActive('/')}>
@@ -219,17 +164,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             外汇管理
           </NavLink>
         </Nav>
-
-        <UserSection>
-          <UserInfo>
-            <UserOutlined />
-            <UserName>{currentUser?.username || '用户'}</UserName>
-          </UserInfo>
-          <LogoutButton onClick={handleLogout}>
-            <LogoutOutlined />
-            退出登录
-          </LogoutButton>
-        </UserSection>
       </Sidebar>
 
       <MainContent>{children}</MainContent>

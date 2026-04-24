@@ -29,7 +29,6 @@ type Handlers struct {
 	UniversalETF    *handlers.UniversalETFHandler
 	ExchangeRate    *handlers.ExchangeRateHandler
 	OperationLogs   *handlers.OperationLogsHandler
-	Auth            *handlers.AuthHandler
 }
 
 type Router struct {
@@ -71,7 +70,6 @@ func NewRouter(
 		UniversalETF:    handlers.NewUniversalETFHandler(),
 		ExchangeRate:    handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask),
 		OperationLogs:   handlers.NewOperationLogsHandler(services.NewOperationLogsService(models.DB)),
-		Auth:            handlers.NewAuthHandler(&cfg.JWT),
 	}
 
 	return &Router{engine: engine, handlers: h, config: cfg}
@@ -83,7 +81,6 @@ func (r *Router) GetEngine() *gin.Engine {
 
 func (r *Router) RegisterRoutes() {
 	r.registerHealthRoutes()
-	r.registerAuthRoutes()
 	r.registerETFRoutes()
 	r.registerPortfolioRoutes()
 	r.registerOptimizationRoutes()
@@ -105,16 +102,6 @@ func (r *Router) registerHealthRoutes() {
 	r.engine.GET("/health", handlers.HealthHandler)
 	r.engine.GET("/ready", handlers.ReadyHandler)
 	r.engine.GET("/live", handlers.LiveHandler)
-}
-
-func (r *Router) registerAuthRoutes() {
-	authMiddleware := middleware.NewAuthMiddleware(&r.config.JWT)
-	auth := r.engine.Group("/api/auth")
-	{
-		auth.POST("/login", r.handlers.Auth.Login)
-		auth.POST("/logout", r.handlers.Auth.Logout)
-		auth.POST("/refresh", authMiddleware.AuthRequired(), r.handlers.Auth.RefreshToken)
-	}
 }
 
 func (r *Router) registerETFRoutes() {
@@ -292,12 +279,9 @@ func (r *Router) registerExchangeRateRoutes() {
 }
 
 func (r *Router) registerOperationLogsRoutes() {
-	// 操作日志路由（需要认证）
-	authMiddleware := middleware.NewAuthMiddleware(&r.config.JWT)
 	logs := r.engine.Group("/api/logs")
-	logs.Use(authMiddleware.AuthRequired())
-	logs.Use(authMiddleware.RequirePermission("logs_view")) // 需要 logs_view 权限
 	{
+		logs.GET("", r.handlers.OperationLogs.GetLogs)
 		logs.GET("/", r.handlers.OperationLogs.GetLogs)
 		logs.GET("/types", r.handlers.OperationLogs.GetLogTypes)
 		logs.GET("/action-types", r.handlers.OperationLogs.GetActionTypes)

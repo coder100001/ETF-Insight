@@ -1,0 +1,96 @@
+name: Documentation Consistency Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Build doccheck tool
+      run: |
+        cd tools/doccheck
+        go build -o doccheck .
+
+    - name: Run documentation consistency check
+      id: check-docs
+      run: |
+        echo "🔍 开始文档一致性检查..."
+        ./tools/doccheck/doccheck --project-root . --strict --output docs_consistency_report.md
+
+    - name: Upload consistency report
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: docs-consistency-report
+        path: docs_consistency_report.md
+
+    - name: Create issue for documentation issues
+      if: failure() && github.event_name == 'schedule'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          let report = '';
+          try {
+            report = fs.readFileSync('docs_consistency_report.md', 'utf8');
+          } catch(e) {
+            report = '报告生成失败，请手动运行检查工具';
+          }
+
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '📝 文档一致性检查发现问题',
+            body: `## 文档一致性检查报告
+
+定期检查发现文档与代码存在不一致问题：
+
+${report}
+
+请及时更新相关文档以确保一致性。
+
+**检查时间**: ${new Date().toISOString()}
+**触发方式**: 定时检查`,
+            labels: ['documentation', 'consistency', 'automated']
+          });
+
+    - name: Comment on PR with issues
+      if: failure() && github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          let report = '';
+          try {
+            report = fs.readFileSync('docs_consistency_report.md', 'utf8');
+          } catch(e) {
+            report = '报告生成失败，请手动运行检查工具';
+          }
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: `## 📝 文档一致性检查
+
+检查发现文档与代码存在不一致问题，请更新相关文档：
+
+${report}
+
+**注意**: 高优先级问题需要解决后才能合并。`
+          });

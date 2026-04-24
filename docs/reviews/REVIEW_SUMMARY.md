@@ -51,7 +51,6 @@
 **已实现功能**:
 | 功能 | 实现 | 文件 |
 |------|------|------|
-| JWT 认证 | ✅ | `middleware/auth.go` |
 | 审计日志 | ✅ | `middleware/audit.go` |
 | 速率限制 | ✅ | `middleware/ratelimit.go` |
 | 数据验证 | ✅ | `middleware/validation.go` |
@@ -126,19 +125,12 @@ py_project/
 | 问题 | v2.3 | v2.4 | 修复方式 |
 |------|------|------|----------|
 | CORS 配置 | ❌ `*` | ✅ 白名单 | `handlers/middleware.go` |
-| JWT 认证 | ❌ 无 | ✅ 完整实现 | `middleware/auth.go` |
 | 审计日志 | ❌ 无 | ✅ 自动记录 | `middleware/audit.go` |
 | 数据验证 | ❌ 部分 | ✅ 通用中间件 | `middleware/validation.go` |
 | 速率限制 | ⚠️ 基础 | ✅ 滑动窗口 | `middleware/ratelimit.go` |
 | 日志脱敏 | ❌ 无 | ✅ 自动脱敏 | `middleware/audit.go` |
 
 ### 安全代码示例
-
-**JWT 认证**:
-```go
-authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
-router.Use(authMiddleware.AuthRequired())
-```
 
 **数据验证**:
 ```go

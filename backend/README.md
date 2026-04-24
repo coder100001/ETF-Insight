@@ -41,8 +41,7 @@ ETF-Insight 后端坚持以下设计理念：
 - **跨资产类别**: 股票/债券/商品/REIT/货币/多资产/另类全覆盖
 - **数据完整性**: 所有字段入库校验，操作日志记录
 
-### 安全架构
-- **JWT认证**: 完整的认证中间件，支持角色控制
+### 基础设施
 - **审计日志**: 异步写入，敏感信息自动脱敏
 - **数据验证**: 通用验证中间件，防止注入攻击
 - **速率限制**: IP级别限流，防止滥用
@@ -75,7 +74,6 @@ backend/
 │   ├── health_handler.go  # 健康检查
 │   └── middleware.go      # 中间件
 ├── middleware/            # 中间件
-│   ├── auth.go            # JWT认证中间件
 │   ├── audit.go           # 审计日志中间件
 │   ├── validation.go      # 数据验证中间件
 │   ├── security.go        # 安全头 + 速率限制
@@ -138,7 +136,6 @@ cp .env.example .env
 
 # 编辑 .env 文件，配置以下关键变量：
 # - FINAGE_API_KEY (必需)
-# - JWT_SECRET_KEY (必需，用于认证)
 # - 数据库配置
 # - 汇率数据源配置
 ```
@@ -306,10 +303,6 @@ go build -o etf-insight
 ### 中间件使用
 
 ```go
-// JWT认证
-authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
-router.Use(authMiddleware.AuthRequired())
-
 // 审计日志
 router.Use(middleware.AuditLogger())
 
@@ -347,7 +340,7 @@ func init() {
 | services/factor | **80.8%** | Fama-French 三因子/五因子模型 |
 | services/technical | 100% | RSI、MACD、布林带 |
 | services/risk | 100% | VaR、CVaR、风险指标 |
-| middleware | 68.8% | 认证、审计、安全 |
+| middleware | 68.8% | 审计、安全 |
 | utils | 81.2% | 工具函数 |
 
 ### 运行测试

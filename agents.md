@@ -44,14 +44,8 @@ OPENEXCHANGE_API_KEY=your_key_here       # 主数据源
 CURRENCYAPI_KEY=your_key_here            # 备份数据源
 # Frankfurter 免费无需 API Key
 
-# ========== JWT安全配置 ==========
-JWT_SECRET_KEY=your-jwt-secret-key-min-32-characters-long
-JWT_EXPIRY_HOURS=24
-JWT_REFRESH_EXPIRY_HOURS=168
-
 # ========== 安全配置 ==========
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
-CSRF_SECRET=your-random-secret-key-min-32-chars
 
 # ========== 后端服务配置 ==========
 SERVER_PORT=8080
@@ -96,7 +90,6 @@ LOG_LEVEL=info
 ### 第一阶段：分析深度增强 (v2.4 - v2.5) - 当前
 
 #### 技术基础完善
-- ✅ **安全架构**: JWT认证、审计日志、数据验证、速率限制
 - ✅ **数据质量**: 多数据源故障转移、数据完整性校验
 - ✅ **性能优化**: 智能缓存、数据库索引优化、前端懒加载
 - 🔄 **测试覆盖**: 单元测试覆盖率 >80%，核心算法 100% 覆盖
@@ -404,11 +397,9 @@ git push origin feature/your-feature-name
 
 ### v2.4 更新内容
 
-#### 安全功能升级
-- ✅ **JWT身份认证**: 完整的认证中间件，支持Token生成/验证/角色控制
-  - `middleware/auth.go` - JWT认证中间件
-  - 支持 `AuthRequired()` / `OptionalAuth()` / `RequireRole()` 三种模式
-  - Token 过期时间可配置（默认24小时）
+#### v2.4 更新内容
+
+#### 基础设施升级
 - ✅ **审计日志**: 异步写入，敏感信息自动脱敏
   - `middleware/audit.go` - 审计日志中间件
   - 自动记录所有API请求（method/path/IP/statusCode）
@@ -421,7 +412,7 @@ git push origin feature/your-feature-name
   - `ValidateSymbol()` - 股票代码格式验证，防止注入攻击
 - ✅ **速率限制**: IP级别的请求频率限制
   - `RateLimiterHandler()` - 滑动窗口限流算法
-  - 防止暴力破解和DDoS攻击
+  - 防止滥用和DDoS攻击
 - ✅ **API分页**: 通用分页响应结构
   - `models/pagination.go` - 分页模型
   - 支持 page/pageSize 参数，最大100条/页
@@ -577,18 +568,6 @@ bugfix/fix-sharpe-ratio-20260413
 
 #### 3.2.1 中间件使用规范
 ```go
-// JWT认证使用示例
-authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
-
-// 需要认证的路由
-router.Use(authMiddleware.AuthRequired())
-
-// 可选认证（登录用户有额外功能）
-router.Use(authMiddleware.OptionalAuth())
-
-// 角色权限控制
-router.Use(authMiddleware.RequireRole("admin", "editor"))
-
 // 审计日志（自动记录所有请求）
 router.Use(middleware.AuditLogger())
 
@@ -714,7 +693,6 @@ npm run test
 ```
 ✅ SQL注入防护测试
 ✅ XSS攻击防护测试
-✅ API认证授权测试
 ✅ 敏感数据加密测试
 ```
 
@@ -1233,7 +1211,7 @@ func (s *PortfolioAnalyticsService) CalculateAllRollingWindows(
 
 ---
 
-## 🔒 安全要求
+## 🔒 安全规范
 
 ### 1. 安全边界
 
@@ -1242,64 +1220,25 @@ func (s *PortfolioAnalyticsService) CalculateAllRollingWindows(
 | **输入验证** | 所有用户输入必须验证 |
 | **SQL注入** | 使用参数化查询 |
 | **XSS攻击** | React默认转义+ CSP头 |
-| **CSRF** | Token验证 |
-| **权限控制** | RBAC，最小权限原则 |
-
----
+| **权限控制** | 最小权限原则 |
 
 ### 2. 数据加密标准
 
 | 数据类型 | 加密方式 |
 |----------|----------|
-| **密码** | bcrypt, cost ≥ 12 |
 | **API Key** | 环境变量，代码中不出现 |
 | **敏感日志** | 脱敏处理 |
 | **数据库** | TLS传输 |
 
----
-
-### 3. 访问控制策略
-
-```go
-// 角色定义
-const (
-    RoleAdmin  Role = "admin"  // 管理员：全部权限
-    RoleUser   Role = "user"   // 普通用户：自身数据
-    RoleGuest  Role = "guest"  // 访客：只读
-)
-
-// 权限检查
-func RequireRole(roles ...Role) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        userRole := c.GetString("user_role")
-        for _, role := range roles {
-            if Role(userRole) == role {
-                c.Next()
-                return
-            }
-        }
-        c.JSON(403, gin.H{"error": "权限不足"})
-        c.Abort()
-    }
-}
-```
-
----
-
-### 4. 安全审计
+### 3. 安全审计
 
 | 审计项 | 频率 | 记录 |
 |--------|------|------|
-| **登录日志** | 每次 | 用户ID、IP、时间 |
-| **操作日志** | 每次 | 用户、动作、资源 |
+| **操作日志** | 每次 | 动作、资源 |
 | **错误日志** | 每次 | 错误类型、堆栈 |
 | **安全扫描** | 每周 | 漏洞报告 |
 
----
-
-## 🔒 安全规范
-
-### 1. API Key 管理
+### 4. API Key 管理
 ```go
 // ✅ 正确：从环境变量读取
 apiKey := os.Getenv("FINAGE_API_KEY")

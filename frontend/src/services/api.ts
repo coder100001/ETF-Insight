@@ -16,7 +16,6 @@ interface RetryConfig {
   maxRetries?: number;
   baseDelay?: number;
   maxDelay?: number;
-  handleUnauthorized?: boolean;
 }
 
 // 请求合并器 - 避免重复请求
@@ -24,14 +23,11 @@ class RequestCoalescer {
   private pendingRequests = new Map<string, Promise<unknown>>();
 
   async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number = 30000): Promise<T> {
-    // 检查是否有正在进行的请求
     if (this.pendingRequests.has(key)) {
       return this.pendingRequests.get(key) as Promise<T>;
     }
 
-    // 创建新的请求
     const promise = fetcher().finally(() => {
-      // TTL 后清理缓存
       setTimeout(() => {
         this.pendingRequests.delete(key);
       }, ttl);
@@ -50,7 +46,6 @@ class RequestCoalescer {
   }
 }
 
-// 全局请求合并器
 const requestCoalescer = new RequestCoalescer();
 
 // 重试请求函数
@@ -63,7 +58,6 @@ async function requestWithRetry<T>(
     maxRetries = 3,
     baseDelay = 1000,
     maxDelay = 10000,
-    handleUnauthorized = true,
   } = config;
 
   let lastError: Error | null = null;
@@ -79,13 +73,6 @@ async function requestWithRetry<T>(
       });
 
       if (!response.ok) {
-        if (response.status === 401 && handleUnauthorized) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          localStorage.removeItem('token_expiry');
-          window.location.href = '/login';
-          throw new Error('认证已过期，请重新登录');
-        }
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(error.error || `HTTP ${response.status}`);
       }
@@ -93,10 +80,6 @@ async function requestWithRetry<T>(
       return await response.json();
     } catch (error) {
       lastError = error as Error;
-
-      if (lastError.message === '认证已过期，请重新登录') {
-        throw lastError;
-      }
 
       if (attempt < maxRetries) {
         const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
@@ -117,45 +100,17 @@ export async function request<T>(url: string, options?: RequestInit, config?: Re
   );
 }
 
-// 获取认证Token
-function getAuthToken(): string | null {
-  return localStorage.getItem('auth_token');
-}
-
-// 认证请求函数（自动添加Token）
-export async function authRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options?.headers,
-  };
-
-  // 添加Authorization头
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return requestWithRetry<T>(url, {
-    ...options,
-    headers,
-  });
-}
-
 // ETF相关API
 export const etfAPI = {
-  // 获取ETF列表
   getList: (market?: string) => {
     const params = market ? `?market=${market}` : '';
     return request<ApiResponse<ETFData[]>>(`/etf/list${params}`);
   },
 
-  // 获取ETF对比数据
   getComparison: (period: string = '1y') => {
     return request<ApiResponse<ETFData[]>>(`/etf/comparison?period=${period}`);
   },
 
-  // 获取投资组合分析
   getPortfolioAnalysis: (allocation: Record<string, number>, totalInvestment: number = 10000, taxRate: number = 0.10) => {
     return request<ApiResponse<PortfolioAnalysisResult>>(`/etf/portfolio`, {
       method: 'POST',
@@ -163,34 +118,28 @@ export const etfAPI = {
     });
   },
 
-  // 获取实时数据
   getRealtimeData: (symbol: string) => {
     return request<ApiResponse<ETFData>>(`/etf/${symbol}/realtime`);
   },
 
-  // 获取指标数据
   getMetrics: (symbol: string, period: string = '1y') => {
     return request<ApiResponse<Record<string, number>>>(`/etf/${symbol}/metrics?period=${period}`);
   },
 
-  // 获取历史数据
   getHistory: (symbol: string, period: string = '1y') => {
     return request<ApiResponse<ETFHistoryDataItem[]>>(`/etf/${symbol}/history?period=${period}`);
   },
 
-  // 获取收益预测
   getForecast: (symbol: string, initialInvestment: number = 10000, taxRate: number = 0.10) => {
     return request<ApiResponse<{ years: number; value: number }[]>>(`/etf/${symbol}/forecast?initial_investment=${initialInvestment}&tax_rate=${taxRate}`);
   },
 
-  // 更新实时数据
   updateRealtimeData: () => {
     return request<ApiResponse<{ message: string; count: number }>>(`/etf/update-realtime`, {
       method: 'POST',
     });
   },
 
-  // 获取ETF风险指标
   getRisk: (symbol: string, period: string = '1y', confidence: number = 0.95) => {
     return request<ApiResponse<{
       symbol: string;
@@ -198,697 +147,577 @@ export const etfAPI = {
       current_price: number;
       period_high: number;
       period_low: number;
-      var_95: number;
-      cvar_95: number;
-      confidence: number;
       volatility: number;
-      sharpe_ratio: number;
-      sortino_ratio: number;
+      var_95: number;
+      var_99: number;
+      cvar_95: number;
       max_drawdown: number;
-      calmar_ratio: number;
+      sharpe_ratio: number;
       beta: number;
-      alpha: number;
-      annualized_return: number;
-      data_points: number;
     }>>(`/etf/${symbol}/risk?period=${period}&confidence=${confidence}`);
   },
 };
 
-// ETF配置API
-export const etfConfigAPI = {
-  // 获取ETF配置列表
-  getConfigs: () => {
-    return request<ApiResponse<ETFConfig[]>>(`/etf-configs/`);
-  },
-
-  // 创建ETF配置
-  createConfig: (data: Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>) => {
-    return request<ApiResponse<ETFConfig>>(`/etf-configs/`, {
+// 投资组合相关API
+export const portfolioAPI = {
+  analyzeScenarios: (allocation: Record<string, number>, scenarios: Array<{ name: string; shock: Record<string, number> }>) => {
+    return request<ApiResponse<Record<string, unknown>>>(`/portfolio/scenarios`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ allocation, scenarios }),
     });
   },
 
-  // 获取ETF配置详情
-  getConfigDetail: (id: number) => {
-    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`);
+  getDefaultTemplates: () => {
+    return request<ApiResponse<Array<{ name: string; description: string; allocation: Record<string, number> }>>>(`/portfolio/default-templates`);
   },
 
-  // 更新ETF配置
-  updateConfig: (id: number, data: Partial<Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>>) => {
-    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  },
-
-  // 删除ETF配置
-  deleteConfig: (id: number) => {
-    return request<ApiResponse<{ message: string }>>(`/etf-configs/${id}`, {
-      method: 'DELETE',
-    });
-  },
-
-  // 切换状态
-  toggleStatus: (id: number, status: number) => {
-    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/toggle-status`, {
+  analyzeRisk: (allocation: Record<string, number>, totalInvestment: number = 10000) => {
+    return request<ApiResponse<{
+      total_risk: number;
+      systematic_risk: number;
+      unsystematic_risk: number;
+      diversification_ratio: number;
+      concentration_risk: string;
+    }>>(`/portfolio/risk`, {
       method: 'POST',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ allocation, total_investment: totalInvestment }),
     });
   },
 
-  // 切换自动更新
-  toggleAutoUpdate: (id: number, autoUpdate: boolean) => {
-    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/auto-update`, {
+  optimize: (allocation: Record<string, number>, objective: string = 'sharpe', constraints?: Record<string, unknown>) => {
+    return request<ApiResponse<{
+      optimal_allocation: Record<string, number>;
+      expected_return: number;
+      expected_risk: number;
+      sharpe_ratio: number;
+    }>>(`/portfolio/optimize`, {
       method: 'POST',
-      body: JSON.stringify({ auto_update: autoUpdate }),
+      body: JSON.stringify({ allocation, objective, constraints }),
+    });
+  },
+
+  getEfficientFrontier: (symbols: string[], points: number = 20) => {
+    return request<ApiResponse<Array<{ return: number; risk: number; allocation: Record<string, number> }>>>(`/portfolio/efficient-frontier`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols, points }),
     });
   },
 };
 
 // 投资组合配置API
-export const portfolioAPI = {
-  // 获取配置列表
-  getConfigs: () => {
+export const portfolioConfigAPI = {
+  getAll: () => {
     return request<ApiResponse<PortfolioConfig[]>>(`/portfolio-configs/`);
   },
 
-  // 创建配置
-  createConfig: (data: {
-    name: string;
-    description?: string;
-    allocation: Record<string, number>;
-    total_investment?: number;
-    status?: number;
-  }) => {
-    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  // 获取配置详情
-  getConfigDetail: (id: number) => {
+  getById: (id: string) => {
     return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}`);
   },
 
-  // 更新配置
-  updateConfig: (id: number, data: Partial<{
-    name: string;
-    description: string;
-    allocation: Record<string, number>;
-    total_investment: number;
-    status: number;
-  }>) => {
-    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
+  create: (config: Omit<PortfolioConfig, 'id' | 'created_at' | 'updated_at'>) => {
+    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/`, {
+      method: 'POST',
+      body: JSON.stringify(config),
     });
   },
 
-  // 删除配置
-  deleteConfig: (id: number) => {
-    return request<ApiResponse<{ message: string }>>(`/portfolio-configs/${id}`, {
+  update: (id: string, config: Partial<PortfolioConfig>) => {
+    return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  },
+
+  delete: (id: string) => {
+    return request<ApiResponse<void>>(`/portfolio-configs/${id}`, {
       method: 'DELETE',
     });
   },
 
-  // 切换状态
-  toggleStatus: (id: number) => {
+  toggleStatus: (id: string) => {
     return request<ApiResponse<PortfolioConfig>>(`/portfolio-configs/${id}/toggle-status`, {
       method: 'POST',
     });
   },
 
-  // 分析配置
-  analyzeConfig: (id: number, taxRate: number = 0.10) => {
+  analyze: (id: string) => {
     return request<ApiResponse<PortfolioAnalysisResult>>(`/portfolio-configs/${id}/analyze`, {
       method: 'POST',
-      body: JSON.stringify({ tax_rate: taxRate }),
+    });
+  },
+};
+
+// 优化相关API
+export const optimizationAPI = {
+  mptOptimize: (symbols: string[], targetReturn?: number, targetRisk?: number) => {
+    return request<ApiResponse<{
+      optimal_weights: Record<string, number>;
+      expected_return: number;
+      expected_risk: number;
+      sharpe_ratio: number;
+    }>>(`/optimization/mpt`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols, target_return: targetReturn, target_risk: targetRisk }),
     });
   },
 
-  // 分析投资组合风险
-  analyzeRisk: (portfolio: Record<string, number>, period: string = '1y', confidence: number = 0.95) => {
-    return request<ApiResponse<{
-      portfolio: Record<string, number>;
-      period: string;
-      confidence: number;
-      risk_level: string;
-      var_95: number;
-      var_99: number;
-      cvar_95: number;
+  efficientFrontier: (symbols: string[], points: number = 20) => {
+    return request<ApiResponse<Array<{ return: number; risk: number; weights: Record<string, number> }>>>(`/optimization/efficient-frontier`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols, points }),
+    });
+  },
+
+  covarianceMatrix: (symbols: string[]) => {
+    return request<ApiResponse<Record<string, Record<string, number>>>>(`/optimization/covariance`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  },
+
+  etfStatistics: (symbols: string[]) => {
+    return request<ApiResponse<Record<string, {
+      mean_return: number;
       volatility: number;
       sharpe_ratio: number;
-      sortino_ratio: number;
       max_drawdown: number;
-      calmar_ratio: number;
-      beta: number;
-      alpha: number;
-      portfolio_risks: Array<{
-        symbol: string;
-        weight: number;
-        componentVar: number;
-        marginalVar: number;
-      }>;
-      data_points: number;
-    }>>(`/portfolio/risk`, {
+    }>>>(`/optimization/etf-statistics`, {
       method: 'POST',
-      body: JSON.stringify({ portfolio, period, confidence }),
+      body: JSON.stringify({ symbols }),
+    });
+  },
+
+  riskParity: (symbols: string[]) => {
+    return request<ApiResponse<{
+      weights: Record<string, number>;
+      risk_contributions: Record<string, number>;
+    }>>(`/optimization/risk-parity`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  },
+
+  blackLitterman: (symbols: string[], views: Array<{ symbol: string; return: number; confidence: number }>) => {
+    return request<ApiResponse<{
+      posterior_returns: Record<string, number>;
+      optimal_weights: Record<string, number>;
+    }>>(`/optimization/black-litterman`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols, views }),
+    });
+  },
+
+  marketImpliedReturns: (symbols: string[], marketPortfolio?: Record<string, number>) => {
+    return request<ApiResponse<Record<string, number>>>(`/optimization/market-implied-returns`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols, market_portfolio: marketPortfolio }),
     });
   },
 };
 
-// 汇率API
-export const exchangeRateAPI = {
-  // 获取汇率列表
-  getRates: () => {
-    return request<ApiResponse<ExchangeRate[]>>(`/exchange-rates/`);
-  },
-
-  // 获取汇率历史
-  getHistory: (from: string = 'USD', to: string = 'CNY', days: number = 30) => {
-    return request<ApiResponse<{ date: string; rate: number }[]>>(`/exchange-rates/history?from=${from}&to=${to}&days=${days}`);
-  },
-
-  // 货币转换
-  convert: (from: string, to: string, amount: number) => {
-    return request<ApiResponse<{ from: string; to: string; amount: number; result: number }>>(`/exchange-rates/convert?from=${from}&to=${to}&amount=${amount}`);
-  },
-
-  // 更新汇率
-  updateRates: () => {
-    return request<ApiResponse<{ message: string }>>(`/exchange-rates/update`, {
+// 因子分析API
+export const factorAPI = {
+  analyzeExposure: (symbol: string, factors: string[] = ['market', 'size', 'value', 'momentum', 'quality']) => {
+    return request<ApiResponse<{
+      exposures: Record<string, number>;
+      r_squared: number;
+    }>>(`/factor/analyze`, {
       method: 'POST',
+      body: JSON.stringify({ symbol, factors }),
+    });
+  },
+
+  analyzePortfolio: (allocation: Record<string, number>) => {
+    return request<ApiResponse<{
+      portfolio_exposures: Record<string, number>;
+      factor_contributions: Record<string, number>;
+    }>>(`/factor/portfolio`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation }),
+    });
+  },
+
+  analyzeMultipleAssets: (symbols: string[]) => {
+    return request<ApiResponse<Record<string, Record<string, number>>>>(`/factor/multi-asset`, {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  },
+
+  getStatistics: () => {
+    return request<ApiResponse<{
+      factors: Array<{ name: string; description: string; annualized_return: number; volatility: number }>;
+      correlations: Record<string, Record<string, number>>;
+    }>>(`/factor/statistics`);
+  },
+
+  decomposeRisk: (allocation: Record<string, number>) => {
+    return request<ApiResponse<{
+      total_risk: number;
+      factor_risks: Record<string, number>;
+      idiosyncratic_risk: number;
+    }>>(`/factor/risk-decomposition`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation }),
+    });
+  },
+
+  compareAttribution: (allocation1: Record<string, number>, allocation2: Record<string, number>) => {
+    return request<ApiResponse<{
+      allocation1_exposures: Record<string, number>;
+      allocation2_exposures: Record<string, number>;
+      differences: Record<string, number>;
+    }>>(`/factor/compare`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation1, allocation2 }),
     });
   },
 };
 
-// 工作流类型
-interface Workflow {
-  id: number;
-  name: string;
-  description: string;
-  status: number;
-  created_at: string;
-  updated_at: string;
-}
-
-// 工作流API
-export const workflowAPI = {
-  // 获取工作流列表
-  getWorkflows: () => {
-    return request<ApiResponse<Workflow[]>>(`/workflows/`);
+// ETF持仓相关API
+export const etfHoldingAPI = {
+  getHoldings: (symbol: string) => {
+    return request<ApiResponse<{
+      symbol: string;
+      holdings: Array<{ symbol: string; name: string; weight: number; sector: string }>;
+      updated_at: string;
+    }>>(`/etf/${symbol}/holdings`);
   },
 
-  // 创建工作流
-  createWorkflow: (data: Omit<Workflow, 'id' | 'created_at' | 'updated_at'>) => {
-    return request<ApiResponse<Workflow>>(`/workflows/`, {
+  getOverlap: (symbols: string[]) => {
+    return request<ApiResponse<{
+      overlap_matrix: Record<string, Record<string, number>>;
+      average_overlap: number;
+    }>>(`/etf/overlap?symbols=${symbols.join(',')}`);
+  },
+
+  getTopHoldings: (symbol: string, limit: number = 10) => {
+    return request<ApiResponse<Array<{ symbol: string; name: string; weight: number; sector: string }>>>(`/etf/${symbol}/top-holdings?limit=${limit}`);
+  },
+
+  getSectorAllocation: (symbol: string) => {
+    return request<ApiResponse<Record<string, number>>>(`/etf/${symbol}/sector-allocation`);
+  },
+
+  compareHoldings: (symbols: string[]) => {
+    return request<ApiResponse<{
+      common_holdings: Array<{ symbol: string; name: string; weights: Record<string, number> }>;
+      total_overlap: number;
+    }>>(`/etf/holdings/comparison`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ symbols }),
     });
   },
 
-  // 获取工作流详情
-  getWorkflow: (id: number) => {
-    return request<ApiResponse<Workflow>>(`/workflows/${id}`);
+  saveHoldings: (symbol: string, holdings: Array<{ symbol: string; weight: number }>) => {
+    return request<ApiResponse<void>>(`/etf/${symbol}/holdings`, {
+      method: 'POST',
+      body: JSON.stringify({ holdings }),
+    });
+  },
+};
+
+// 回测相关API
+export const backtestAPI = {
+  run: (allocation: Record<string, number>, startDate: string, endDate: string, rebalanceFrequency: string = 'monthly') => {
+    return request<ApiResponse<{
+      total_return: number;
+      annualized_return: number;
+      annualized_volatility: number;
+      sharpe_ratio: number;
+      max_drawdown: number;
+      monthly_returns: Array<{ date: string; return: number }>;
+    }>>(`/backtest/run`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation, start_date: startDate, end_date: endDate, rebalance_frequency: rebalanceFrequency }),
+    });
   },
 
-  // 更新工作流
-  updateWorkflow: (id: number, data: Partial<Omit<Workflow, 'id' | 'created_at' | 'updated_at'>>) => {
-    return request<ApiResponse<Workflow>>(`/workflows/${id}`, {
+  runEventDriven: (allocation: Record<string, number>, events: Array<{ date: string; type: string; impact: Record<string, number> }>) => {
+    return request<ApiResponse<{
+      total_return: number;
+      event_impacts: Array<{ date: string; type: string; portfolio_impact: number }>;
+    }>>(`/backtest/event-driven`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation, events }),
+    });
+  },
+
+  listStrategies: () => {
+    return request<ApiResponse<Array<{ id: string; name: string; description: string; parameters: Record<string, unknown> }>>>(`/backtest/strategies`);
+  },
+
+  analyzeFactors: (allocation: Record<string, number>, period: string = '1y') => {
+    return request<ApiResponse<{
+      factor_returns: Record<string, number>;
+      factor_attributions: Record<string, number>;
+    }>>(`/backtest/factors`, {
+      method: 'POST',
+      body: JSON.stringify({ allocation, period }),
+    });
+  },
+};
+
+// ETF配置API
+export const etfConfigAPI = {
+  getAll: () => {
+    return request<ApiResponse<ETFConfig[]>>(`/etf-configs/`);
+  },
+
+  getById: (id: string) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`);
+  },
+
+  create: (config: Omit<ETFConfig, 'id' | 'created_at' | 'updated_at'>) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/`, {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+  },
+
+  update: (id: string, config: Partial<ETFConfig>) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(config),
     });
   },
 
-  // 删除工作流
-  deleteWorkflow: (id: number) => {
-    return request<ApiResponse<{ message: string }>>(`/workflows/${id}`, {
+  delete: (id: string) => {
+    return request<ApiResponse<void>>(`/etf-configs/${id}`, {
       method: 'DELETE',
     });
   },
 
-  // 启动工作流
-  startWorkflow: (id: number) => {
-    return request<ApiResponse<Workflow>>(`/workflows/${id}/start`, {
+  toggleStatus: (id: string) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/toggle-status`, {
+      method: 'POST',
+    });
+  },
+
+  toggleAutoUpdate: (id: string) => {
+    return request<ApiResponse<ETFConfig>>(`/etf-configs/${id}/auto-update`, {
       method: 'POST',
     });
   },
 };
 
-// 工作流实例类型
-interface WorkflowInstance {
-  id: number;
-  workflow_id: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// 工作流实例API
-export const instanceAPI = {
-  // 获取实例列表
-  getInstances: () => {
-    return request<ApiResponse<WorkflowInstance[]>>(`/instances/`);
+// A股相关API
+export const aShareAPI = {
+  getDefaultETFs: () => {
+    return request<ApiResponse<Array<{ symbol: string; name: string; dividend_yield: number; price: number }>>>(`/a-share/etfs`);
   },
 
-  // 获取实例详情
-  getInstance: (id: number) => {
-    return request<ApiResponse<WorkflowInstance>>(`/instances/${id}`);
-  },
-
-  // 重试实例
-  retryInstance: (id: number) => {
-    return request<ApiResponse<{ message: string }>>(`/instances/${id}/retry`, {
-      method: 'POST',
-    });
-  },
-};
-
-// 调度器任务类型
-interface SchedulerJob {
-  id: string;
-  name: string;
-  schedule: string;
-  last_run?: string;
-  next_run?: string;
-}
-
-// 调度器API
-export const schedulerAPI = {
-  // 获取定时任务
-  getJobs: () => {
-    return request<ApiResponse<SchedulerJob[]>>(`/scheduler/jobs`);
-  },
-
-  // 立即执行一次
-  runOnce: () => {
-    return request<ApiResponse<{ message: string }>>(`/scheduler/run-once`, {
-      method: 'POST',
-    });
-  },
-};
-
-// 系统统计类型
-interface SystemStats {
-  etf_count: number;
-  workflow_count: number;
-  instance_count: number;
-  cache_size: number;
-}
-
-// 操作日志类型
-interface OperationLog {
-  id: number;
-  operation_type: string;
-  operation_name: string;
-  status: number;
-  created_at: string;
-}
-
-// 管理API
-export const adminAPI = {
-  // 获取统计信息
-  getStats: () => {
-    return request<ApiResponse<SystemStats>>(`/admin/stats`);
-  },
-
-  // 获取日志
-  getLogs: () => {
-    return request<ApiResponse<OperationLog[]>>(`/admin/logs`);
-  },
-
-  // 清除缓存
-  clearCache: () => {
-    return request<ApiResponse<{ message: string }>>(`/admin/clear-cache`, {
-      method: 'POST',
-    });
-  },
-};
-
-// 健康检查
-export const healthCheck = () => {
-  return request<{ status: string; message: string }>(`/health`);
-};
-
-// A股红利ETF组合API
-import type { AShareDividendETF, AShareDividendCalculation, AShareETFPrice } from '../types';
-
-export const aSharePortfolioAPI = {
-  // 获取A股红利ETF列表
-  getETFs: () => {
-    return request<ApiResponse<AShareDividendETF[]>>(`/a-share/etfs`);
-  },
-
-  // 获取默认组合
   getDefaultPortfolio: () => {
-    return request<ApiResponse<AShareDividendCalculation>>(`/a-share/portfolio/default`);
-  },
-
-  // 分析组合
-  analyzePortfolio: (investments: Record<string, number>) => {
-    return request<ApiResponse<AShareDividendCalculation>>(`/a-share/portfolio/analyze`, {
-      method: 'POST',
-      body: JSON.stringify({ investments }),
-    });
-  },
-
-  // 更新持仓
-  updateHolding: (symbol: string, investment: number) => {
     return request<ApiResponse<{
-      symbol: string;
-      name: string;
-      investment: number;
-      dividend_yield: number;
+      etfs: Array<{ symbol: string; name: string; weight: number; amount: number }>;
+      total_investment: number;
+    }>>(`/a-share/portfolio/default`);
+  },
+
+  analyzePortfolio: (etfs: Array<{ symbol: string; weight: number }>, totalInvestment: number = 100000) => {
+    return request<ApiResponse<{
       expected_dividend: number;
-    }>>(`/a-share/portfolio/holding/${symbol}`, {
+      dividend_yield: number;
+      risk_metrics: Record<string, number>;
+    }>>(`/a-share/portfolio/analyze`, {
       method: 'POST',
-      body: JSON.stringify({ investment }),
+      body: JSON.stringify({ etfs, total_investment: totalInvestment }),
     });
   },
 
-  // 按频率计算分红
-  getDividendByFrequency: (frequency: 'monthly' | 'quarterly' | 'yearly') => {
-    return request<ApiResponse<{
-      symbol: string;
-      name: string;
-      investment: number;
-      period_dividend: number;
-      annual_dividend: number;
-    }[]>>(`/a-share/dividend/${frequency}`);
-  },
-
-  // 获取所有ETF价格
   getPrices: () => {
-    return request<ApiResponse<AShareETFPrice[]>>(`/a-share/prices`);
+    return request<ApiResponse<Record<string, number>>>(`/a-share/prices`);
   },
 
-  // 获取单个ETF价格
-  getPriceBySymbol: (symbol: string) => {
-    return request<ApiResponse<AShareETFPrice>>(`/a-share/prices/${symbol}`);
-  },
-
-  // 刷新ETF价格
   refreshPrices: () => {
-    return request<ApiResponse<{ message: string }>>(`/a-share/prices/refresh`, {
+    return request<ApiResponse<{ updated: number; failed: number }>>(`/a-share/prices/refresh`, {
       method: 'POST',
     });
   },
 };
 
-// 组合优化API
-export const optimizationAPI = {
-  // MPT均值-方差优化
-  mptOptimize: (data: {
-    symbols: string[];
-    returns: Record<string, number>;
-    cov_matrix: Record<string, Record<string, number>>;
-    objective: 'min_volatility' | 'max_sharpe' | 'target_return';
-    target_return?: number;
-    risk_free_rate?: number;
-    constraints?: {
-      min_weights?: Record<string, number>;
-      max_weights?: Record<string, number>;
-      allow_short?: boolean;
-      max_short_weight?: number;
-    };
-  }) => {
+// 汇率相关API
+export const exchangeRateAPI = {
+  getAll: () => {
+    return request<ApiResponse<ExchangeRate[]>>(`/exchange-rates/`);
+  },
+
+  getRate: (from: string, to: string) => {
+    return request<ApiResponse<ExchangeRate>>(`/exchange-rates/${from}/${to}`);
+  },
+
+  convert: (amount: number, from: string, to: string) => {
+    return request<ApiResponse<{ amount: number; from: string; to: string; result: number; rate: number }>>(`/exchange-rates/convert`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, from, to }),
+    });
+  },
+
+  sync: () => {
+    return request<ApiResponse<{ message: string; updated: number }>>(`/exchange-rates/sync`, {
+      method: 'POST',
+    });
+  },
+
+  getSummary: () => {
     return request<ApiResponse<{
-      weights: Record<string, number>;
-      expected_return: number;
-      volatility: number;
-      sharpe_ratio: number;
-      sortino_ratio: number;
-      diversification_ratio: number;
-      risk_contribution: Record<string, number>;
-      herfindahl_index: number;
-    }>>(`/optimization/mpt`, {
+      total_pairs: number;
+      last_update: string;
+      currencies: string[];
+    }>>(`/exchange-rates/summary`);
+  },
+
+  getCurrencies: () => {
+    return request<ApiResponse<string[]>>(`/exchange-rates/currencies`);
+  },
+};
+
+// 通用ETF API
+export const universalETFAPI = {
+  initialize: () => {
+    return request<ApiResponse<{ message: string; count: number }>>(`/universal-etf/initialize`, {
       method: 'POST',
-      body: JSON.stringify(data),
     });
   },
 
-  // 计算有效前沿
-  efficientFrontier: (data: {
-    symbols: string[];
-    returns: Record<string, number>;
-    cov_matrix: Record<string, Record<string, number>>;
-    num_points?: number;
-    constraints?: {
-      min_weights?: Record<string, number>;
-      max_weights?: Record<string, number>;
-    };
-  }) => {
-    return request<ApiResponse<Array<{
-      target_return: number;
-      min_volatility: number;
-      optimal_weights: Record<string, number>;
-      sharpe_ratio: number;
-    }>>>(`/optimization/efficient-frontier`, {
+  getAll: () => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/`);
+  },
+
+  getBySymbol: (symbol: string) => {
+    return request<ApiResponse<ETFData>>(`/universal-etf/${symbol}`);
+  },
+
+  getByAssetClass: (assetClass: string) => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/asset-class/${assetClass}`);
+  },
+
+  getByRegion: (region: string) => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/region/${region}`);
+  },
+
+  getByType: (etfType: string) => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/type/${etfType}`);
+  },
+
+  search: (query: string) => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/search?q=${encodeURIComponent(query)}`);
+  },
+
+  filter: (filters: Record<string, string | number | boolean>) => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/filter`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(filters),
     });
   },
 
-  // 计算协方差矩阵
-  calculateCovariance: (data: {
-    returns: Record<string, number[]>;
-  }) => {
-    return request<ApiResponse<Record<string, Record<string, number>>>>(`/optimization/covariance`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  getAssetClassDistribution: () => {
+    return request<ApiResponse<Record<string, number>>>(`/universal-etf/distribution/asset-class`);
   },
 
-  // 风险平价优化
-  riskParityOptimize: (data: {
-    symbols: string[];
-    returns: Record<string, number>;
-    cov_matrix: Record<string, Record<string, number>>;
-    method?: 'parity' | 'inverse_vol' | 'budget';
-    risk_budget?: Record<string, number>;
-    constraints?: {
-      min_weights?: Record<string, number>;
-      max_weights?: Record<string, number>;
-      target_volatility?: number;
-      use_leverage?: boolean;
-      max_leverage?: number;
-    };
-  }) => {
+  getRegionDistribution: () => {
+    return request<ApiResponse<Record<string, number>>>(`/universal-etf/distribution/region`);
+  },
+
+  compare: (symbols: string[]) => {
     return request<ApiResponse<{
-      weights: Record<string, number>;
-      risk_contributions: Record<string, number>;
-      expected_return: number;
-      volatility: number;
-      leverage: number;
-      target_volatility: number;
-      diversification_ratio: number;
-    }>>(`/optimization/risk-parity`, {
+      comparison: Record<string, Record<string, number | string>>;
+      correlations: Record<string, Record<string, number>>;
+    }>>(`/universal-etf/compare`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ symbols }),
     });
   },
 
-  // Black-Litterman优化
-  blackLittermanOptimize: (data: {
-    market_weights: Record<string, number>;
-    cov_matrix: Record<string, Record<string, number>>;
-    absolute_views?: Record<string, number>;
-    relative_views?: Array<{
-      asset1: string;
-      asset2: string;
-      expected_diff: number;
-      confidence?: number;
-    }>;
-    risk_aversion?: number;
-    tau?: number;
-    risk_free_rate?: number;
-    constraints?: {
-      min_weights?: Record<string, number>;
-      max_weights?: Record<string, number>;
-    };
-  }) => {
-    return request<ApiResponse<{
-      prior_returns: Record<string, number>;
-      posterior_returns: Record<string, number>;
-      implied_returns: Record<string, number>;
-      optimal_weights: Record<string, number>;
-      expected_return: number;
-      volatility: number;
-      sharpe_ratio: number;
-      confidence: number;
-    }>>(`/optimization/black-litterman`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  getPortfolioAllocation: () => {
+    return request<ApiResponse<Record<string, number>>>(`/universal-etf/portfolio-allocation`);
   },
 
-  // 计算市场隐含收益
-  marketImpliedReturns: (data: {
-    market_weights: Record<string, number>;
-    cov_matrix: Record<string, Record<string, number>>;
-    risk_aversion?: number;
-  }) => {
-    return request<ApiResponse<Record<string, number>>>(`/optimization/market-implied-returns`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  getCategories: () => {
+    return request<ApiResponse<Array<{ id: string; name: string; count: number }>>>(`/universal-etf/categories`);
   },
 
-  // 获取ETF历史统计数据
-  getETFStatistics: (data: {
-    symbols: string[];
-    period?: string;
+  getTopPerformers: (period: string = '1y', limit: number = 10) => {
+    return request<ApiResponse<ETFData[]>>(`/universal-etf/top-performers?period=${period}&limit=${limit}`);
+  },
+};
+
+// 操作日志API
+export const operationLogsAPI = {
+  getLogs: (params?: {
+    page?: number;
+    page_size?: number;
+    log_type?: string;
+    action_type?: string;
+    user?: string;
+    module?: string;
+    start_date?: string;
     end_date?: string;
+    status?: string;
   }) => {
-    return request<ApiResponse<Record<string, {
-      symbol: string;
-      name: string;
-      annualized: number;
-      volatility: number;
-      sharpe: number;
-      max_drawdown: number;
-      data_points: number;
-    }>>>(`/optimization/etf-statistics`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-};
-
-// Fama-French因子分析API
-export const factorAPI = {
-  // 分析单个资产的因子暴露
-  analyzeFactor: (data: {
-    returns: number[];
-    symbol?: string;
-    use_five_factor?: boolean;
-    periods?: number;
-  }) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
     return request<ApiResponse<{
-      exposures: {
-        market: number;
-        size: number;
-        value: number;
-        profitability?: number;
-        investment?: number;
-        alpha: number;
-        r2: number;
-        adj_r2: number;
+      data: Array<{
+        id: number;
+        log_type: string;
+        timestamp: string;
+        user: string;
+        module: string;
+        action_type: string;
+        details: string;
+        ip: string;
+        status: string;
+        status_code: number;
+        error_message: string;
+        duration_ms: number;
+      }>;
+      meta: {
+        pagination: {
+          page: number;
+          page_size: number;
+          total: number;
+          total_pages: number;
+          has_next: boolean;
+          has_prev: boolean;
+        };
+        summary: {
+          total_logs: number;
+          total_audit: number;
+          total_operation: number;
+        };
       };
-      contributions: Record<string, number>;
-      total_return: number;
-      explained_return: number;
-      unexplained_return: number;
-      annualized_alpha: number;
-      t_statistics: Record<string, number>;
-      p_values: Record<string, number>;
-    }>>(`/factor/analyze`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    }>>(`/logs${query}`);
   },
 
-  // 分析投资组合的因子暴露
-  analyzePortfolioFactors: (data: {
-    portfolio_returns: number[];
-    weights?: Record<string, number>;
-    use_five_factor?: boolean;
+  getLogTypes: () => {
+    return request<ApiResponse<string[]>>(`/logs/types`);
+  },
+
+  getActionTypes: () => {
+    return request<ApiResponse<string[]>>(`/logs/action-types`);
+  },
+
+  getUsers: () => {
+    return request<ApiResponse<string[]>>(`/logs/users`);
+  },
+
+  exportLogs: (params?: {
+    format?: 'csv' | 'json';
+    start_date?: string;
+    end_date?: string;
+    log_type?: string;
   }) => {
-    return request<ApiResponse<{
-      exposures: {
-        market: number;
-        size: number;
-        value: number;
-        profitability?: number;
-        investment?: number;
-        alpha: number;
-        r2: number;
-        adj_r2: number;
-      };
-      contributions: Record<string, number>;
-      total_return: number;
-      explained_return: number;
-      unexplained_return: number;
-      annualized_alpha: number;
-      t_statistics: Record<string, number>;
-      p_values: Record<string, number>;
-    }>>(`/factor/portfolio`, {
+    return request<ApiResponse<{ download_url: string; filename: string }>>(`/logs/export`, {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  // 批量分析多个资产的因子暴露
-  analyzeMultipleAssets: (data: {
-    assets: Record<string, number[]>;
-    use_five_factor?: boolean;
-  }) => {
-    return request<ApiResponse<Record<string, {
-      exposures: {
-        market: number;
-        size: number;
-        value: number;
-        profitability?: number;
-        investment?: number;
-        alpha: number;
-        r2: number;
-        adj_r2: number;
-      };
-      contributions: Record<string, number>;
-      total_return: number;
-      explained_return: number;
-      unexplained_return: number;
-      annualized_alpha: number;
-      t_statistics: Record<string, number>;
-      p_values: Record<string, number>;
-    }>>>(`/factor/multi-asset`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  // 获取因子统计信息
-  getFactorStatistics: (params?: { five_factor?: boolean }) => {
-    return request<ApiResponse<Array<{
-      name: string;
-      annualized: number;
-      volatility: number;
-      sharpe: number;
-      max_drawdown: number;
-    }>>>(`/factor/statistics?${params?.five_factor ? 'five_factor=true' : ''}`);
-  },
-
-  // 风险分解
-  decomposeRisk: (data: {
-    exposures: {
-      market: number;
-      size: number;
-      value: number;
-      profitability?: number;
-      investment?: number;
-      alpha: number;
-      r2: number;
-      adj_r2: number;
-    };
-    use_five_factor?: boolean;
-  }) => {
-    return request<ApiResponse<Record<string, number>>>(`/factor/risk-decomposition`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  // 对比因子归因
-  compareFactorAttribution: (data: {
-    portfolios: Record<string, number[]>;
-    factor: string;
-    use_five_factor?: boolean;
-  }) => {
-    return request<ApiResponse<string[]>>(`/factor/compare`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(params || {}),
     });
   },
 };

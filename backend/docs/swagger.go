@@ -26,8 +26,7 @@ func SwaggerSpec() map[string]interface{} {
 		},
 		"paths": getPaths(),
 		"components": map[string]interface{}{
-			"schemas":         getSchemas(),
-			"securitySchemes": getSecuritySchemes(),
+			"schemas": getSchemas(),
 		},
 	}
 }
@@ -61,7 +60,6 @@ func getETFListPath() map[string]interface{} {
 			"tags":        []string{"ETF"},
 			"summary":     "获取ETF列表",
 			"description": "获取ETF列表，支持分页",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"parameters": []map[string]interface{}{
 				{
 					"name":        "page",
@@ -85,7 +83,6 @@ func getETFListPath() map[string]interface{} {
 						},
 					},
 				},
-				"401": getUnauthorizedResponse(),
 				"500": getInternalErrorResponse(),
 			},
 		},
@@ -99,7 +96,6 @@ func getETFDetailPath() map[string]interface{} {
 			"tags":        []string{"ETF"},
 			"summary":     "获取ETF详情",
 			"description": "获取指定ETF的详细信息",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"parameters": []map[string]interface{}{
 				{
 					"name":        "symbol",
@@ -133,7 +129,6 @@ func getETFHistoryPath() map[string]interface{} {
 			"tags":        []string{"ETF"},
 			"summary":     "获取ETF历史数据",
 			"description": "获取ETF历史价格数据",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"parameters": []map[string]interface{}{
 				{
 					"name":        "symbol",
@@ -178,7 +173,6 @@ func getETFComparePath() map[string]interface{} {
 			"tags":        []string{"ETF"},
 			"summary":     "ETF对比分析",
 			"description": "对比多个ETF的关键指标",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"requestBody": map[string]interface{}{
 				"required": true,
 				"content": map[string]interface{}{
@@ -210,7 +204,6 @@ func getPortfolioAnalysisPath() map[string]interface{} {
 			"tags":        []string{"Portfolio"},
 			"summary":     "投资组合分析",
 			"description": "分析投资组合的收益、风险、分红等指标",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"requestBody": map[string]interface{}{
 				"required": true,
 				"content": map[string]interface{}{
@@ -242,7 +235,6 @@ func getPortfolioOptimizePath() map[string]interface{} {
 			"tags":        []string{"Portfolio"},
 			"summary":     "投资组合优化",
 			"description": "使用马科维茨模型优化投资组合权重",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"requestBody": map[string]interface{}{
 				"required": true,
 				"content": map[string]interface{}{
@@ -274,7 +266,6 @@ func getEfficientFrontierPath() map[string]interface{} {
 			"tags":        []string{"Portfolio"},
 			"summary":     "有效前沿计算",
 			"description": "生成投资组合的有效前沿数据",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"requestBody": map[string]interface{}{
 				"required": true,
 				"content": map[string]interface{}{
@@ -306,7 +297,6 @@ func getAShareETFsPath() map[string]interface{} {
 			"tags":        []string{"A-Share"},
 			"summary":     "获取A股ETF列表",
 			"description": "获取A股红利ETF列表",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"responses": map[string]interface{}{
 				"200": map[string]interface{}{
 					"description": "成功",
@@ -329,7 +319,6 @@ func getASharePricesPath() map[string]interface{} {
 			"tags":        []string{"A-Share"},
 			"summary":     "获取A股ETF价格",
 			"description": "获取A股ETF实时价格",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"responses": map[string]interface{}{
 				"200": map[string]interface{}{
 					"description": "成功",
@@ -352,7 +341,6 @@ func getASharePricesRefreshPath() map[string]interface{} {
 			"tags":        []string{"A-Share"},
 			"summary":     "刷新A股ETF价格",
 			"description": "手动刷新A股ETF价格数据",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"responses": map[string]interface{}{
 				"200": map[string]interface{}{
 					"description": "成功",
@@ -375,7 +363,6 @@ func getAShareDividendPath() map[string]interface{} {
 			"tags":        []string{"A-Share"},
 			"summary":     "计算分红收益",
 			"description": "计算A股ETF组合的分红收益",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"requestBody": map[string]interface{}{
 				"required": true,
 				"content": map[string]interface{}{
@@ -407,7 +394,6 @@ func getExchangeRatesPath() map[string]interface{} {
 			"tags":        []string{"Exchange Rate"},
 			"summary":     "获取汇率列表",
 			"description": "获取所有汇率数据",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"responses": map[string]interface{}{
 				"200": map[string]interface{}{
 					"description": "成功",
@@ -430,7 +416,6 @@ func getExchangeRatePath() map[string]interface{} {
 			"tags":        []string{"Exchange Rate"},
 			"summary":     "获取单币种汇率",
 			"description": "获取指定货币的汇率",
-			"security":    []map[string]interface{}{{"BearerAuth": []interface{}{}}},
 			"parameters": []map[string]interface{}{
 				{
 					"name":        "currency",
@@ -531,17 +516,6 @@ func getLivePath() map[string]interface{} {
 func getBadRequestResponse() map[string]interface{} {
 	return map[string]interface{}{
 		"description": "无效的请求",
-		"content": map[string]interface{}{
-			"application/json": map[string]interface{}{
-				"schema": map[string]interface{}{"$ref": "#/components/schemas/ErrorResponse"},
-			},
-		},
-	}
-}
-
-func getUnauthorizedResponse() map[string]interface{} {
-	return map[string]interface{}{
-		"description": "未授权",
 		"content": map[string]interface{}{
 			"application/json": map[string]interface{}{
 				"schema": map[string]interface{}{"$ref": "#/components/schemas/ErrorResponse"},

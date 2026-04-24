@@ -539,15 +539,3 @@ func getExchangeRateSchema() map[string]interface{} {
 		},
 	}
 }
-
-// getSecuritySchemes 返回安全方案定义
-func getSecuritySchemes() map[string]interface{} {
-	return map[string]interface{}{
-		"BearerAuth": map[string]interface{}{
-			"type":         "http",
-			"scheme":       "bearer",
-			"bearerFormat": "JWT",
-			"description":  "JWT认证令牌，格式: Bearer {token}",
-		},
-	}
-}

@@ -50,8 +50,7 @@ ETF-Insight is an open-source ETF analysis platform for professional investors, 
 - ✅ **A-Share Data Source**: AKShare/TuShare integration, real-time market data sync
 - ✅ **Cross-Asset Coverage**: Equity/Bond/Commodity/REIT/Currency/Multi-Asset full coverage
 
-**v2.4 Security & API Documentation Upgrade**:
-- ✅ **JWT Authentication**: Complete authentication middleware, supporting token generation/validation/role control
+**v2.4 API Documentation & Infrastructure Upgrade**:
 - ✅ **Audit Logging**: Asynchronous writing, automatic sensitive information masking, Request ID tracking
 - ✅ **Data Validation**: Generic validation middleware, supporting string/number/email types
 - ✅ **API Pagination**: Generic pagination response structure, supporting page/pageSize parameters
@@ -273,7 +272,7 @@ ETF-Insight/
 ## 🎯 Evolution Roadmap
 
 ### v2.4 ✅
-- ✅ Security upgrade (JWT, audit logging, rate limiting)
+- ✅ Audit logging and data validation
 - ✅ Swagger/OpenAPI 3.0 API documentation
 - ✅ Code quality optimization
 

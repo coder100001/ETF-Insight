@@ -64,13 +64,6 @@ type DataProvider interface {
 
 ### 2. 安全实现
 
-**JWT 认证**:
-```go
-// middleware/auth.go
-authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
-router.Use(authMiddleware.AuthRequired())
-```
-
 **审计日志**:
 ```go
 // middleware/audit.go
@@ -153,7 +146,6 @@ py_project/
 
 | 功能 | 状态 | 文件 |
 |------|------|------|
-| JWT 认证 | ✅ | `middleware/auth.go` |
 | 审计日志 | ✅ | `middleware/audit.go` |
 | 速率限制 | ✅ | `middleware/ratelimit.go` |
 | 数据验证 | ✅ | `middleware/validation.go` |

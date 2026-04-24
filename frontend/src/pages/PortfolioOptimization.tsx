@@ -4,6 +4,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 import { optimizationAPI, etfAPI } from '../services/api';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
+import type { 
+  ETFStatistics, 
+  OptimizationResult, 
+  EfficientFrontierPoint, 
+  RiskParityResult, 
+  BlackLittermanResult 
+} from '../types';
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -69,63 +76,8 @@ const DEFAULT_ETFS: ETFInfo[] = [
   { symbol: 'VNQ', name: 'Vanguard Real Estate' },
 ];
 
-interface OptimizationResult {
-  weights: Record<string, number>;
-  expected_return: number;
-  volatility: number;
-  sharpe_ratio: number;
-  sortino_ratio: number;
-  diversification_ratio: number;
-  risk_contribution: Record<string, number>;
-  herfindahl_index: number;
-}
-
-interface EfficientFrontierPoint {
-  target_return: number;
-  min_volatility: number;
-  optimal_weights: Record<string, number>;
-  sharpe_ratio: number;
-}
-
-interface RiskParityResult {
-  weights: Record<string, number>;
-  risk_contributions: Record<string, number>;
-  expected_return: number;
-  volatility: number;
-  leverage: number;
-  target_volatility: number;
-  diversification_ratio: number;
-}
-
-interface BlackLittermanResult {
-  prior_returns: Record<string, number>;
-  posterior_returns: Record<string, number>;
-  implied_returns: Record<string, number>;
-  optimal_weights: Record<string, number>;
-  expected_return: number;
-  volatility: number;
-  sharpe_ratio: number;
-  confidence: number;
-}
-
-// ETF统计数据类型
-interface ETFStatistics {
-  symbol: string;
-  name: string;
-  annualized: number;
-  volatility: number;
-  sharpe: number;
-  max_drawdown: number;
-  data_points: number;
-}
-
 // 验证ETF统计数据是否合理
 const validateETFStatistics = (stats: ETFStatistics): boolean => {
-  // 检查数据点数是否足够
-  if (!stats.data_points || stats.data_points < 30) {
-    return false;
-  }
-
   // 检查年化收益率是否在合理范围 (-50% 到 +100%)
   if (stats.annualized < -0.5 || stats.annualized > 1.0) {
     return false;
@@ -137,7 +89,7 @@ const validateETFStatistics = (stats: ETFStatistics): boolean => {
   }
 
   // 检查夏普比率是否在合理范围 (-5 到 +5)
-  if (stats.sharpe < -5.0 || stats.sharpe > 5.0) {
+  if (stats.sharpe_ratio < -5.0 || stats.sharpe_ratio > 5.0) {
     return false;
   }
 
@@ -177,7 +129,6 @@ const PortfolioOptimization: React.FC = () => {
   // Black-Litterman状态
   const [blResult, setBlResult] = useState<BlackLittermanResult | null>(null);
   const [absoluteViews, setAbsoluteViews] = useState<Record<string, number>>({});
-  const [relativeViews] = useState<Array<{asset1: string; asset2: string; expected_diff: number; confidence: number}>>([]);
   const [tau, setTau] = useState<number>(0.025);
   const [riskAversion, setRiskAversion] = useState<number>(2.5);
 
@@ -217,17 +168,22 @@ const PortfolioOptimization: React.FC = () => {
 
       setEtfStatsLoading(true);
       try {
-        const response = await optimizationAPI.getETFStatistics({
-          symbols: allSymbols,
-          period: '3y',
-        });
+        const response = await optimizationAPI.etfStatistics(allSymbols);
 
         if (response.success && response.data) {
           // 过滤并验证数据
           const validatedData: Record<string, ETFStatistics> = {};
           Object.entries(response.data).forEach(([symbol, stats]) => {
-            if (validateETFStatistics(stats)) {
-              validatedData[symbol] = stats;
+            const etfStats: ETFStatistics = {
+              symbol: symbol,
+              name: symbol,
+              annualized: stats.mean_return || 0,
+              volatility: stats.volatility || 0,
+              sharpe_ratio: stats.sharpe_ratio || 0,
+              max_drawdown: stats.max_drawdown || 0,
+            };
+            if (validateETFStatistics(etfStats)) {
+              validatedData[symbol] = etfStats;
             } else {
               console.warn(`ETF ${symbol} 的数据未通过验证，使用默认数据`);
             }
@@ -300,25 +256,24 @@ const PortfolioOptimization: React.FC = () => {
 
     setLoading(true);
     try {
-      const returns = generateReturns(selectedETFs);
-      const covMatrix = generateCovarianceMatrix(selectedETFs);
-
-      const response = await optimizationAPI.mptOptimize({
-        symbols: selectedETFs,
-        returns,
-        cov_matrix: covMatrix,
-        objective,
-        target_return: targetReturn,
-        risk_free_rate: riskFreeRate,
-        constraints: {
-          min_weights: minWeights,
-          max_weights: maxWeights,
-          allow_short: false,
-        },
-      });
+      const response = await optimizationAPI.mptOptimize(
+        selectedETFs,
+        objective === 'target_return' ? targetReturn : undefined,
+        undefined
+      );
 
       if (response.success && response.data) {
-        setResult(response.data);
+        const optResult: OptimizationResult = {
+          weights: response.data.optimal_weights,
+          expected_return: response.data.expected_return,
+          expected_risk: response.data.expected_risk,
+          volatility: response.data.expected_risk,
+          sharpe_ratio: response.data.sharpe_ratio,
+          sortino_ratio: 0,
+          diversification_ratio: 0,
+          risk_contribution: {},
+        };
+        setResult(optResult);
         message.success('优化完成');
         setActiveTab('2');
       } else {
@@ -340,22 +295,16 @@ const PortfolioOptimization: React.FC = () => {
 
     setLoading(true);
     try {
-      const returns = generateReturns(selectedETFs);
-      const covMatrix = generateCovarianceMatrix(selectedETFs);
-
-      const response = await optimizationAPI.efficientFrontier({
-        symbols: selectedETFs,
-        returns,
-        cov_matrix: covMatrix,
-        num_points: 20,
-        constraints: {
-          min_weights: minWeights,
-          max_weights: maxWeights,
-        },
-      });
+      const response = await optimizationAPI.efficientFrontier(selectedETFs, 20);
 
       if (response.success && response.data) {
-        setFrontier(response.data);
+        const frontierPoints: EfficientFrontierPoint[] = response.data.map(point => ({
+          target_return: point.return,
+          min_volatility: point.risk,
+          optimal_weights: point.weights,
+          sharpe_ratio: 0,
+        }));
+        setFrontier(frontierPoints);
         message.success('有效前沿计算完成');
         setActiveTab('3');
       } else {
@@ -422,10 +371,15 @@ const PortfolioOptimization: React.FC = () => {
         requestData.risk_budget = riskBudget;
       }
 
-      const response = await optimizationAPI.riskParityOptimize(requestData);
+      const response = await optimizationAPI.riskParity(selectedETFs);
 
       if (response.success && response.data) {
-        setRpResult(response.data);
+        setRpResult({
+          weights: response.data.weights,
+          risk_contributions: response.data.risk_contributions,
+          volatility: 0,
+          diversification_ratio: 0,
+        });
         message.success('风险平价优化完成');
         setActiveTab('4');
       } else {
@@ -448,30 +402,23 @@ const PortfolioOptimization: React.FC = () => {
 
     setLoading(true);
     try {
-      // 构建市场权重（等权重）
-      const marketWeights: Record<string, number> = {};
-      selectedETFs.forEach(symbol => {
-        marketWeights[symbol] = 1.0 / selectedETFs.length;
-      });
-
-      const covMatrix = generateCovarianceMatrix(selectedETFs);
-
-      const response = await optimizationAPI.blackLittermanOptimize({
-        market_weights: marketWeights,
-        cov_matrix: covMatrix,
-        absolute_views: absoluteViews,
-        relative_views: relativeViews,
-        risk_aversion: riskAversion,
-        tau: tau,
-        risk_free_rate: riskFreeRate,
-        constraints: {
-          min_weights: minWeights,
-          max_weights: maxWeights,
-        },
-      });
+      const response = await optimizationAPI.blackLitterman(
+        selectedETFs,
+        Object.entries(absoluteViews).map(([symbol, ret]) => ({
+          symbol,
+          return: ret,
+          confidence: 0.5,
+        }))
+      );
 
       if (response.success && response.data) {
-        setBlResult(response.data);
+        setBlResult({
+          posterior_returns: response.data.posterior_returns,
+          optimal_weights: response.data.optimal_weights,
+          expected_return: 0,
+          expected_risk: 0,
+          sharpe_ratio: 0,
+        });
         message.success('Black-Litterman优化完成');
         setActiveTab('5');
       } else {
@@ -553,10 +500,10 @@ const PortfolioOptimization: React.FC = () => {
                 const stats = etfStatistics[etf.symbol];
                 const displayReturn = stats ? (stats.annualized * 100).toFixed(1) : '-';
                 const displayVol = stats ? (stats.volatility * 100).toFixed(1) : '-';
-                const dataSource = stats?.data_points ? '真实数据' : '暂无数据';
+                const dataSource = stats ? '真实数据' : '暂无数据';
                 return (
                   <Option key={etf.symbol} value={etf.symbol}>
-                    {etf.symbol} - {etf.name} (预期收益: {displayReturn}%, 波动率: {displayVol}%){stats?.data_points ? ` [${dataSource}]` : ''}
+                    {etf.symbol} - {etf.name} (预期收益: {displayReturn}%, 波动率: {displayVol}%){stats ? ` [${dataSource}]` : ''}
                   </Option>
                 );
               })}
@@ -753,9 +700,8 @@ const PortfolioOptimization: React.FC = () => {
                 <Col span={12}>
                   <StyledCard title="组合指标">
                     <p><strong>分散化比率:</strong> {result.diversification_ratio.toFixed(2)}</p>
-                    <p><strong>赫芬达尔指数:</strong> {result.herfindahl_index.toFixed(4)}</p>
                     <p style={{ color: '#666', fontSize: 12 }}>
-                      分散化比率 &gt; 1 表示有分散化效益；赫芬达尔指数越接近0表示分散度越高
+                      分散化比率 &gt; 1 表示有分散化效益
                     </p>
                   </StyledCard>
                 </Col>
@@ -875,19 +821,13 @@ const PortfolioOptimization: React.FC = () => {
               {rpResult ? (
                 <>
                   <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                    <Col span={8}>
-                      <MetricCard>
-                        <MetricValue>{(rpResult.expected_return * 100).toFixed(2)}%</MetricValue>
-                        <MetricLabel>预期收益</MetricLabel>
-                      </MetricCard>
-                    </Col>
-                    <Col span={8}>
+                    <Col span={12}>
                       <MetricCard style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
                         <MetricValue>{(rpResult.volatility * 100).toFixed(2)}%</MetricValue>
                         <MetricLabel>波动率</MetricLabel>
                       </MetricCard>
                     </Col>
-                    <Col span={8}>
+                    <Col span={12}>
                       <MetricCard style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
                         <MetricValue>{rpResult.diversification_ratio.toFixed(2)}</MetricValue>
                         <MetricLabel>分散化比率</MetricLabel>
@@ -991,29 +931,21 @@ const PortfolioOptimization: React.FC = () => {
                         <MetricLabel>预期收益</MetricLabel>
                       </MetricCard>
                     </Col>
-                    <Col span={8}>
-                      <MetricCard style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-                        <MetricValue>{(blResult.volatility * 100).toFixed(2)}%</MetricValue>
-                        <MetricLabel>波动率</MetricLabel>
-                      </MetricCard>
-                    </Col>
-                    <Col span={8}>
+                    <Col span={12}>
                       <MetricCard style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
                         <MetricValue>{blResult.sharpe_ratio.toFixed(2)}</MetricValue>
                         <MetricLabel>夏普比率</MetricLabel>
                       </MetricCard>
                     </Col>
                   </Row>
-                  <StyledCard title="收益估计对比">
+                  <StyledCard title="后验收益估计">
                     <Table
                       dataSource={selectedETFs.map(symbol => ({
                         symbol,
-                        prior: blResult.prior_returns[symbol] || 0,
                         posterior: blResult.posterior_returns[symbol] || 0,
                       }))}
                       columns={[
                         { title: 'ETF', dataIndex: 'symbol', key: 'symbol' },
-                        { title: '先验收益', dataIndex: 'prior', key: 'prior', render: (v: number) => `${(v * 100).toFixed(2)}%` },
                         { title: '后验收益', dataIndex: 'posterior', key: 'posterior', render: (v: number) => `${(v * 100).toFixed(2)}%` },
                       ]}
                       rowKey="symbol"

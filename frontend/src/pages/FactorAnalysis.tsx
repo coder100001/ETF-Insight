@@ -54,18 +54,6 @@ interface ETFInfo {
   name: string;
 }
 
-// 生成模拟收益率数据
-const generateReturns = (periods: number = 36): number[] => {
-  const returns: number[] = [];
-  for (let i = 0; i < periods; i++) {
-    // 模拟月度收益率，平均0.8%，波动率4%
-    const monthlyReturn = 0.008 + (Math.random() - 0.5) * 0.08;
-    returns.push(monthlyReturn);
-  }
-
-  return returns;
-};
-
 interface FactorExposure {
   market: number;
   size: number;
@@ -139,9 +127,17 @@ const FactorAnalysis: React.FC = () => {
 
   const loadFactorStats = async () => {
     try {
-      const response = await factorAPI.getFactorStatistics({ five_factor: useFiveFactor });
+      const response = await factorAPI.getStatistics();
       if (response.success && response.data) {
-        setFactorStats(response.data);
+        // 将API返回的数据转换为组件期望的格式
+        const stats: FactorStats[] = response.data.factors.map(f => ({
+          name: f.name,
+          annualized: f.annualized_return,
+          volatility: f.volatility,
+          sharpe: f.annualized_return / f.volatility,
+          max_drawdown: 0,
+        }));
+        setFactorStats(stats);
       } else if (response.error) {
         console.error('加载因子统计失败:', response.error);
       }
@@ -155,15 +151,41 @@ const FactorAnalysis: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const returns = generateReturns(36);
-      const response = await factorAPI.analyzeFactor({
-        returns,
-        symbol,
-        use_five_factor: useFiveFactor,
-      });
+      const factors = useFiveFactor 
+        ? ['market', 'size', 'value', 'profitability', 'investment']
+        : ['market', 'size', 'value'];
+      
+      const response = await factorAPI.analyzeExposure(symbol, factors);
 
       if (response.success && response.data) {
-        setAttribution(response.data);
+        // 将API返回的数据转换为组件期望的格式
+        const exposures = response.data.exposures;
+        const attribution: FactorAttribution = {
+          exposures: {
+            market: exposures.market || 0,
+            size: exposures.size || 0,
+            value: exposures.value || 0,
+            profitability: exposures.profitability || 0,
+            investment: exposures.investment || 0,
+            alpha: 0,
+            r2: response.data.r_squared,
+            adj_r2: response.data.r_squared,
+          },
+          contributions: {
+            market: exposures.market || 0,
+            smb: exposures.size || 0,
+            hml: exposures.value || 0,
+            rmw: exposures.profitability || 0,
+            cma: exposures.investment || 0,
+          },
+          total_return: 0,
+          explained_return: 0,
+          unexplained_return: 0,
+          annualized_alpha: 0,
+          t_statistics: {},
+          p_values: {},
+        };
+        setAttribution(attribution);
         setActiveTab('2');
         message.success('因子分析完成');
       } else {
@@ -190,20 +212,43 @@ const FactorAnalysis: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const returns = generateReturns(36);
       const weights: Record<string, number> = {};
       selectedETFs.forEach(symbol => {
         weights[symbol] = 1.0 / selectedETFs.length;
       });
 
-      const response = await factorAPI.analyzePortfolioFactors({
-        portfolio_returns: returns,
-        weights,
-        use_five_factor: useFiveFactor,
-      });
+      const response = await factorAPI.analyzePortfolio(weights);
 
       if (response.success && response.data) {
-        setAttribution(response.data);
+        // 将API返回的数据转换为组件期望的格式
+        const portfolioExposures = response.data.portfolio_exposures;
+        const factorContributions = response.data.factor_contributions;
+        const attribution: FactorAttribution = {
+          exposures: {
+            market: portfolioExposures.market || 0,
+            size: portfolioExposures.size || 0,
+            value: portfolioExposures.value || 0,
+            profitability: portfolioExposures.profitability || 0,
+            investment: portfolioExposures.investment || 0,
+            alpha: 0,
+            r2: 0,
+            adj_r2: 0,
+          },
+          contributions: {
+            market: factorContributions.market || 0,
+            smb: factorContributions.size || 0,
+            hml: factorContributions.value || 0,
+            rmw: factorContributions.profitability || 0,
+            cma: factorContributions.investment || 0,
+          },
+          total_return: 0,
+          explained_return: 0,
+          unexplained_return: 0,
+          annualized_alpha: 0,
+          t_statistics: {},
+          p_values: {},
+        };
+        setAttribution(attribution);
         setActiveTab('2');
         message.success('组合因子分析完成');
       } else {
@@ -230,18 +275,39 @@ const FactorAnalysis: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const assets: Record<string, number[]> = {};
-      selectedETFs.forEach(symbol => {
-        assets[symbol] = generateReturns(36);
-      });
-
-      const response = await factorAPI.analyzeMultipleAssets({
-        assets,
-        use_five_factor: useFiveFactor,
-      });
+      const response = await factorAPI.analyzeMultipleAssets(selectedETFs);
 
       if (response.success && response.data) {
-        setMultiAttribution(response.data);
+        // 将API返回的数据转换为组件期望的格式
+        const multiAttr: Record<string, FactorAttribution> = {};
+        Object.entries(response.data).forEach(([symbol, exposures]) => {
+          multiAttr[symbol] = {
+            exposures: {
+              market: exposures.market || 0,
+              size: exposures.size || 0,
+              value: exposures.value || 0,
+              profitability: exposures.profitability || 0,
+              investment: exposures.investment || 0,
+              alpha: 0,
+              r2: 0,
+              adj_r2: 0,
+            },
+            contributions: {
+              market: exposures.market || 0,
+              smb: exposures.size || 0,
+              hml: exposures.value || 0,
+              rmw: exposures.profitability || 0,
+              cma: exposures.investment || 0,
+            },
+            total_return: 0,
+            explained_return: 0,
+            unexplained_return: 0,
+            annualized_alpha: 0,
+            t_statistics: {},
+            p_values: {},
+          };
+        });
+        setMultiAttribution(multiAttr);
         setActiveTab('3');
         message.success('批量因子分析完成');
       } else {

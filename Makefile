@@ -1,7 +1,7 @@
 # ETF-Insight Makefile
 # 统一开发、测试、构建、部署流程
 
-.PHONY: help dev build test clean docker-run docker-build lint backend-frontend restart
+.PHONY: help dev build test clean docker-run docker-build lint backend-frontend restart doccheck doccheck-build doccheck-hook
 
 # 默认目标
 help:
@@ -13,6 +13,8 @@ help:
 	@echo "  make build        - 构建生产版本"
 	@echo "  make test         - 运行所有测试"
 	@echo "  make lint         - 运行代码检查"
+	@echo "  make doccheck     - 运行文档一致性检查"
+	@echo "  make doccheck-hook - 安装文档检查Git钩子"
 	@echo "  make clean        - 清理构建产物"
 	@echo "  make docker-build - 构建 Docker 镜像"
 	@echo "  make docker-run   - 运行 Docker 容器"
@@ -112,3 +114,21 @@ logs:
 # 进入容器
 shell:
 	@docker exec -it etf-insight /bin/sh
+
+# 构建文档检查工具
+doccheck-build:
+	@echo "构建文档一致性检查工具..."
+	@cd tools/doccheck && go build -o doccheck .
+	@echo "构建完成！"
+
+# 运行文档一致性检查
+doccheck: doccheck-build
+	@echo "运行文档一致性检查..."
+	@./tools/doccheck/doccheck --project-root .
+
+# 安装文档检查Git预提交钩子
+doccheck-hook:
+	@echo "安装文档检查Git预提交钩子..."
+	@chmod +x scripts/pre_commit_hook.sh
+	@ln -sf ../../scripts/pre_commit_hook.sh .git/hooks/pre-commit
+	@echo "安装完成！每次 git commit 将自动运行文档一致性检查"

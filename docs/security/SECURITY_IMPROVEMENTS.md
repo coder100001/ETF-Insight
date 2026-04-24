@@ -11,68 +11,7 @@
 
 ## ✅ 已实现的安全功能 (v2.4)
 
-### 1. JWT 身份认证
-
-**实现文件**: `backend/middleware/auth.go`
-
-```go
-// AuthMiddleware JWT认证中间件
-type AuthMiddleware struct {
-    jwtConfig *config.JWTConfig
-}
-
-// NewAuthMiddleware 创建认证中间件
-func NewAuthMiddleware(cfg *config.JWTConfig) *AuthMiddleware {
-    return &AuthMiddleware{jwtConfig: cfg}
-}
-
-// AuthRequired 需要认证的中间件
-func (m *AuthMiddleware) AuthRequired() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        authHeader := c.GetHeader("Authorization")
-        if authHeader == "" {
-            c.JSON(401, gin.H{"error": "未提供认证令牌"})
-            c.Abort()
-            return
-        }
-
-        // 解析 Bearer Token
-        parts := strings.SplitN(authHeader, " ", 2)
-        if len(parts) != 2 || parts[0] != "Bearer" {
-            c.JSON(401, gin.H{"error": "认证格式错误"})
-            c.Abort()
-            return
-        }
-
-        // 验证 Token
-        claims, err := utils.ParseToken(parts[1], m.jwtConfig.SecretKey)
-        if err != nil {
-            c.JSON(401, gin.H{"error": "无效的认证令牌"})
-            c.Abort()
-            return
-        }
-
-        // 将用户信息存入上下文
-        c.Set("user_id", claims.UserID)
-        c.Set("username", claims.Username)
-        c.Set("role", claims.Role)
-        c.Next()
-    }
-}
-```
-
-**配置**:
-```yaml
-# config.yaml
-jwt:
-  secret_key: "your-secret-key-here"
-  expiry_hours: 24
-  refresh_expiry_hours: 168
-```
-
----
-
-### 2. 审计日志
+### 1. 审计日志
 
 **实现文件**: `backend/middleware/audit.go`
 
@@ -135,7 +74,7 @@ func AuditLogger() gin.HandlerFunc {
 
 ---
 
-### 3. 数据验证
+### 2. 数据验证
 
 **实现文件**: `backend/middleware/validation.go`
 
@@ -220,7 +159,7 @@ func ValidateSymbol() gin.HandlerFunc {
 
 ---
 
-### 4. 速率限制
+### 3. 速率限制
 
 **实现文件**: `backend/middleware/ratelimit.go`
 
@@ -291,7 +230,7 @@ func (rl *RateLimiter) Allow(ip string) bool {
 
 ---
 
-### 5. CORS 安全配置
+### 4. CORS 安全配置
 
 **实现文件**: `backend/handlers/middleware.go`
 
@@ -337,7 +276,7 @@ func CORSMiddleware() gin.HandlerFunc {
 
 ---
 
-### 6. 安全响应头
+### 5. 安全响应头
 
 **实现文件**: `backend/middleware/security.go`
 
@@ -380,19 +319,14 @@ func main() {
     router.Use(middleware.AuditLogger())          // 3. 审计日志
     router.Use(handlers.CORSMiddleware())         // 4. CORS
 
-    // 认证中间件
-    authMiddleware := middleware.NewAuthMiddleware(&cfg.JWT)
-
     // 公开路由
     router.GET("/health", healthHandler)
-    router.POST("/api/auth/login", authHandler.Login)
 
-    // 需要认证的路由
-    authorized := router.Group("/api")
-    authorized.Use(authMiddleware.AuthRequired())
+    // API 路由
+    api := router.Group("/api")
     {
-        authorized.GET("/etf/list", etfHandler.GetList)
-        authorized.POST("/portfolio/analyze", portfolioHandler.Analyze)
+        api.GET("/etf/list", etfHandler.GetList)
+        api.POST("/portfolio/analyze", portfolioHandler.Analyze)
     }
 
     // ...
@@ -443,7 +377,6 @@ router.POST("/api/etf", middleware.ValidateInput([]middleware.ValidationRule{
 ## 📋 安全检查清单
 
 ### 部署前检查
-- [x] JWT 认证已启用
 - [x] 审计日志已配置
 - [x] 速率限制已启用
 - [x] CORS 已配置

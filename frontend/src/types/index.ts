@@ -321,3 +321,73 @@ export interface ETFForecastResult {
   annual_return_rate: number;
   effective_annual_return_rate: number;
 }
+
+// ETF统计数据
+export interface ETFStatistics {
+  symbol: string;
+  name: string;
+  annualized: number;
+  volatility: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  mean_return?: number;
+}
+
+// 优化结果
+export interface OptimizationResult {
+  weights: Record<string, number>;
+  expected_return: number;
+  expected_risk: number;
+  volatility: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  diversification_ratio: number;
+  risk_contribution: Record<string, number>;
+}
+
+// 有效前沿点
+export interface EfficientFrontierPoint {
+  target_return: number;
+  min_volatility: number;
+  optimal_weights: Record<string, number>;
+  sharpe_ratio: number;
+}
+
+// 风险平价结果
+export interface RiskParityResult {
+  weights: Record<string, number>;
+  risk_contributions: Record<string, number>;
+  volatility: number;
+  diversification_ratio: number;
+}
+
+// Black-Litterman结果
+export interface BlackLittermanResult {
+  posterior_returns: Record<string, number>;
+  optimal_weights: Record<string, number>;
+  expected_return: number;
+  expected_risk: number;
+  sharpe_ratio: number;
+}
+
+// 风险分析结果
+export interface RiskAnalysisResult {
+  total_risk: number;
+  systematic_risk: number;
+  unsystematic_risk: number;
+  diversification_ratio: number;
+  concentration_risk: string;
+  var_95?: number;
+  var_99?: number;
+  cvar_95?: number;
+  max_drawdown?: number;
+  holdings?: PortfolioRisk[];
+}
+
+// 组合风险
+export interface PortfolioRisk {
+  symbol: string;
+  weight: number;
+  componentVar: number;
+  marginalVar: number;
+}

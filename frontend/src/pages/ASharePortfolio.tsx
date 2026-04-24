@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
-import { aSharePortfolioAPI } from '../services/api';
+import { aShareAPI } from '../services/api';
 import type { AShareDividendCalculation, AShareHoldingDetail, AShareETFPrice } from '../types';
 import { App } from 'antd';
 
@@ -178,11 +178,24 @@ export default function ASharePortfolioPage() {
   const loadPrices = async () => {
     setPriceLoading(true);
     try {
-      const response = await aSharePortfolioAPI.getPrices();
+      const response = await aShareAPI.getPrices();
       if (response.success && response.data) {
+        // API返回的是Record<string, number>，转换为AShareETFPrice格式
         const priceMap: Record<string, AShareETFPrice> = {};
-        response.data.forEach(price => {
-          priceMap[price.symbol] = price;
+        Object.entries(response.data).forEach(([symbol, price]) => {
+          priceMap[symbol] = {
+            symbol,
+            name: symbol,
+            current_price: price,
+            previous_close: price,
+            price_change: 0,
+            price_change_pct: 0,
+            volume: 0,
+            turnover: 0,
+            nav: price,
+            premium_rate: 0,
+            price_updated_at: new Date().toISOString(),
+          };
         });
         setPrices(priceMap);
       }
@@ -197,7 +210,7 @@ export default function ASharePortfolioPage() {
   const handleRefreshPrices = async () => {
     setPriceLoading(true);
     try {
-      await aSharePortfolioAPI.refreshPrices();
+      await aShareAPI.refreshPrices();
       await loadPrices();
       message.success('价格刷新成功');
     } catch {
@@ -212,24 +225,56 @@ export default function ASharePortfolioPage() {
     setLoading(true);
     try {
       const [portfolioResponse, pricesResponse] = await Promise.all([
-        aSharePortfolioAPI.getDefaultPortfolio(),
-        aSharePortfolioAPI.getPrices()
+        aShareAPI.getDefaultPortfolio(),
+        aShareAPI.getPrices()
       ]);
 
       if (portfolioResponse.success && portfolioResponse.data) {
-        setPortfolioData(portfolioResponse.data);
+        // 将API返回的数据转换为组件期望的格式
+        const apiData = portfolioResponse.data;
+        const portfolioCalc: AShareDividendCalculation = {
+          total_investment: apiData.total_investment,
+          expected_annual_dividend: 0,
+          average_dividend_yield: 0,
+          monthly_dividend: 0,
+          quarterly_dividend: 0,
+          holdings: apiData.etfs.map(etf => ({
+            symbol: etf.symbol,
+            name: etf.name,
+            investment: etf.amount,
+            weight: etf.weight,
+            dividend_yield: 0,
+            dividend_frequency: '年分',
+            expected_dividend: 0,
+            dividend_contribution: 0,
+          })),
+        };
+        setPortfolioData(portfolioCalc);
         // 同步投资金额
         const newInvestments: Record<string, number> = {};
-        portfolioResponse.data.holdings.forEach(h => {
-          newInvestments[h.symbol] = h.investment;
+        apiData.etfs.forEach(h => {
+          newInvestments[h.symbol] = h.amount;
         });
         setInvestments(newInvestments);
       }
 
       if (pricesResponse.success && pricesResponse.data) {
+        // API返回的是Record<string, number>，转换为AShareETFPrice格式
         const priceMap: Record<string, AShareETFPrice> = {};
-        pricesResponse.data.forEach(price => {
-          priceMap[price.symbol] = price;
+        Object.entries(pricesResponse.data).forEach(([symbol, price]) => {
+          priceMap[symbol] = {
+            symbol,
+            name: symbol,
+            current_price: price,
+            previous_close: price,
+            price_change: 0,
+            price_change_pct: 0,
+            volume: 0,
+            turnover: 0,
+            nav: price,
+            premium_rate: 0,
+            price_updated_at: new Date().toISOString(),
+          };
         });
         setPrices(priceMap);
       }
@@ -243,9 +288,35 @@ export default function ASharePortfolioPage() {
   // 分析组合
   const analyzePortfolio = async (newInvestments: Record<string, number>) => {
     try {
-      const response = await aSharePortfolioAPI.analyzePortfolio(newInvestments);
+      // 将投资金额转换为API期望的格式
+      const etfs = Object.entries(newInvestments).map(([symbol, weight]) => ({
+        symbol,
+        weight: weight / Object.values(newInvestments).reduce((a, b) => a + b, 0),
+      }));
+      const totalInvestment = Object.values(newInvestments).reduce((a, b) => a + b, 0);
+      
+      const response = await aShareAPI.analyzePortfolio(etfs, totalInvestment);
       if (response.success && response.data) {
-        setPortfolioData(response.data);
+        // 将API返回的数据转换为组件期望的格式
+        const apiData = response.data;
+        const portfolioCalc: AShareDividendCalculation = {
+          total_investment: totalInvestment,
+          expected_annual_dividend: apiData.expected_dividend,
+          average_dividend_yield: apiData.dividend_yield,
+          monthly_dividend: apiData.expected_dividend / 12,
+          quarterly_dividend: apiData.expected_dividend / 4,
+          holdings: etfs.map(etf => ({
+            symbol: etf.symbol,
+            name: etf.symbol,
+            investment: newInvestments[etf.symbol] || 0,
+            weight: etf.weight,
+            dividend_yield: apiData.dividend_yield,
+            dividend_frequency: '年分',
+            expected_dividend: apiData.expected_dividend * etf.weight,
+            dividend_contribution: apiData.expected_dividend * etf.weight,
+          })),
+        };
+        setPortfolioData(portfolioCalc);
       }
     } catch {
       message.error('分析组合失败');

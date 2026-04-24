@@ -42,7 +42,7 @@ const ETFConfigPage: React.FC = () => {
   const loadConfigs = async () => {
     setLoading(true);
     try {
-      const response = await etfConfigAPI.getConfigs();
+      const response = await etfConfigAPI.getAll();
       if (response.success && response.data) {
         const formattedConfigs = response.data.map(config => ({
           ...config,
@@ -76,7 +76,7 @@ const ETFConfigPage: React.FC = () => {
     );
 
     try {
-      const response = await etfConfigAPI.toggleStatus(id, checked ? 1 : 0);
+      const response = await etfConfigAPI.toggleStatus(String(id));
       if (response.success) {
         message.success(`已${checked ? '启用' : '禁用'}ETF`);
       } else {
@@ -110,7 +110,7 @@ const ETFConfigPage: React.FC = () => {
     );
 
     try {
-      const response = await etfConfigAPI.toggleAutoUpdate(id, checked);
+      const response = await etfConfigAPI.toggleAutoUpdate(String(id));
       if (response.success) {
         message.success(`已${checked ? '开启' : '关闭'}自动更新`);
       } else {

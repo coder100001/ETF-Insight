@@ -17,14 +17,6 @@ type Config struct {
 	Schedule     ScheduleConfig     `yaml:"schedule"`
 	Log          LogConfig          `yaml:"log"`
 	ExchangeRate ExchangeRateConfig `yaml:"exchange_rate"`
-	JWT          JWTConfig          `yaml:"jwt"`
-}
-
-// JWTConfig JWT配置
-type JWTConfig struct {
-	SecretKey     string `yaml:"secret_key"`
-	ExpiryHours   int    `yaml:"expiry_hours"`
-	RefreshExpiry int    `yaml:"refresh_expiry_hours"`
 }
 
 // ExchangeRateConfig 汇率数据源配置

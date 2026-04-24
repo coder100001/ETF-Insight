@@ -4,7 +4,7 @@ import { Card, Table, Button, Badge, Space, Modal, Form, Input, InputNumber, Sel
 import { PieChartOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
-import { etfAPI, portfolioAPI } from '../services/api';
+import { etfAPI, portfolioConfigAPI } from '../services/api';
 
 const PageHeader = styled.div`
   display: flex;
@@ -82,7 +82,7 @@ const PortfolioConfigPage: React.FC = () => {
   // 加载组合配置 - 从API获取
   const loadConfigs = async () => {
     try {
-      const result = await portfolioAPI.getConfigs();
+      const result = await portfolioConfigAPI.getAll();
       if (result.success && result.data) {
         setConfigs(result.data.map((c) => {
           const allocationStr = typeof c.allocation === 'string' ? c.allocation : JSON.stringify(c.allocation);

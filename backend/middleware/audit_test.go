@@ -70,12 +70,12 @@ func TestAuditLogger_WithSensitiveData(t *testing.T) {
 
 	router := gin.New()
 	router.Use(AuditLogger())
-	router.POST("/login", func(c *gin.Context) {
+	router.POST("/api/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "logged in"})
 	})
 
 	body := `{"username": "test", "password": "secret123", "api_key": "key123"}`
-	req := httptest.NewRequest("POST", "/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest("POST", "/api/test", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
