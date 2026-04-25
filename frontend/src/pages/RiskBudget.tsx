@@ -42,6 +42,7 @@ const RiskBudget: React.FC = () => {
   const [calculateLoading, setCalculateLoading] = useState(false);
   const [mcLoading, setMcLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('config');
+  const [weightsInput, setWeightsInput] = useState<string>('0.4, 0.3, 0.2, 0.1');
   const [form] = Form.useForm();
 
   const handleCreateConfig = async (values: Record<string, unknown>) => {
@@ -79,7 +80,16 @@ const RiskBudget: React.FC = () => {
 
     setCalculateLoading(true);
     try {
-      const weights = [0.4, 0.3, 0.2, 0.1];
+      const weights = weightsInput.split(',').map(w => parseFloat(w.trim())).filter(w => !isNaN(w));
+      if (weights.length === 0) {
+        message.error('请输入有效的权重');
+        setCalculateLoading(false);
+        return;
+      }
+      const sum = weights.reduce((a, b) => a + b, 0);
+      if (Math.abs(sum - 1.0) > 0.01) {
+        message.warning(`权重总和为 ${sum.toFixed(2)}，建议总和为 1.0`);
+      }
       const result = await riskBudgetAPI.calculateCVaR(selectedConfig.id, weights);
       if (result.success && result.data) {
         setCvarResult(result.data);
@@ -214,6 +224,19 @@ const RiskBudget: React.FC = () => {
                   type="info"
                   style={{ marginBottom: 16 }}
                 />
+                <Row gutter={16} style={{ marginBottom: 16 }}>
+                  <Col span={24}>
+                    <Form.Item label="资产权重 (用逗号分隔，如: 0.4, 0.3, 0.2, 0.1)">
+                      <input
+                        type="text"
+                        value={weightsInput}
+                        onChange={(e) => setWeightsInput(e.target.value)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d9d9d9' }}
+                        placeholder="输入权重，如: 0.4, 0.3, 0.2, 0.1"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Button

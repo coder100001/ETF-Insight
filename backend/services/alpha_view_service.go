@@ -179,7 +179,18 @@ func (s *BlackLittermanService) CalculatePosteriorReturns(configID uint, views [
 
 	pi := s.calculateEquilibriumReturns(marketWeights, covMatrix, config.RiskAversion)
 
-	P, Q, Omega, err := s.buildViewMatrices(views, len(marketWeights))
+	var portfolio models.Portfolio
+	err = s.db.Preload("Positions").First(&portfolio, config.PortfolioID).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to load portfolio %d: %w", config.PortfolioID, err)
+	}
+
+	assetSymbols := make([]string, len(portfolio.Positions))
+	for i, pos := range portfolio.Positions {
+		assetSymbols[i] = pos.Symbol
+	}
+
+	P, Q, Omega, err := s.buildViewMatrices(views, len(marketWeights), assetSymbols)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +285,7 @@ func (s *BlackLittermanService) calculateEquilibriumReturns(weights []decimal.De
 	return returns
 }
 
-func (s *BlackLittermanService) buildViewMatrices(views []models.AlphaView, nAssets int) ([][]decimal.Decimal, []decimal.Decimal, [][]decimal.Decimal, error) {
+func (s *BlackLittermanService) buildViewMatrices(views []models.AlphaView, nAssets int, assetSymbols []string) ([][]decimal.Decimal, []decimal.Decimal, [][]decimal.Decimal, error) {
 	viewCount := len(views)
 
 	P := make([][]decimal.Decimal, viewCount)
@@ -290,7 +301,17 @@ func (s *BlackLittermanService) buildViewMatrices(views []models.AlphaView, nAss
 	}
 
 	for i, view := range views {
-		P[i][0] = decimal.NewFromInt(1)
+		assetIndex := -1
+		for j, symbol := range assetSymbols {
+			if symbol == view.AssetSymbol {
+				assetIndex = j
+				break
+			}
+		}
+		if assetIndex == -1 {
+			return nil, nil, nil, errors.New("asset symbol not found in portfolio: " + view.AssetSymbol)
+		}
+		P[i][assetIndex] = decimal.NewFromInt(1)
 		Q[i] = view.ViewReturn
 
 		omega := decimal.NewFromInt(100).Sub(view.Confidence).Div(decimal.NewFromInt(100))
