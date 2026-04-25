@@ -22,10 +22,10 @@
 ### 关键成就 (v2.4)
 
 ✅ **安全功能全面升级**
-- JWT 身份认证中间件
-- 审计日志自动记录
+- 审计日志自动记录（异步写入，敏感信息脱敏）
 - 数据验证中间件
 - 速率限制器（滑动窗口）
+- 安全响应头配置
 
 ✅ **API 文档系统**
 - Swagger/OpenAPI 3.0 实现
@@ -45,7 +45,7 @@
 
 **多层安全防护**:
 ```
-请求 → 速率限制 → CORS → 安全头 → 认证 → 审计日志 → 处理器
+请求 → 速率限制 → CORS → 安全头 → 审计日志 → 处理器
 ```
 
 **已实现功能**:
@@ -99,7 +99,6 @@ py_project/
 │   ├── docs/           # Swagger 文档
 │   ├── handlers/       # HTTP 处理器
 │   ├── middleware/     # 中间件
-│   │   ├── auth.go     # JWT 认证
 │   │   ├── audit.go    # 审计日志
 │   │   ├── ratelimit.go # 速率限制
 │   │   ├── validation.go # 数据验证
@@ -212,7 +211,7 @@ router.POST("/api/etf", middleware.ValidateInput([]middleware.ValidationRule{
 ETF-Insight v2.4 已达到**生产就绪**状态：
 
 **核心优势**:
-- ✅ 完善的安全体系（JWT、审计、限流）
+- ✅ 完善的安全体系（审计、限流、数据验证）
 - ✅ 完整的 API 文档（Swagger）
 - ✅ 规范的代码质量
 - ✅ 清晰的架构设计

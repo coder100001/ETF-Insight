@@ -172,8 +172,8 @@ for i in {1..110}; do curl -s http://localhost:8080/api/etf/list; done
 openssl rand -base64 32
 
 # 环境变量配置
-export JWT_SECRET_KEY="your-strong-secret-key"
 export FINAGE_API_KEY="your-api-key"
+# 注意：项目当前无用户认证系统，无需JWT密钥配置
 ```
 
 ### 2. 日志脱敏

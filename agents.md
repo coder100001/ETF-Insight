@@ -128,6 +128,23 @@ LOG_LEVEL=info
 - 🔄 **论文复现**: 经典量化策略实现（动量、价值、低波动等）
 - 🔄 **数据导出**: CSV/Excel/JSON 格式，支持学术研究
 
+#### 模型深度融合 (v2.7 规划)
+- 📋 **Alpha+BL闭环**: Fama-French因子择时 → Black-Litterman观点融合
+  - 因子择时信号生成（60日MA斜率、Z-score）
+  - 观点量化与信心水平映射
+  - BL模型后验收益优化
+- 📋 **CVaR风险预算**: 蒙特卡洛模拟 → CVaR约束风险平价
+  - 尾部风险预算设定
+  - 风险贡献分解与优化
+  - 极端行情回撤改善验证
+
+#### 微内核架构 (v2.8 规划)
+- 📋 **插件接口标准化**:
+  - Alpha Generator插件（输入行情/因子，输出观点）
+  - Portfolio Optimizer插件（输入观点，输出权重）
+  - Risk Model插件（输入权重，输出风险指标）
+- 📋 **策略实验台**: 同平台公平竞赛，模型基准对比矩阵
+
 #### 数据源扩展
 - ✅ **插件架构**: 标准化数据源接口，支持自定义数据源
 - 🔄 **另类数据**: 情绪指标、资金流向、宏观经济数据
@@ -394,6 +411,28 @@ git push origin feature/your-feature-name
   - `POST /api/universal-etf/compare` - ETF对比
   - `GET /api/universal-etf/portfolio-allocation` - 组合配置建议
   - `GET /api/universal-etf/categories` - 获取分类列表
+
+### v2.6.1 更新内容 (2026-04-25)
+
+#### 前后端接口一致性修复
+- ✅ **MPT优化API**: Returns/CovMatrix参数改为可选，支持自动从历史数据计算
+- ✅ **有效前沿API**: 同样优化，Returns/CovMatrix可选
+- ✅ **字段名对齐**: 前端类型定义与后端响应完全一致
+  - `weights` (非 `optimal_weights`)
+  - `volatility` (非 `expected_risk`)
+  - `target_return`, `min_volatility`, `optimal_weights`, `sharpe_ratio`
+- ✅ **有效前沿图表修复**:
+  - 动态坐标轴domain计算
+  - tickFormatter格式化显示
+  - 图表边距优化（bottom:50, left:60）
+  - tooltip格式化函数改进
+
+#### 文档一致性维护
+- ✅ **移除JWT残留**: 所有文档中已移除登录/JWT认证相关描述
+  - REVIEW_SUMMARY.md, CODE_REVIEW_REPORT.md
+  - SECURITY_AUDIT.md, EVOLUTION_ROADMAP_2026.md
+  - PROFESSIONAL_ENHANCEMENT.md, TEST_COVERAGE_PLAN.md
+  - archive/overview.md
 
 ### v2.4 更新内容
 

@@ -23,6 +23,12 @@ ETF-Insight is an open-source ETF analysis platform for professional investors, 
 - ✅ **Event-Driven**: Holdings update auto-triggers cache invalidation
 - ✅ **Test Coverage**: portfolio 84.9%, event 73.2%
 
+**v2.6.1 Frontend-Backend API Consistency Fix** (2026-04-25):
+- ✅ **API Parameter Optimization**: MPT/Efficient Frontier Returns/CovMatrix now optional, auto-calculated from historical data
+- ✅ **Field Name Alignment**: Frontend/backend response fields fully consistent (weights/volatility/target_return etc.)
+- ✅ **Efficient Frontier Chart Fix**: Dynamic axis, formatted display, margin optimization
+- ✅ **Documentation Cleanup**: Removed all JWT/login-related residual descriptions
+
 **v2.5 Real-time Data & Quantitative Analysis Upgrade**:
 - ✅ **Real-time Data Acquisition**: Finage API integration, 3-year historical data sync (~388 days)
 - ✅ **Portfolio Scenario Analysis**: Monte Carlo simulation (1000 runs), three market scenarios (optimistic/neutral/pessimistic), VaR/CVaR risk metrics

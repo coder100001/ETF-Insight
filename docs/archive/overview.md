@@ -15,7 +15,6 @@ py_project/
 │   ├── docs/            # Swagger API 文档
 │   ├── handlers/        # HTTP 处理器
 │   ├── middleware/      # 中间件
-│   │   ├── auth.go      # JWT 认证
 │   │   ├── audit.go     # 审计日志
 │   │   ├── ratelimit.go # 速率限制
 │   │   ├── validation.go # 数据验证
@@ -50,7 +49,7 @@ py_project/
 | **ETF 分析** | 收益率、波动率、最大回撤 | `services/etf_analysis.go` |
 | **投资组合** | 马科维茨优化、有效前沿 | `services/portfolio_optimizer.go` |
 | **汇率服务** | 多数据源故障转移 | `services/exchange_rate/` |
-| **安全** | JWT、审计、限流 | `middleware/` |
+| **安全** | 审计、限流（v2.6移除JWT） | `middleware/` |
 | **API 文档** | Swagger/OpenAPI 3.0 | `docs/` |
 
 ### 前端应用
@@ -68,16 +67,17 @@ py_project/
 
 ```
 请求流程:
-Client → Rate Limiter → CORS → Security Headers → Auth → Audit Log → Handler
+Client → Rate Limiter → CORS → Security Headers → Audit Log → Handler
 ```
 
 **已实现**:
-- ✅ JWT 身份认证
-- ✅ 审计日志（自动脱敏）
+- ✅ 审计日志（自动脱敏、异步写入）
 - ✅ 速率限制（滑动窗口）
 - ✅ 数据验证
 - ✅ CORS 配置
 - ✅ 安全响应头
+
+> **注意**: 此文档为v2.4历史归档，JWT认证已在后续版本中移除
 
 ---
 
