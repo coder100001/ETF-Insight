@@ -51,21 +51,17 @@ func (s *RiskBudgetService) validateConfig(config *models.RiskBudgetConfig) erro
 		return errors.New("portfolio_id is required")
 	}
 
-	if config.CVaRConfidence.LessThanOrEqual(decimal.Zero) ||
-		config.CVaRConfidence.GreaterThanOrEqual(decimal.NewFromInt(1)) {
-		return errors.New("CVaR confidence level must be between 0 and 1")
+	if config.CVaRConfidence.IsZero() {
+		config.CVaRConfidence = decimal.NewFromFloat(0.95)
 	}
-
 	if config.CVaRConfidence.LessThan(decimal.NewFromFloat(0.8)) ||
 		config.CVaRConfidence.GreaterThan(decimal.NewFromFloat(0.999)) {
 		return errors.New("CVaR confidence level should be between 0.80 and 0.999")
 	}
 
-	if config.VaRConfidence.LessThanOrEqual(decimal.Zero) ||
-		config.VaRConfidence.GreaterThanOrEqual(decimal.NewFromInt(1)) {
-		return errors.New("VaR confidence level must be between 0 and 1")
+	if config.VaRConfidence.IsZero() {
+		config.VaRConfidence = decimal.NewFromFloat(0.95)
 	}
-
 	if config.VaRConfidence.LessThan(decimal.NewFromFloat(0.8)) ||
 		config.VaRConfidence.GreaterThan(decimal.NewFromFloat(0.999)) {
 		return errors.New("VaR confidence level should be between 0.80 and 0.999")
@@ -97,12 +93,13 @@ func (s *RiskBudgetService) validateConfig(config *models.RiskBudgetConfig) erro
 		return errors.New("total CVaR budget should not exceed 110%")
 	}
 
-	if config.MaxDrawdown.GreaterThan(decimal.Zero) {
-		return errors.New("max drawdown must be negative or zero")
-	}
-
-	if config.MaxDrawdown.LessThan(decimal.NewFromInt(-1)) {
-		return errors.New("max drawdown must be greater than -100%")
+	if !config.MaxDrawdown.IsZero() {
+		if config.MaxDrawdown.GreaterThan(decimal.Zero) {
+			return errors.New("max drawdown must be negative or zero")
+		}
+		if config.MaxDrawdown.LessThan(decimal.NewFromInt(-1)) {
+			return errors.New("max drawdown must be greater than -100%")
+		}
 	}
 
 	return nil
