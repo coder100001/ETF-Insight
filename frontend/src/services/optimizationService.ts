@@ -11,8 +11,9 @@ import type {
 
 export interface MPTOptimizeParams {
   symbols: string[];
+  objective?: 'min_volatility' | 'max_sharpe' | 'target_return';
   targetReturn?: number;
-  targetRisk?: number;
+  riskFreeRate?: number;
 }
 
 export interface BlackLittermanView {
@@ -29,8 +30,9 @@ export interface BlackLittermanView {
 export const optimizeMPT = async (params: MPTOptimizeParams): Promise<OptimizationResult> => {
   const response = await optimizationAPI.mptOptimize(
     params.symbols,
+    params.objective || 'max_sharpe',
     params.targetReturn,
-    params.targetRisk
+    params.riskFreeRate
   );
 
   if (!response.success) {

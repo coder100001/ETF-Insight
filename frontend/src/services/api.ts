@@ -249,7 +249,7 @@ export const portfolioConfigAPI = {
 
 // 优化相关API
 export const optimizationAPI = {
-  mptOptimize: (symbols: string[], targetReturn?: number, targetRisk?: number) => {
+  mptOptimize: (symbols: string[], objective: string = 'max_sharpe', targetReturn?: number, riskFreeRate?: number) => {
     return request<ApiResponse<{
       optimal_weights: Record<string, number>;
       expected_return: number;
@@ -260,7 +260,12 @@ export const optimizationAPI = {
       risk_contribution?: Record<string, number>;
     }>>(`/optimization/mpt`, {
       method: 'POST',
-      body: JSON.stringify({ symbols, target_return: targetReturn, target_risk: targetRisk }),
+      body: JSON.stringify({
+        symbols,
+        objective,
+        target_return: objective === 'target_return' ? targetReturn : undefined,
+        risk_free_rate: riskFreeRate,
+      }),
     });
   },
 

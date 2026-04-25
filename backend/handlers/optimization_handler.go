@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"time"
@@ -32,8 +33,8 @@ func NewOptimizationHandler() *OptimizationHandler {
 // MPTOptimizeRequest 均值-方差优化请求
 type MPTOptimizeRequest struct {
 	Symbols      []string                      `json:"symbols" binding:"required,min=2"`
-	Returns      map[string]float64            `json:"returns" binding:"required"`
-	CovMatrix    map[string]map[string]float64 `json:"cov_matrix" binding:"required"`
+	Returns      map[string]float64            `json:"returns,omitempty"`
+	CovMatrix    map[string]map[string]float64 `json:"cov_matrix,omitempty"`
 	Constraints  *ConstraintConfig             `json:"constraints,omitempty"`
 	Objective    string                        `json:"objective" binding:"required,oneof=min_volatility max_sharpe target_return"`
 	TargetReturn float64                       `json:"target_return,omitempty"`
@@ -88,6 +89,24 @@ func (h *OptimizationHandler) MPTOptimize(c *gin.Context) {
 			Error:   "参数错误: " + err.Error(),
 		})
 		return
+	}
+
+	// 如果未提供 Returns 和 CovMatrix，自动从历史数据计算
+	if req.Returns == nil || req.CovMatrix == nil {
+		returns, covMatrix, err := h.calculateReturnsAndCovMatrix(req.Symbols)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, MPTOptimizeResponse{
+				Success: false,
+				Error:   "无法获取历史数据: " + err.Error(),
+			})
+			return
+		}
+		if req.Returns == nil {
+			req.Returns = returns
+		}
+		if req.CovMatrix == nil {
+			req.CovMatrix = covMatrix
+		}
 	}
 
 	// 设置无风险利率
@@ -794,4 +813,52 @@ func validateETFStatistics(stats *ETFStatistics) bool {
 	}
 
 	return true
+}
+
+// calculateReturnsAndCovMatrix 从历史数据计算预期收益率和协方差矩阵
+func (h *OptimizationHandler) calculateReturnsAndCovMatrix(symbols []string) (map[string]float64, map[string]map[string]float64, error) {
+	// 获取所有ETF的历史价格数据
+	priceData := make(map[string][]models.ETFData)
+	for _, symbol := range symbols {
+		var prices []models.ETFData
+		if err := models.DB.Where("symbol = ?", symbol).Order("date ASC").Limit(252).Find(&prices).Error; err != nil {
+			return nil, nil, err
+		}
+		if len(prices) < 30 {
+			return nil, nil, fmt.Errorf("insufficient data for symbol %s: got %d prices, need at least 30", symbol, len(prices))
+		}
+		priceData[symbol] = prices
+	}
+
+	// 计算日收益率
+	returnsData := make(map[string][]float64)
+	expectedReturns := make(map[string]float64)
+
+	for symbol, prices := range priceData {
+		returns := make([]float64, 0, len(prices)-1)
+		for i := 1; i < len(prices); i++ {
+			if prices[i-1].ClosePrice.GreaterThan(decimal.Zero) {
+				dailyReturn := prices[i].ClosePrice.Sub(prices[i-1].ClosePrice).Div(prices[i-1].ClosePrice)
+				ret, _ := dailyReturn.Float64()
+				returns = append(returns, ret)
+			}
+		}
+		returnsData[symbol] = returns
+
+		// 计算年化预期收益率
+		if len(returns) > 0 {
+			avgReturn := 0.0
+			for _, r := range returns {
+				avgReturn += r
+			}
+			avgReturn /= float64(len(returns))
+			// 年化收益率: (1 + 平均日收益率)^252 - 1
+			expectedReturns[symbol] = math.Pow(1+avgReturn, 252) - 1
+		}
+	}
+
+	// 计算协方差矩阵
+	covMatrix := calculateCovarianceMatrix(returnsData)
+
+	return expectedReturns, covMatrix, nil
 }

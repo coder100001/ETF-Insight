@@ -51,7 +51,8 @@ export const useOptimization = (): UseOptimizationReturn => {
     try {
       const response = await optimizationAPI.mptOptimize(
         params.symbols,
-        params.objective === 'target_return' ? params.targetReturn : undefined,
+        params.objective,
+        params.targetReturn,
         params.targetRisk
       );
 
