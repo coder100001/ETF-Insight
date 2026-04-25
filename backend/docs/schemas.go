@@ -444,7 +444,7 @@ func getHealthResponseSchema() map[string]interface{} {
 		"type": "object",
 		"properties": map[string]interface{}{
 			"status":    map[string]interface{}{"type": "string", "example": "healthy"},
-			"version":   map[string]interface{}{"type": "string", "example": "2.4.0"},
+			"version":   map[string]interface{}{"type": "string", "example": "2.6.0"},
 			"timestamp": map[string]interface{}{"type": "string", "example": "2026-04-14T10:30:00Z"},
 		},
 	}

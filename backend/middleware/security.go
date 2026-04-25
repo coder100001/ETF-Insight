@@ -112,8 +112,12 @@ func SecurityHeaders() gin.HandlerFunc {
 	}
 }
 
+// InputSanitizer 输入净化中间件（预留接口）
+// 当前版本使用参数验证和数据库参数化查询来防止注入攻击
+// 未来版本可在此实现更复杂的输入净化逻辑
 func InputSanitizer() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// TODO: 实现输入净化逻辑，如XSS过滤、SQL注入检测等
 		c.Next()
 	}
 }

@@ -85,8 +85,6 @@ func (r *Router) RegisterRoutes() {
 	r.registerPortfolioRoutes()
 	r.registerOptimizationRoutes()
 	r.registerFactorRoutes()
-	r.registerETFHoldingRoutes()
-	r.registerPortfolioPenetrationRoutes()
 	r.registerCacheRoutes()
 	r.registerBacktestRoutes()
 	r.registerETFConfigRoutes()
@@ -116,6 +114,13 @@ func (r *Router) registerETFRoutes() {
 		etf.GET("/:symbol/metrics", r.handlers.ETF.GetETFMetrics)
 		etf.GET("/:symbol/forecast", r.handlers.ETF.GetETFForecast)
 		etf.GET("/:symbol/risk", r.handlers.ETF.GetETFRisk)
+		// ETF持仓相关路由
+		etf.GET("/:symbol/holdings", r.handlers.ETFHolding.GetETFHoldings)
+		etf.GET("/overlap", r.handlers.ETFHolding.GetETFOverlap)
+		etf.GET("/:symbol/top-holdings", r.handlers.ETFHolding.GetTopHoldings)
+		etf.GET("/:symbol/sector-allocation", r.handlers.ETFHolding.GetSectorAllocation)
+		etf.POST("/holdings/comparison", r.handlers.ETFHolding.GetETFHoldingsComparison)
+		etf.POST("/:symbol/holdings", r.handlers.ETFHolding.SaveETFHoldings)
 	}
 }
 
@@ -127,6 +132,10 @@ func (r *Router) registerPortfolioRoutes() {
 		portfolio.POST("/risk", r.handlers.Portfolio.AnalyzePortfolioRisk)
 		portfolio.POST("/optimize", r.handlers.Optimizer.OptimizePortfolio)
 		portfolio.POST("/efficient-frontier", r.handlers.Optimizer.GetEfficientFrontier)
+		// 投资组合穿透分析相关路由
+		portfolio.POST("/penetration", r.handlers.PortfolioPen.AnalyzePortfolioPenetration)
+		portfolio.POST("/compare", r.handlers.PortfolioPen.ComparePortfolios)
+		portfolio.POST("/sector-exposure", r.handlers.PortfolioPen.GetSectorExposure)
 	}
 
 	configs := r.engine.Group("/api/portfolio-configs")
@@ -163,27 +172,6 @@ func (r *Router) registerFactorRoutes() {
 		factor.GET("/statistics", r.handlers.Factor.GetFactorStatistics)
 		factor.POST("/risk-decomposition", r.handlers.Factor.DecomposeRisk)
 		factor.POST("/compare", r.handlers.Factor.CompareFactorAttribution)
-	}
-}
-
-func (r *Router) registerETFHoldingRoutes() {
-	etf := r.engine.Group("/api/etf")
-	{
-		etf.GET("/:symbol/holdings", r.handlers.ETFHolding.GetETFHoldings)
-		etf.GET("/overlap", r.handlers.ETFHolding.GetETFOverlap)
-		etf.GET("/:symbol/top-holdings", r.handlers.ETFHolding.GetTopHoldings)
-		etf.GET("/:symbol/sector-allocation", r.handlers.ETFHolding.GetSectorAllocation)
-		etf.POST("/holdings/comparison", r.handlers.ETFHolding.GetETFHoldingsComparison)
-		etf.POST("/:symbol/holdings", r.handlers.ETFHolding.SaveETFHoldings)
-	}
-}
-
-func (r *Router) registerPortfolioPenetrationRoutes() {
-	portfolio := r.engine.Group("/api/portfolio")
-	{
-		portfolio.POST("/penetration", r.handlers.PortfolioPen.AnalyzePortfolioPenetration)
-		portfolio.POST("/compare", r.handlers.PortfolioPen.ComparePortfolios)
-		portfolio.POST("/sector-exposure", r.handlers.PortfolioPen.GetSectorExposure)
 	}
 }
 

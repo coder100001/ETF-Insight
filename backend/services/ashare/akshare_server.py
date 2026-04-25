@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import uvicorn
 
-app = FastAPI(title="AKShare Data Service", version="1.0.0")
+app = FastAPI(title="AKShare Data Service", version="2.6.0")
 
 # CORS配置
 app.add_middleware(

@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: ETF-Insight API
   description: ETF 数据管理与分析平台 API
-  version: 1.0.0
+  version: 2.6.0
   contact:
     name: ETF-Insight Team
     email: coder100001@gmail.com

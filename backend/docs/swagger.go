@@ -7,7 +7,7 @@ func SwaggerSpec() map[string]interface{} {
 		"info": map[string]interface{}{
 			"title":       "ETF-Insight API",
 			"description": "开源专业的 ETF 量化分析平台 API 文档。提供ETF数据查询、投资组合分析、量化指标计算等功能。",
-			"version":     "2.4.0",
+			"version":     "2.6.0",
 			"contact": map[string]interface{}{
 				"name":  "ETF-Insight Team",
 				"url":   "https://github.com/coder100001/ETF-Insight",

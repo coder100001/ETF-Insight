@@ -46,16 +46,8 @@ type DatabaseConfig struct {
 	SSLMode  string `yaml:"sslmode"`
 }
 
-// RedisConfig Redis 配置
-type RedisConfig struct {
-	Host     string        `yaml:"host"`
-	Port     int           `yaml:"port"`
-	Password string        `yaml:"password"`
-	DB       int           `yaml:"db"`
-	PoolSize int           `yaml:"pool_size"`
-	Timeout  time.Duration `yaml:"timeout"`
-	Enabled  bool          `yaml:"enabled"`
-}
+// RedisConfig 已移除，使用注释占位避免结构体定义冲突
+// Redis配置功能已整合到内存缓存中，不再需要单独的Redis实例
 
 // GetDSN 构建 PostgreSQL DSN 连接字符串
 func (c *DatabaseConfig) GetDSN() string {

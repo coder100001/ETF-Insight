@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -264,18 +263,5 @@ func RateLimiterHandler(maxRequests int, window time.Duration) gin.HandlerFunc {
 	}
 }
 
-func ValidateIP() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		if net.ParseIP(ip) == nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "无效的IP地址",
-				"code":    "INVALID_IP",
-			})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
+// ValidateIP 已废弃，IP验证由客户端IP自动处理
+// Gin框架的c.ClientIP()会自动验证IP格式，无需额外验证

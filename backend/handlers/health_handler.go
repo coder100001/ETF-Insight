@@ -34,7 +34,7 @@ func ReadyHandler(c *gin.Context) {
 	status := HealthStatus{
 		Status:    "ready",
 		Timestamp: time.Now(),
-		Version:   "1.0.0",
+		Version:   "2.6.0",
 		Services:  make(map[string]bool),
 		Uptime:    time.Since(startTime).String(),
 	}

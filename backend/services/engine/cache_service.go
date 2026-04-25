@@ -186,7 +186,7 @@ func (c *InMemoryCacheService) Description() string {
 
 // Version 版本
 func (c *InMemoryCacheService) Version() string {
-	return "1.0.0"
+	return "2.6.0"
 }
 
 // IsAvailable 是否可用

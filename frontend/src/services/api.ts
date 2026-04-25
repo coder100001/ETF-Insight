@@ -255,6 +255,9 @@ export const optimizationAPI = {
       expected_return: number;
       expected_risk: number;
       sharpe_ratio: number;
+      sortino_ratio?: number;
+      diversification_ratio?: number;
+      risk_contribution?: Record<string, number>;
     }>>(`/optimization/mpt`, {
       method: 'POST',
       body: JSON.stringify({ symbols, target_return: targetReturn, target_risk: targetRisk }),
@@ -291,6 +294,8 @@ export const optimizationAPI = {
     return request<ApiResponse<{
       weights: Record<string, number>;
       risk_contributions: Record<string, number>;
+      volatility?: number;
+      diversification_ratio?: number;
     }>>(`/optimization/risk-parity`, {
       method: 'POST',
       body: JSON.stringify({ symbols }),
@@ -301,6 +306,9 @@ export const optimizationAPI = {
     return request<ApiResponse<{
       posterior_returns: Record<string, number>;
       optimal_weights: Record<string, number>;
+      expected_return?: number;
+      expected_risk?: number;
+      sharpe_ratio?: number;
     }>>(`/optimization/black-litterman`, {
       method: 'POST',
       body: JSON.stringify({ symbols, views }),
