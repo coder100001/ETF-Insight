@@ -3,3 +3,4 @@ export * from './etf';
 export * from './portfolio';
 export * from './optimization';
 export * from './common';
+export * from './factor';

@@ -1,5 +1,11 @@
 // API服务 - 连接Go后端
-import type { ETFData, ETFConfig, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig, ETFHistoryDataItem } from '../types';
+import type {
+  ETFData, ETFConfig, PortfolioAnalysisResult, ExchangeRate, PortfolioConfig, ETFHistoryDataItem,
+  FactorTimingSignal, AlphaView, AlphaViewPerformance, ViewMethod,
+  CreateAlphaViewRequest, UpdateAlphaViewRequest,
+  BlackLittermanConfig, BLPosteriorReturn, CreateBLConfigRequest,
+  RiskBudgetConfig, MonteCarloSimulation, CVaRResult, CreateRiskBudgetRequest
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -22,15 +28,13 @@ interface RetryConfig {
 class RequestCoalescer {
   private pendingRequests = new Map<string, Promise<unknown>>();
 
-  async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number = 30000): Promise<T> {
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
     if (this.pendingRequests.has(key)) {
       return this.pendingRequests.get(key) as Promise<T>;
     }
 
     const promise = fetcher().finally(() => {
-      setTimeout(() => {
-        this.pendingRequests.delete(key);
-      }, ttl);
+      this.pendingRequests.delete(key);
     });
 
     this.pendingRequests.set(key, promise);
@@ -74,6 +78,12 @@ async function requestWithRetry<T>(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        // 429错误使用特殊标记，让重试逻辑识别
+        if (response.status === 429) {
+          const err = new Error(error.error || 'Too many requests');
+          (err as Error & { statusCode: number }).statusCode = 429;
+          throw err;
+        }
         throw new Error(error.error || `HTTP ${response.status}`);
       }
 
@@ -81,8 +91,13 @@ async function requestWithRetry<T>(
     } catch (error) {
       lastError = error as Error;
 
+      const statusCode = (error as Error & { statusCode?: number }).statusCode;
+      const isRateLimit = statusCode === 429;
+
       if (attempt < maxRetries) {
-        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        // 429错误使用更长的退避时间
+        const multiplier = isRateLimit ? 4 : 2;
+        const delay = Math.min(baseDelay * Math.pow(multiplier, attempt), maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -522,8 +537,22 @@ export const aShareAPI = {
 
   getDefaultPortfolio: () => {
     return request<ApiResponse<{
-      etfs: Array<{ symbol: string; name: string; weight: number; amount: number }>;
+      portfolio_id: number;
       total_investment: number;
+      expected_annual_dividend: number;
+      average_dividend_yield: number;
+      monthly_dividend: number;
+      quarterly_dividend: number;
+      holdings: Array<{
+        symbol: string;
+        name: string;
+        investment: number;
+        weight: number;
+        dividend_yield: number;
+        dividend_frequency: string;
+        expected_dividend: number;
+        dividend_contribution: number;
+      }>;
     }>>(`/a-share/portfolio/default`);
   },
 
@@ -731,6 +760,132 @@ export const operationLogsAPI = {
     return request<ApiResponse<{ download_url: string; filename: string }>>(`/logs/export`, {
       method: 'POST',
       body: JSON.stringify(params || {}),
+    });
+  },
+};
+
+// 因子择时API
+export const factorTimingAPI = {
+  calculateSignal: async (factorName: string, lookbackDays: number): Promise<ApiResponse<FactorTimingSignal>> => {
+    return request<ApiResponse<FactorTimingSignal>>('/factor/timing/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        factor_name: factorName,
+        lookback_days: lookbackDays,
+      }),
+    });
+  },
+
+  getSignalHistory: async (factorName: string, startDate: string, endDate: string): Promise<ApiResponse<FactorTimingSignal[]>> => {
+    return request<ApiResponse<FactorTimingSignal[]>>(
+      `/factor/timing/history?factor_name=${factorName}&start_date=${startDate}&end_date=${endDate}`
+    );
+  },
+
+  generateView: async (signal: FactorTimingSignal, targetAsset: string): Promise<ApiResponse<AlphaView>> => {
+    return request<ApiResponse<AlphaView>>('/alpha-views/generate-from-signal', {
+      method: 'POST',
+      body: JSON.stringify({
+        signal_id: signal.id,
+        target_asset: targetAsset,
+      }),
+    });
+  },
+};
+
+// Alpha观点API
+export const alphaViewAPI = {
+  create: async (view: CreateAlphaViewRequest): Promise<ApiResponse<AlphaView>> => {
+    return request<ApiResponse<AlphaView>>('/alpha-views', {
+      method: 'POST',
+      body: JSON.stringify(view),
+    });
+  },
+
+  getActive: async (assetSymbol?: string, method?: ViewMethod): Promise<ApiResponse<AlphaView[]>> => {
+    const params = new URLSearchParams();
+    if (assetSymbol) params.append('asset_symbol', assetSymbol);
+    if (method) params.append('method', method);
+
+    return request<ApiResponse<AlphaView[]>>(`/alpha-views/active?${params.toString()}`);
+  },
+
+  getById: async (id: number): Promise<ApiResponse<AlphaView>> => {
+    return request<ApiResponse<AlphaView>>(`/alpha-views/${id}`);
+  },
+
+  update: async (id: number, view: UpdateAlphaViewRequest): Promise<ApiResponse<AlphaView>> => {
+    return request<ApiResponse<AlphaView>>(`/alpha-views/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(view),
+    });
+  },
+
+  deactivate: async (id: number): Promise<ApiResponse<void>> => {
+    return request<ApiResponse<void>>(`/alpha-views/${id}/deactivate`, {
+      method: 'POST',
+    });
+  },
+
+  validate: async (id: number, actualReturn: number): Promise<ApiResponse<AlphaViewPerformance>> => {
+    return request<ApiResponse<AlphaViewPerformance>>(`/alpha-views/${id}/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ actual_return: actualReturn }),
+    });
+  },
+};
+
+// Black-Litterman API
+export const blackLittermanAPI = {
+  createConfig: async (config: CreateBLConfigRequest): Promise<ApiResponse<BlackLittermanConfig>> => {
+    return request<ApiResponse<BlackLittermanConfig>>('/black-litterman/configs', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+  },
+
+  calculate: async (configId: number, viewIds: number[]): Promise<ApiResponse<BLPosteriorReturn>> => {
+    return request<ApiResponse<BLPosteriorReturn>>('/black-litterman/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        config_id: configId,
+        view_ids: viewIds,
+      }),
+    });
+  },
+
+  getPosteriorReturns: async (configId: number): Promise<ApiResponse<BLPosteriorReturn>> => {
+    return request<ApiResponse<BLPosteriorReturn>>(`/black-litterman/configs/${configId}/posterior`);
+  },
+};
+
+// 风险预算API
+export const riskBudgetAPI = {
+  createConfig: async (config: CreateRiskBudgetRequest): Promise<ApiResponse<RiskBudgetConfig>> => {
+    return request<ApiResponse<RiskBudgetConfig>>('/risk-budget/configs', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+  },
+
+  calculateCVaR: async (configId: number, weights: number[]): Promise<ApiResponse<CVaRResult>> => {
+    return request<ApiResponse<CVaRResult>>('/risk-budget/calculate-cvar', {
+      method: 'POST',
+      body: JSON.stringify({
+        config_id: configId,
+        weights: weights,
+      }),
+    });
+  },
+
+  runMonteCarlo: async (configId: number, simulations: number, timeSteps: number): Promise<ApiResponse<MonteCarloSimulation>> => {
+    return request<ApiResponse<MonteCarloSimulation>>('/risk-budget/monte-carlo', {
+      method: 'POST',
+      body: JSON.stringify({
+        config_id: configId,
+        simulations: simulations,
+        time_steps: timeSteps,
+      }),
     });
   },
 };

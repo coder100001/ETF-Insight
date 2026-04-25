@@ -1,0 +1,350 @@
+package services
+
+import (
+	"testing"
+	"time"
+
+	"etf-insight/models"
+
+	"github.com/shopspring/decimal"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+func setupRiskTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to connect to test database: %v", err)
+	}
+
+	err = db.AutoMigrate(
+		&models.RiskBudgetConfig{},
+		&models.MonteCarloSimulation{},
+		&models.RiskContribution{},
+	)
+	if err != nil {
+		t.Fatalf("Failed to migrate test database: %v", err)
+	}
+
+	return db
+}
+
+func cleanupRiskTestDB(db *gorm.DB) {
+	sqlDB, _ := db.DB()
+	sqlDB.Close()
+}
+
+func TestRiskBudgetService_CreateConfig(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	config := &models.RiskBudgetConfig{
+		PortfolioID:         1,
+		StockCVaRBudget:     decimal.NewFromFloat(0.05),
+		BondCVaRBudget:      decimal.NewFromFloat(0.03),
+		CommodityCVaRBudget: decimal.NewFromFloat(0.02),
+		CashCVaRBudget:      decimal.NewFromFloat(0.01),
+		CVaRConfidence:      decimal.NewFromFloat(0.95),
+		IsActive:            true,
+		EffectiveDate:       time.Now(),
+	}
+
+	err := service.CreateConfig(config)
+	if err != nil {
+		t.Errorf("CreateConfig failed: %v", err)
+	}
+
+	if config.ID == 0 {
+		t.Error("Config ID should not be zero after creation")
+	}
+}
+
+func TestRiskBudgetService_GetConfig(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	config := &models.RiskBudgetConfig{
+		PortfolioID:         1,
+		StockCVaRBudget:     decimal.NewFromFloat(0.05),
+		BondCVaRBudget:      decimal.NewFromFloat(0.03),
+		CommodityCVaRBudget: decimal.NewFromFloat(0.02),
+		CashCVaRBudget:      decimal.NewFromFloat(0.01),
+		CVaRConfidence:      decimal.NewFromFloat(0.95),
+		IsActive:            true,
+		EffectiveDate:       time.Now(),
+	}
+
+	_ = service.CreateConfig(config)
+
+	retrieved, err := service.GetConfig(config.ID)
+	if err != nil {
+		t.Errorf("GetConfig failed: %v", err)
+	}
+
+	if retrieved.PortfolioID != config.PortfolioID {
+		t.Errorf("Expected PortfolioID %d, got %d", config.PortfolioID, retrieved.PortfolioID)
+	}
+}
+
+func TestRiskBudgetService_CalculateHistoricalCVaR(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := []decimal.Decimal{}
+	for i := 0; i < 100; i++ {
+		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
+		returns = append(returns, ret)
+	}
+
+	confidenceLevel := decimal.NewFromFloat(0.95)
+
+	varVaR, varCVaR, err := service.CalculateCVaR(returns, confidenceLevel, false)
+	if err != nil {
+		t.Errorf("CalculateCVaR failed: %v", err)
+	}
+
+	if varVaR.IsZero() {
+		t.Error("VaR should not be zero")
+	}
+
+	if varCVaR.IsZero() {
+		t.Error("CVaR should not be zero")
+	}
+
+	t.Logf("Historical VaR: %s, CVaR: %s", varVaR.String(), varCVaR.String())
+}
+
+func TestRiskBudgetService_CalculateParametricCVaR(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := []decimal.Decimal{}
+	for i := 0; i < 100; i++ {
+		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
+		returns = append(returns, ret)
+	}
+
+	confidenceLevel := decimal.NewFromFloat(0.95)
+
+	varVaR, varCVaR, err := service.CalculateCVaR(returns, confidenceLevel, true)
+	if err != nil {
+		t.Errorf("CalculateCVaR failed: %v", err)
+	}
+
+	if varVaR.IsZero() {
+		t.Error("VaR should not be zero")
+	}
+
+	if varCVaR.IsZero() {
+		t.Error("CVaR should not be zero")
+	}
+
+	t.Logf("Parametric VaR: %s, CVaR: %s", varVaR.String(), varCVaR.String())
+}
+
+func TestRiskBudgetService_CalculateCVaR_InsufficientData(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := []decimal.Decimal{
+		decimal.NewFromFloat(0.01),
+		decimal.NewFromFloat(-0.02),
+		decimal.NewFromFloat(0.03),
+	}
+
+	confidenceLevel := decimal.NewFromFloat(0.95)
+
+	_, _, err := service.CalculateCVaR(returns, confidenceLevel, false)
+	if err == nil {
+		t.Error("Expected error for insufficient data")
+	}
+
+	if err != ErrInsufficientReturns {
+		t.Errorf("Expected ErrInsufficientReturns, got %v", err)
+	}
+}
+
+func TestRiskBudgetService_CalculateRiskContributions(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	weights := []decimal.Decimal{
+		decimal.NewFromFloat(0.4),
+		decimal.NewFromFloat(0.3),
+		decimal.NewFromFloat(0.3),
+	}
+
+	returnsMatrix := make([][]decimal.Decimal, 3)
+	for i := 0; i < 3; i++ {
+		returnsMatrix[i] = make([]decimal.Decimal, 100)
+		for j := 0; j < 100; j++ {
+			returnsMatrix[i][j] = decimal.NewFromFloat(0.001 * float64((j+i*10)%20-10))
+		}
+	}
+
+	confidenceLevel := decimal.NewFromFloat(0.95)
+
+	contributions, err := service.CalculateRiskContributions(weights, returnsMatrix, confidenceLevel)
+	if err != nil {
+		t.Errorf("CalculateRiskContributions failed: %v", err)
+	}
+
+	if len(contributions) != 3 {
+		t.Errorf("Expected 3 contributions, got %d", len(contributions))
+	}
+
+	for i, c := range contributions {
+		if c.Weight.IsZero() {
+			t.Errorf("Contribution %d weight should not be zero", i)
+		}
+		t.Logf("Asset %d: Weight=%s, MarginalCVaR=%s, CVaRContribution=%s, CVaRPercentage=%s",
+			i, c.Weight.String(), c.MarginalCVaR.String(),
+			c.CVaRContribution.String(), c.CVaRPercentage.String())
+	}
+}
+
+func TestRiskBudgetService_RunMonteCarloSimulation(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := []decimal.Decimal{}
+	for i := 0; i < 100; i++ {
+		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
+		returns = append(returns, ret)
+	}
+
+	numSimulations := 1000
+	timeSteps := 252
+
+	simulation, err := service.RunMonteCarloSimulation(1, numSimulations, timeSteps, returns)
+	if err != nil {
+		t.Errorf("RunMonteCarloSimulation failed: %v", err)
+	}
+
+	if simulation.ID == 0 {
+		t.Error("Simulation ID should not be zero after creation")
+	}
+
+	if simulation.NumPaths != numSimulations {
+		t.Errorf("Expected NumPaths %d, got %d", numSimulations, simulation.NumPaths)
+	}
+
+	if simulation.TimeSteps != timeSteps {
+		t.Errorf("Expected TimeSteps %d, got %d", timeSteps, simulation.TimeSteps)
+	}
+
+	t.Logf("Simulation: MeanReturn=%s, StdDev=%s, VaR95=%s, CVaR95=%s",
+		simulation.MeanReturn.String(), simulation.StdDev.String(),
+		simulation.VaR95.String(), simulation.CVaR95.String())
+}
+
+func TestRiskBudgetService_GetSimulation(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := []decimal.Decimal{}
+	for i := 0; i < 100; i++ {
+		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
+		returns = append(returns, ret)
+	}
+
+	created, _ := service.RunMonteCarloSimulation(1, 1000, 252, returns)
+
+	retrieved, err := service.GetSimulation(1)
+	if err != nil {
+		t.Errorf("GetSimulation failed: %v", err)
+	}
+
+	if retrieved.ID != created.ID {
+		t.Errorf("Expected ID %d, got %d", created.ID, retrieved.ID)
+	}
+}
+
+func TestRiskBudgetService_SaveRiskContributions(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	contributions := []models.RiskContribution{
+		{
+			AssetSymbol:      "SPY",
+			Weight:           decimal.NewFromFloat(0.4),
+			CVaRContribution: decimal.NewFromFloat(0.02),
+			MarginalCVaR:     decimal.NewFromFloat(0.05),
+			CVaRPercentage:   decimal.NewFromFloat(40.0),
+			CalculationDate:  time.Now(),
+			CreatedAt:        time.Now(),
+		},
+		{
+			AssetSymbol:      "TLT",
+			Weight:           decimal.NewFromFloat(0.3),
+			CVaRContribution: decimal.NewFromFloat(0.01),
+			MarginalCVaR:     decimal.NewFromFloat(0.03),
+			CVaRPercentage:   decimal.NewFromFloat(30.0),
+			CalculationDate:  time.Now(),
+			CreatedAt:        time.Now(),
+		},
+	}
+
+	err := service.SaveRiskContributions(1, contributions)
+	if err != nil {
+		t.Errorf("SaveRiskContributions failed: %v", err)
+	}
+
+	for _, c := range contributions {
+		if c.ID == 0 {
+			t.Error("Contribution ID should not be zero after creation")
+		}
+	}
+}
+
+func TestRiskBudgetService_GetRiskContributions(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	contributions := []models.RiskContribution{
+		{
+			AssetSymbol:      "SPY",
+			Weight:           decimal.NewFromFloat(0.4),
+			CVaRContribution: decimal.NewFromFloat(0.02),
+			MarginalCVaR:     decimal.NewFromFloat(0.05),
+			CVaRPercentage:   decimal.NewFromFloat(40.0),
+			CalculationDate:  time.Now(),
+			CreatedAt:        time.Now(),
+		},
+	}
+
+	_ = service.SaveRiskContributions(1, contributions)
+
+	retrieved, err := service.GetRiskContributions(1)
+	if err != nil {
+		t.Errorf("GetRiskContributions failed: %v", err)
+	}
+
+	if len(retrieved) != 1 {
+		t.Errorf("Expected 1 contribution, got %d", len(retrieved))
+	}
+
+	if retrieved[0].AssetSymbol != "SPY" {
+		t.Errorf("Expected AssetSymbol SPY, got %s", retrieved[0].AssetSymbol)
+	}
+}

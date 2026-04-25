@@ -14,6 +14,10 @@ import {
   SwapOutlined,
   FundOutlined,
   LineChartOutlined,
+  ClockCircleOutlined,
+  EyeOutlined,
+  CalculatorOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 
@@ -149,6 +153,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <NavLink to="/factor-analysis" $active={isActive('/factor-analysis')}>
             <LineChartOutlined />
             因子分析
+          </NavLink>
+          <NavLink to="/factor-timing" $active={isActive('/factor-timing')}>
+            <ClockCircleOutlined />
+            因子择时
+          </NavLink>
+          <NavLink to="/alpha-views" $active={isActive('/alpha-views')}>
+            <EyeOutlined />
+            Alpha观点
+          </NavLink>
+          <NavLink to="/black-litterman" $active={isActive('/black-litterman')}>
+            <CalculatorOutlined />
+            BL模型配置
+          </NavLink>
+          <NavLink to="/risk-budget" $active={isActive('/risk-budget')}>
+            <SafetyOutlined />
+            风险预算
           </NavLink>
           <Divider />
           <NavLink to="/operation-logs" $active={isActive('/operation-logs')}>

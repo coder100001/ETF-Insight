@@ -412,6 +412,254 @@ git push origin feature/your-feature-name
   - `GET /api/universal-etf/portfolio-allocation` - 组合配置建议
   - `GET /api/universal-etf/categories` - 获取分类列表
 
+### v2.7 实施进度 (2026-04-25)
+
+#### 数据层模型定义（已完成 100%）
+
+##### 因子数据层模型
+- ✅ `models/factor.go` - 因子数据模型
+  - `FactorData` - 因子历史数据（factor_name, date, value, data_source）
+  - `FactorTimingSignal` - 因子择时信号（MA斜率、Z-score、百分位数、信号强度）
+  - 支持Fama-French五因子模型（Mkt-RF, SMB, HML, RMW, CMA）
+  - 信号强度枚举：strong_positive, weak_positive, neutral, weak_negative, strong_negative
+
+##### Alpha观点层模型
+- ✅ `models/alpha_view.go` - Alpha观点模型
+  - `AlphaView` - Alpha观点（资产、观点收益、置信度、类型、方法、有效期）
+  - `AlphaViewPerformance` - 观点表现追踪（实际收益、预测误差、验证状态）
+  - 观点类型：absolute（绝对）、relative（相对）
+  - 观点方法：factor_timing（因子择时）、momentum（动量）、mean_reversion（均值回归）
+  - 观点状态：active（活跃）、expired（过期）、validated（已验证）
+
+- ✅ `models/black_litterman.go` - Black-Litterman模型
+  - `BlackLittermanConfig` - BL模型配置（风险厌恶、先验类型、Omega方法）
+  - `BLPosteriorReturn` - BL后验收益（后验收益、后验权重、后验协方差）
+  - 先验类型：equal_weight（等权）、min_variance（最小方差）、market_cap（市值加权）
+  - Omega方法：Idzorek、HeLitterman
+
+##### 风险预算层模型
+- ✅ `models/risk_budget.go` - 风险预算模型
+  - `RiskBudgetConfig` - CVaR预算配置（CVaR限制、置信水平、时间范围、方法）
+  - `MonteCarloSimulation` - 蒙特卡洛模拟（模拟次数、时间步数、统计指标）
+  - `RiskContribution` - 风险贡献分解（边际风险、风险贡献、百分比贡献）
+  - `RiskBudgetExecution` - 预算执行记录（实际CVaR、预算偏差、调整建议）
+  - 风险方法：historical（历史法）、parametric（参数法）、monte_carlo（蒙特卡洛）
+
+##### 插件架构层模型
+- ✅ `models/plugin.go` - 插件架构模型
+  - `PluginRegistry` - 插件注册表（名称、类型、版本、状态、配置Schema）
+  - `PluginConfiguration` - 插件配置（参数、优先级、触发条件）
+  - `PluginExecutionLog` - 执行日志（输入、输出、耗时、状态）
+  - `ModelBenchmarkMatrix` - 模型基准对比（模型组合、回测期间、性能指标）
+  - `StrategyExperiment` - 策略实验（实验名称、策略配置、结果、状态）
+
+##### 数据库迁移
+- ✅ `migrations/001_add_factor_tables.sql` - 因子数据层迁移脚本
+- ✅ `migrations/002_add_alpha_view_tables.sql` - Alpha观点层迁移脚本
+- ✅ `migrations/003_add_risk_budget_tables.sql` - 风险预算层迁移脚本
+- ✅ `migrations/004_add_plugin_tables.sql` - 插件架构层迁移脚本
+- ✅ `migrations/README.md` - 迁移指南文档
+- ✅ `models/db.go` - AutoMigrate函数更新，注册所有新模型
+
+#### 服务层实现（进行中 50%）
+
+##### 因子数据服务层（已完成 100%）
+- ✅ `services/factor_data_service.go` - 因子数据服务
+  - `CreateFactorData()` - 创建因子数据
+  - `GetFactorData()` - 获取因子数据（按时间范围）
+  - `GetLatestFactorData()` - 获取最新因子数据
+  - `BatchCreateFactorData()` - 批量创建因子数据
+  - `CalculateTimingSignal()` - 计算因子择时信号
+    - 计算60日移动平均斜率
+    - 计算当前Z-score
+    - 计算历史百分位数
+    - 判断信号强度（强/弱 正/负/中性）
+    - 计算预期收益和置信度
+  - `CreateTimingSignal()` - 创建择时信号
+  - `GetTimingSignals()` - 获取择时信号历史
+  - `GetLatestTimingSignal()` - 获取最新择时信号
+
+- ✅ `services/factor_data_service_test.go` - 因子数据服务测试
+  - 12个测试用例，全部通过 ✅
+  - 测试覆盖率：CRUD操作、信号计算、边界条件
+  - 测试辅助函数：setupTestDB、cleanupTestDB
+
+##### Alpha观点服务层（已完成 100%）
+- ✅ `services/alpha_view_service.go` - Alpha观点服务
+  - `AlphaViewService` - Alpha观点管理服务
+    - `CreateAlphaView()` - 创建Alpha观点
+    - `GetAlphaView()` - 获取Alpha观点
+    - `GetActiveAlphaViews()` - 获取活跃观点列表
+    - `UpdateAlphaView()` - 更新Alpha观点
+    - `DeactivateView()` - 停用观点
+    - `GenerateViewFromFactorTiming()` - 从因子择时信号生成观点
+    - `RecordViewPerformance()` - 记录观点表现
+    - `GetViewPerformance()` - 获取观点表现
+    - `validateView()` - 观点验证（类型、置信度、有效期）
+
+  - `BlackLittermanService` - Black-Litterman服务
+    - `CreateConfig()` - 创建BL配置
+    - `GetConfig()` - 获取BL配置
+    - `UpdateConfig()` - 更新BL配置
+    - `CalculatePosteriorReturns()` - 计算后验收益
+    - `GetPosteriorReturns()` - 获取后验收益
+    - `validateConfig()` - 配置验证
+    - `parseMarketWeights()` - 解析市场权重JSON
+    - `parseCovarianceMatrix()` - 解析协方差矩阵JSON
+    - `calculateEquilibriumReturns()` - 计算均衡收益
+    - `buildViewMatrices()` - 构建观点矩阵（P, Q, Omega）
+    - `blFormula()` - BL公式计算
+    - `calculateMatrixInverse()` - 矩阵求逆
+    - `calculateMatrixMultiply()` - 矩阵乘法
+    - `calculateMatrixTranspose()` - 矩阵转置
+
+##### 风险预算服务层（待实现 0%）
+- 📋 `services/risk_budget_service.go` - 风险预算服务（待实现）
+  - CVaR计算（历史法、参数法、蒙特卡洛）
+  - 风险贡献分解
+  - 风险预算优化
+  - 蒙特卡洛模拟
+
+##### 插件管理服务层（待实现 0%）
+- 📋 `services/plugin_service.go` - 插件管理服务（待实现）
+  - 插件注册机制
+  - 插件配置管理
+  - 插件执行引擎
+
+#### 前端实施方案（已完成文档）
+
+##### 完整实施方案文档
+- ✅ `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md` - 前后端一体化实施方案
+  - **前端页面改造方案**：4个新页面 + 2个现有页面增强
+    - `FactorTiming.tsx` - 因子择时信号分析页面
+    - `AlphaViews.tsx` - Alpha观点管理页面
+    - `BlackLittermanConfig.tsx` - BL模型配置页面
+    - `RiskBudget.tsx` - 风险预算管理页面
+    - `PortfolioOptimization.tsx` 增强 - 集成BL优化器
+    - `FactorAnalysis.tsx` 增强 - 添加择时信号展示
+
+  - **后端API接口规范**：15个API端点完整定义
+    - `POST /api/factor/timing/calculate` - 计算择时信号
+    - `GET /api/factor/timing/history` - 获取信号历史
+    - `POST /api/alpha-views` - 创建Alpha观点
+    - `GET /api/alpha-views/active` - 获取活跃观点
+    - `POST /api/alpha-views/generate-from-signal` - 从信号生成观点
+    - `POST /api/black-litterman/configs` - 创建BL配置
+    - `POST /api/black-litterman/calculate` - 计算后验收益
+    - `POST /api/risk-budget/configs` - 创建风险预算配置
+    - `POST /api/risk-budget/calculate-cvar` - 计算CVaR
+    - `POST /api/risk-budget/monte-carlo` - 运行蒙特卡洛模拟
+    - `POST /api/kimi/market-analysis` - AI市场分析
+    - `POST /api/kimi/alpha-view` - AI观点生成
+
+  - **数据交互协议**：统一请求/响应格式
+    - 成功响应：`{ success: true, data: {...}, message: "..." }`
+    - 错误响应：`{ success: false, error: "...", error_code: "...", details: {...} }`
+    - 分页格式：`{ success: true, data: [...], pagination: {...} }`
+
+  - **TypeScript类型定义**：完整类型系统
+    - `FactorTimingSignal` - 因子择时信号类型
+    - `AlphaView` - Alpha观点类型
+    - `BlackLittermanConfig` - BL配置类型
+    - `RiskBudgetConfig` - 风险预算配置类型
+    - `MonteCarloSimulation` - 蒙特卡洛模拟类型
+
+  - **API服务封装**：前端API调用封装
+    - `factorTimingAPI` - 因子择时API
+    - `alphaViewAPI` - Alpha观点API
+    - `blackLittermanAPI` - Black-Litterman API
+    - `riskBudgetAPI` - 风险预算API
+    - `kimiAPI` - Kimi AI API
+
+  - **前后端联调方案**：开发环境配置、测试流程
+    - 后端配置：SERVER_PORT, CORS_ALLOWED_ORIGINS, KIMI_API_KEY
+    - 前端配置：VITE_API_BASE_URL, VITE_KIMI_API_KEY
+    - 单元测试：后端Handler测试、前端组件测试
+    - 集成测试：端到端测试脚本
+    - API测试：HTTP测试用例
+
+  - **兼容性处理策略**：向后兼容、渐进式增强
+    - API版本管理：`/api/v1` 和 `/api/v2` 并存
+    - 数据库迁移：渐进式迁移，保留旧表结构
+    - 前端特性检测：动态检测API功能支持
+    - 浏览器兼容：Polyfill配置、CSS前缀
+
+  - **分阶段实施计划**：6个阶段，共6周
+    - 阶段一：基础设施准备（1周）
+    - 阶段二：因子择时模块（1周）
+    - 阶段三：Alpha观点模块（1周）
+    - 阶段四：Black-Litterman模块（1.5周）
+    - 阶段五：风险预算模块（1.5周）
+    - 阶段六：集成测试与优化（1周）
+
+  - **Kimi2.6接口接入指南**：完整的AI集成方案
+    - `KimiService` - Kimi API调用封装
+    - `GenerateMarketAnalysis()` - 市场分析生成
+    - `GenerateAlphaView()` - Alpha观点生成
+    - 前端集成：AI分析按钮、实时结果展示
+
+#### 进度统计
+
+| 模块 | 完成度 | 详情 |
+|------|--------|------|
+| 数据模型 | 100% | 15个模型已定义 |
+| 数据库迁移 | 100% | 4个迁移脚本已创建 |
+| 服务层接口 | 50% | 2/4个服务层已实现 |
+| 测试用例 | 25% | 12个测试用例已编写 |
+| 前端方案 | 100% | 完整实施方案文档 |
+| **总体进度** | **37.5%** | Phase 1 进行中 |
+
+#### 关键成果
+
+##### 闭环一：Alpha模型 + Black-Litterman（已实现后端）
+1. **因子择时信号生成** ✅
+   - 计算60日移动平均斜率
+   - 计算当前Z-score
+   - 生成预期收益和信心水平
+
+2. **Alpha观点格式** ✅
+   - `[资产, 观点收益, 信心水平]`
+   - 支持绝对和相对观点
+
+3. **Black-Litterman集成** ✅
+   - 市场隐含均衡收益计算
+   - 观点误差矩阵Ω构建
+   - 后验收益计算
+
+##### 闭环二：风险预算 + 风险平价（待实现）
+1. **CVaR计算** 📋 待实现
+   - 蒙特卡洛模拟
+   - 历史模拟法
+   - 参数法
+
+2. **风险贡献分解** 📋 待实现
+   - 欧拉分配：`RC_i = w_i × ∂CVaR/∂w_i`
+   - 预算约束优化
+
+3. **风险预算优化** 📋 待实现
+   - 最小化预算偏差
+   - 偏度约束
+
+#### 下一步计划
+
+**本周目标（2026-04-25 ~ 2026-05-01）**：✅ 已完成
+- ✅ 实现因子数据服务层
+- ✅ 实现Alpha观点服务层
+- ✅ 编写测试用例
+- ✅ 创建前后端一体化实施方案
+
+**下周目标（2026-05-02 ~ 2026-05-08）**：
+- 编写Alpha观点服务层测试用例
+- 实现风险预算服务层接口
+- 编写风险预算模型测试用例
+- 开始前端页面开发（Kimi负责）
+
+#### 文档更新
+- ✅ `docs/DOCUMENT_INDEX.md` - 添加前后端实施方案文档
+- ✅ `docs/roadmap/EVOLUTION_ROADMAP_2026.md` - 标记v2.7进度
+- ✅ `docs/development/v2.7_phase1_progress.md` - Phase 1进度文档
+- ✅ `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md` - 前后端实施方案
+
 ### v2.6.1 更新内容 (2026-04-25)
 
 #### 前后端接口一致性修复

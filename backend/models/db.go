@@ -83,6 +83,25 @@ func AutoMigrate() error {
 		&Price{},
 		&Portfolio{},
 		&PortfolioPosition{},
+		// 新增因子数据层模型
+		&FactorData{},
+		&FactorTimingSignal{},
+		// 新增Alpha观点层模型
+		&AlphaView{},
+		&AlphaViewPerformance{},
+		&BlackLittermanConfig{},
+		&BLPosteriorReturn{},
+		// 新增风险预算层模型
+		&RiskBudgetConfig{},
+		&MonteCarloSimulation{},
+		&RiskContribution{},
+		&RiskBudgetExecution{},
+		// 新增插件架构层模型
+		&PluginRegistry{},
+		&PluginConfiguration{},
+		&PluginExecutionLog{},
+		&ModelBenchmarkMatrix{},
+		&StrategyExperiment{},
 	)
 }
 

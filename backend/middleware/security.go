@@ -74,7 +74,7 @@ func (rl *rateLimiter) allow(ip string) bool {
 	return true
 }
 
-var limiter = newRateLimiter(100, time.Minute)
+var limiter = newRateLimiter(300, time.Minute)
 
 func RateLimiter() gin.HandlerFunc {
 	return func(c *gin.Context) {

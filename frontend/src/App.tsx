@@ -16,6 +16,10 @@ import TechnicalAnalysis from './pages/TechnicalAnalysis';
 import RiskAnalysis from './pages/RiskAnalysis';
 import PortfolioOptimization from './pages/PortfolioOptimization';
 import FactorAnalysis from './pages/FactorAnalysis';
+import FactorTiming from './pages/FactorTiming';
+import AlphaViews from './pages/AlphaViews';
+import BlackLittermanConfig from './pages/BlackLittermanConfig';
+import RiskBudget from './pages/RiskBudget';
 import './App.css';
 
 const antdTheme = {
@@ -64,6 +68,10 @@ const App: FC = () => {
             <Route path="/risk-analysis" element={<RiskAnalysis />} />
             <Route path="/portfolio-optimization" element={<PortfolioOptimization />} />
             <Route path="/factor-analysis" element={<FactorAnalysis />} />
+            <Route path="/factor-timing" element={<FactorTiming />} />
+            <Route path="/alpha-views" element={<AlphaViews />} />
+            <Route path="/black-litterman" element={<BlackLittermanConfig />} />
+            <Route path="/risk-budget" element={<RiskBudget />} />
 
             <Route path="/operation-logs" element={<OperationLogs />} />
             <Route path="/exchange-rate" element={<ExchangeRate />} />
