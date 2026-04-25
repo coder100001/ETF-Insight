@@ -95,11 +95,18 @@ func AuditLogger() gin.HandlerFunc {
 			return
 		}
 
-		go func(log *models.AuditLog) {
-			if err := models.DB.Create(log).Error; err != nil {
+		// 在测试环境中同步写入，避免race condition
+		if gin.Mode() == gin.TestMode {
+			if err := models.DB.Create(auditLog).Error; err != nil {
 				utils.Error("Failed to create audit log", err)
 			}
-		}(auditLog)
+		} else {
+			go func(log *models.AuditLog) {
+				if err := models.DB.Create(log).Error; err != nil {
+					utils.Error("Failed to create audit log", err)
+				}
+			}(auditLog)
+		}
 	}
 }
 
