@@ -58,10 +58,10 @@ export const useOptimization = (): UseOptimizationReturn => {
 
       if (response.success && response.data) {
         const optResult: OptimizationResult = {
-          weights: response.data.optimal_weights,
+          weights: response.data.weights ?? {},
           expected_return: response.data.expected_return,
-          expected_risk: response.data.expected_risk,
-          volatility: response.data.expected_risk,
+          expected_risk: response.data.volatility,
+          volatility: response.data.volatility,
           sharpe_ratio: response.data.sharpe_ratio,
           sortino_ratio: response.data.sortino_ratio ?? 0,
           diversification_ratio: response.data.diversification_ratio ?? 0,

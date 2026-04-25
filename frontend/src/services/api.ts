@@ -251,9 +251,9 @@ export const portfolioConfigAPI = {
 export const optimizationAPI = {
   mptOptimize: (symbols: string[], objective: string = 'max_sharpe', targetReturn?: number, riskFreeRate?: number) => {
     return request<ApiResponse<{
-      optimal_weights: Record<string, number>;
+      weights: Record<string, number>;
       expected_return: number;
-      expected_risk: number;
+      volatility: number;
       sharpe_ratio: number;
       sortino_ratio?: number;
       diversification_ratio?: number;

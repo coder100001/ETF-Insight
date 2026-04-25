@@ -59,8 +59,8 @@ type MPTOptimizeResponse struct {
 // EfficientFrontierRequest 有效前沿请求
 type EfficientFrontierRequest struct {
 	Symbols     []string                      `json:"symbols" binding:"required,min=2"`
-	Returns     map[string]float64            `json:"returns" binding:"required"`
-	CovMatrix   map[string]map[string]float64 `json:"cov_matrix" binding:"required"`
+	Returns     map[string]float64            `json:"returns,omitempty"`
+	CovMatrix   map[string]map[string]float64 `json:"cov_matrix,omitempty"`
 	Constraints *ConstraintConfig             `json:"constraints,omitempty"`
 	NumPoints   int                           `json:"num_points,omitempty"`
 }
@@ -192,6 +192,24 @@ func (h *OptimizationHandler) EfficientFrontier(c *gin.Context) {
 	}
 	if req.NumPoints > 100 {
 		req.NumPoints = 100
+	}
+
+	// 如果未提供 Returns 和 CovMatrix，自动从历史数据计算
+	if req.Returns == nil || req.CovMatrix == nil {
+		returns, covMatrix, err := h.calculateReturnsAndCovMatrix(req.Symbols)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, EfficientFrontierResponse{
+				Success: false,
+				Error:   "无法获取历史数据: " + err.Error(),
+			})
+			return
+		}
+		if req.Returns == nil {
+			req.Returns = returns
+		}
+		if req.CovMatrix == nil {
+			req.CovMatrix = covMatrix
+		}
 	}
 
 	// 构建约束条件

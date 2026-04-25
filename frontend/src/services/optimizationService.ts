@@ -44,10 +44,10 @@ export const optimizeMPT = async (params: MPTOptimizeParams): Promise<Optimizati
   }
 
   return {
-    weights: response.data.optimal_weights,
+    weights: response.data.weights ?? {},
     expected_return: response.data.expected_return,
-    expected_risk: response.data.expected_risk,
-    volatility: response.data.expected_risk,
+    expected_risk: response.data.volatility,
+    volatility: response.data.volatility,
     sharpe_ratio: response.data.sharpe_ratio,
     sortino_ratio: 0,
     diversification_ratio: 0,
