@@ -76,10 +76,10 @@ export const calculateEfficientFrontier = async (
   }
 
   return response.data.map(point => ({
-    target_return: point.return,
-    min_volatility: point.risk,
-    optimal_weights: point.weights,
-    sharpe_ratio: point.return / point.risk,
+    target_return: point.target_return,
+    min_volatility: point.min_volatility,
+    optimal_weights: point.optimal_weights,
+    sharpe_ratio: point.sharpe_ratio,
   }));
 };
 

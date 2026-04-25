@@ -245,17 +245,23 @@ const EfficientFrontierDisplay: React.FC<{ frontier: EfficientFrontierPoint[] }>
     sharpe: point.sharpe_ratio,
   }));
 
+  const volMin = Math.min(...frontierData.map(d => d.volatility));
+  const volMax = Math.max(...frontierData.map(d => d.volatility));
+  const retMin = Math.min(...frontierData.map(d => d.return));
+  const retMax = Math.max(...frontierData.map(d => d.return));
+
   return (
     <StyledCard title="有效前沿曲线">
       <ResponsiveContainer width="100%" height={500}>
-        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 60 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             type="number"
             dataKey="volatility"
             name="波动率"
             unit="%"
-            domain={['dataMin - 1', 'dataMax + 1']}
+            domain={[Math.max(0, volMin - 0.1), volMax + 0.1]}
+            tickFormatter={(v) => v.toFixed(2)}
             label={{ value: '年化波动率 (%)', position: 'insideBottom', offset: -10 }}
           />
           <YAxis
@@ -263,11 +269,17 @@ const EfficientFrontierDisplay: React.FC<{ frontier: EfficientFrontierPoint[] }>
             dataKey="return"
             name="收益率"
             unit="%"
-            domain={['dataMin - 1', 'dataMax + 1']}
+            domain={[Math.max(0, retMin - 1), retMax + 1]}
+            tickFormatter={(v) => v.toFixed(1)}
             label={{ value: '预期年化收益率 (%)', angle: -90, position: 'insideLeft' }}
           />
           <ZAxis type="number" dataKey="sharpe" range={[50, 400]} name="夏普比率" />
-          <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} />
+          <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value: any, name: any) => {
+            const nameStr = String(name);
+            if (nameStr === '波动率') return [`${Number(value).toFixed(2)}%`, nameStr];
+            if (nameStr === '收益率') return [`${Number(value).toFixed(2)}%`, nameStr];
+            return [Number(value).toFixed(2), nameStr];
+          }} />
           <Legend />
           <Scatter name="有效前沿" data={frontierData} fill="#8884d8" shape="circle" />
         </ScatterChart>

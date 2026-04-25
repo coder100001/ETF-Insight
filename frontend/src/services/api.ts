@@ -270,9 +270,9 @@ export const optimizationAPI = {
   },
 
   efficientFrontier: (symbols: string[], points: number = 20) => {
-    return request<ApiResponse<Array<{ return: number; risk: number; weights: Record<string, number> }>>>(`/optimization/efficient-frontier`, {
+    return request<ApiResponse<Array<{ target_return: number; min_volatility: number; optimal_weights: Record<string, number>; sharpe_ratio: number }>>>(`/optimization/efficient-frontier`, {
       method: 'POST',
-      body: JSON.stringify({ symbols, points }),
+      body: JSON.stringify({ symbols, num_points: points }),
     });
   },
 
