@@ -247,8 +247,10 @@ func TestGenerateSampleFactorData(t *testing.T) {
 	}
 	marketAvg := marketSum / float64(periods)
 
-	// Market returns should average within reasonable range (-2% to 2% monthly)
-	if marketAvg < -0.02 || marketAvg > 0.02 {
+	// Market returns should average within reasonable range (-3% to 3% monthly)
+	// With mean 0.5% and std 4.5%, for 36 samples the SE is ~0.75%
+	// So -3% to 3% covers ~3.3 standard errors (99.9% confidence)
+	if marketAvg < -0.03 || marketAvg > 0.03 {
 		t.Errorf("Market average return %f seems unreasonable", marketAvg)
 	}
 }
