@@ -18,7 +18,7 @@ func TestRateLimiter(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 300; i++ {
 		req := httptest.NewRequest("GET", "/test", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
