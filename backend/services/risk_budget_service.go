@@ -17,6 +17,10 @@ var (
 	ErrInsufficientReturns = errors.New("insufficient returns data")
 )
 
+func decimalPow3(d decimal.Decimal) decimal.Decimal {
+	return d.Mul(d).Mul(d)
+}
+
 type RiskBudgetService struct {
 	db *gorm.DB
 }
@@ -506,7 +510,7 @@ func (s *RiskBudgetService) OptimizeRiskBudget(
 
 		totalError := decimal.Zero
 		for i, c := range contributions {
-			error := c.CVaRPercentage.Sub(targetBudgets[i])
+			error := c.CVaRPercentage.Div(decimal.NewFromInt(100)).Sub(targetBudgets[i])
 			totalError = totalError.Add(error.Mul(error))
 		}
 
@@ -622,7 +626,7 @@ func (s *RiskBudgetService) CalculatePortfolioSkewness(
 		variance = variance.Add(diff.Mul(diff))
 	}
 	variance = variance.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
-	stdDev := decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+	stdDev := decimalSqrt(variance)
 
 	if stdDev.IsZero() {
 		return decimal.Zero, nil
@@ -635,7 +639,7 @@ func (s *RiskBudgetService) CalculatePortfolioSkewness(
 	}
 	thirdMoment = thirdMoment.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
 
-	skewness := thirdMoment.Div(decimal.NewFromFloat(math.Pow(stdDev.InexactFloat64(), 3)))
+	skewness := thirdMoment.Div(decimalPow3(stdDev))
 
 	return skewness, nil
 }
