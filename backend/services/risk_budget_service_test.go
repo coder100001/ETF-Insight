@@ -348,3 +348,117 @@ func TestRiskBudgetService_GetRiskContributions(t *testing.T) {
 		t.Errorf("Expected AssetSymbol SPY, got %s", retrieved[0].AssetSymbol)
 	}
 }
+
+func TestRiskBudgetService_OptimizeRiskBudget(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returnsMatrix := make([][]decimal.Decimal, 3)
+	for i := 0; i < 3; i++ {
+		returnsMatrix[i] = make([]decimal.Decimal, 100)
+		for j := 0; j < 100; j++ {
+			returnsMatrix[i][j] = decimal.NewFromFloat(0.001 * float64((j+i*10)%20-10))
+		}
+	}
+
+	targetBudgets := []decimal.Decimal{
+		decimal.NewFromFloat(0.4),
+		decimal.NewFromFloat(0.35),
+		decimal.NewFromFloat(0.25),
+	}
+
+	confidenceLevel := decimal.NewFromFloat(0.95)
+
+	weights, contributions, err := service.OptimizeRiskBudget(returnsMatrix, targetBudgets, confidenceLevel, 100)
+	if err != nil {
+		t.Errorf("OptimizeRiskBudget failed: %v", err)
+	}
+
+	if len(weights) != 3 {
+		t.Errorf("Expected 3 weights, got %d", len(weights))
+	}
+
+	if len(contributions) != 3 {
+		t.Errorf("Expected 3 contributions, got %d", len(contributions))
+	}
+
+	sum := decimal.Zero
+	for _, w := range weights {
+		sum = sum.Add(w)
+	}
+	if !sum.Equal(decimal.NewFromInt(1)) {
+		t.Errorf("Weights should sum to 1, got %s", sum.String())
+	}
+
+	for i, c := range contributions {
+		t.Logf("Asset %d: Weight=%s, CVaRPercentage=%s", i, weights[i].String(), c.CVaRPercentage.String())
+	}
+}
+
+func TestRiskBudgetService_OptimizeRiskBudget_InvalidInputs(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	_, _, err := service.OptimizeRiskBudget(nil, nil, decimal.NewFromFloat(0.95), 100)
+	if err == nil {
+		t.Error("Expected error for nil inputs")
+	}
+	if err != ErrInsufficientReturns {
+		t.Errorf("Expected ErrInsufficientReturns, got %v", err)
+	}
+
+	returnsMatrix := make([][]decimal.Decimal, 2)
+	targetBudgets := []decimal.Decimal{decimal.NewFromFloat(0.5)}
+
+	_, _, err = service.OptimizeRiskBudget(returnsMatrix, targetBudgets, decimal.NewFromFloat(0.95), 100)
+	if err == nil {
+		t.Error("Expected error for mismatched lengths")
+	}
+}
+
+func TestRiskBudgetService_CalculatePortfolioSkewness(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returnsMatrix := make([][]decimal.Decimal, 3)
+	for i := 0; i < 3; i++ {
+		returnsMatrix[i] = make([]decimal.Decimal, 100)
+		for j := 0; j < 100; j++ {
+			returnsMatrix[i][j] = decimal.NewFromFloat(0.001 * float64((j+i*10)%20-10))
+		}
+	}
+
+	weights := []decimal.Decimal{
+		decimal.NewFromFloat(0.4),
+		decimal.NewFromFloat(0.3),
+		decimal.NewFromFloat(0.3),
+	}
+
+	skewness, err := service.CalculatePortfolioSkewness(returnsMatrix, weights)
+	if err != nil {
+		t.Errorf("CalculatePortfolioSkewness failed: %v", err)
+	}
+
+	t.Logf("Portfolio Skewness: %s", skewness.String())
+}
+
+func TestRiskBudgetService_CalculatePortfolioSkewness_InsufficientData(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	_, err := service.CalculatePortfolioSkewness(nil, nil)
+	if err == nil {
+		t.Error("Expected error for nil inputs")
+	}
+	if err != ErrInsufficientReturns {
+		t.Errorf("Expected ErrInsufficientReturns, got %v", err)
+	}
+}

@@ -470,3 +470,172 @@ func (s *RiskBudgetService) GetRiskContributions(simulationID uint) ([]models.Ri
 		Find(&contributions).Error
 	return contributions, err
 }
+
+func (s *RiskBudgetService) OptimizeRiskBudget(
+	returnsMatrix [][]decimal.Decimal,
+	targetBudgets []decimal.Decimal,
+	confidenceLevel decimal.Decimal,
+	maxIterations int,
+) ([]decimal.Decimal, []models.RiskContribution, error) {
+	if len(returnsMatrix) == 0 || len(targetBudgets) == 0 {
+		return nil, nil, ErrInsufficientReturns
+	}
+
+	n := len(returnsMatrix)
+	if len(targetBudgets) != n {
+		return nil, nil, errors.New("target budgets length must match number of assets")
+	}
+
+	weights := make([]decimal.Decimal, n)
+	for i := 0; i < n; i++ {
+		weights[i] = decimal.NewFromFloat(1.0 / float64(n))
+	}
+
+	bestWeights := make([]decimal.Decimal, n)
+	copy(bestWeights, weights)
+
+	bestError := decimal.NewFromFloat(math.MaxFloat64)
+
+	learningRate := decimal.NewFromFloat(0.01)
+
+	for iter := 0; iter < maxIterations; iter++ {
+		contributions, err := s.CalculateRiskContributions(weights, returnsMatrix, confidenceLevel)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		totalError := decimal.Zero
+		for i, c := range contributions {
+			error := c.CVaRPercentage.Sub(targetBudgets[i])
+			totalError = totalError.Add(error.Mul(error))
+		}
+
+		if totalError.LessThan(bestError) {
+			bestError = totalError
+			copy(bestWeights, weights)
+		}
+
+		if totalError.LessThan(decimal.NewFromFloat(1e-6)) {
+			break
+		}
+
+		portfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
+		for i := range portfolioReturns {
+			portfolioReturns[i] = decimal.Zero
+			for j := 0; j < n; j++ {
+				portfolioReturns[i] = portfolioReturns[i].Add(
+					weights[j].Mul(returnsMatrix[j][i]),
+				)
+			}
+		}
+
+		_, portfolioCVaR, err := s.CalculateCVaR(portfolioReturns, confidenceLevel, false)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for i := 0; i < n; i++ {
+			delta := decimal.NewFromFloat(0.001)
+			newWeights := make([]decimal.Decimal, n)
+			copy(newWeights, weights)
+			newWeights[i] = newWeights[i].Add(delta)
+
+			sum := decimal.Zero
+			for _, w := range newWeights {
+				sum = sum.Add(w)
+			}
+			for j := range newWeights {
+				newWeights[j] = newWeights[j].Div(sum)
+			}
+
+			newPortfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
+			for k := range newPortfolioReturns {
+				newPortfolioReturns[k] = decimal.Zero
+				for j := 0; j < n; j++ {
+					newPortfolioReturns[k] = newPortfolioReturns[k].Add(
+						newWeights[j].Mul(returnsMatrix[j][k]),
+					)
+				}
+			}
+
+			_, newCVaR, err := s.CalculateCVaR(newPortfolioReturns, confidenceLevel, false)
+			if err != nil {
+				continue
+			}
+
+			marginalCVaR := newCVaR.Sub(portfolioCVaR).Div(delta)
+			currentRC := weights[i].Mul(marginalCVaR)
+			targetRC := targetBudgets[i].Mul(portfolioCVaR)
+			gradient := currentRC.Sub(targetRC).Mul(decimal.NewFromInt(2))
+
+			weights[i] = weights[i].Sub(learningRate.Mul(gradient))
+			if weights[i].LessThan(decimal.Zero) {
+				weights[i] = decimal.Zero
+			}
+		}
+
+		sum := decimal.Zero
+		for _, w := range weights {
+			sum = sum.Add(w)
+		}
+		for i := range weights {
+			weights[i] = weights[i].Div(sum)
+		}
+	}
+
+	finalContributions, err := s.CalculateRiskContributions(bestWeights, returnsMatrix, confidenceLevel)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return bestWeights, finalContributions, nil
+}
+
+func (s *RiskBudgetService) CalculatePortfolioSkewness(
+	returnsMatrix [][]decimal.Decimal,
+	weights []decimal.Decimal,
+) (decimal.Decimal, error) {
+	if len(returnsMatrix) == 0 || len(weights) == 0 {
+		return decimal.Zero, ErrInsufficientReturns
+	}
+
+	n := len(weights)
+	portfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
+	for i := range portfolioReturns {
+		portfolioReturns[i] = decimal.Zero
+		for j := 0; j < n; j++ {
+			portfolioReturns[i] = portfolioReturns[i].Add(
+				weights[j].Mul(returnsMatrix[j][i]),
+			)
+		}
+	}
+
+	var sum decimal.Decimal
+	for _, r := range portfolioReturns {
+		sum = sum.Add(r)
+	}
+	mean := sum.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
+
+	variance := decimal.Zero
+	for _, r := range portfolioReturns {
+		diff := r.Sub(mean)
+		variance = variance.Add(diff.Mul(diff))
+	}
+	variance = variance.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
+	stdDev := decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+
+	if stdDev.IsZero() {
+		return decimal.Zero, nil
+	}
+
+	thirdMoment := decimal.Zero
+	for _, r := range portfolioReturns {
+		diff := r.Sub(mean)
+		thirdMoment = thirdMoment.Add(diff.Mul(diff).Mul(diff))
+	}
+	thirdMoment = thirdMoment.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
+
+	skewness := thirdMoment.Div(decimal.NewFromFloat(math.Pow(stdDev.InexactFloat64(), 3)))
+
+	return skewness, nil
+}
