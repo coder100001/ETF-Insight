@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"etf-insight/models"
+	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 )
@@ -158,11 +159,7 @@ func (o *PortfolioOptimizer) calculateMeanReturns(returns map[string][]decimal.D
 			continue
 		}
 
-		sum := decimal.Zero
-		for _, r := range dailyReturns {
-			sum = sum.Add(r)
-		}
-		avgDaily := sum.Div(decimal.NewFromInt(int64(len(dailyReturns))))
+		avgDaily := utils.CalculateMean(dailyReturns)
 		annualized := avgDaily.Mul(decimal.NewFromInt(252))
 		meanReturns[symbol] = annualized
 	}
@@ -188,28 +185,7 @@ func (o *PortfolioOptimizer) calculateCovarianceMatrix(returns map[string][]deci
 }
 
 func (o *PortfolioOptimizer) calculateCovariance(returns1, returns2 []decimal.Decimal) decimal.Decimal {
-	minLen := int(math.Min(float64(len(returns1)), float64(len(returns2))))
-	if minLen == 0 {
-		return decimal.Zero
-	}
-
-	sum1 := decimal.Zero
-	sum2 := decimal.Zero
-	for i := 0; i < minLen; i++ {
-		sum1 = sum1.Add(returns1[i])
-		sum2 = sum2.Add(returns2[i])
-	}
-	mean1 := sum1.Div(decimal.NewFromInt(int64(minLen)))
-	mean2 := sum2.Div(decimal.NewFromInt(int64(minLen)))
-
-	cov := decimal.Zero
-	for i := 0; i < minLen; i++ {
-		diff1 := returns1[i].Sub(mean1)
-		diff2 := returns2[i].Sub(mean2)
-		cov = cov.Add(diff1.Mul(diff2))
-	}
-	cov = cov.Div(decimal.NewFromInt(int64(minLen - 1)))
-
+	cov := utils.CalculateCovariance(returns1, returns2)
 	return cov.Mul(decimal.NewFromInt(252))
 }
 
@@ -474,33 +450,18 @@ func (o *PortfolioOptimizer) calculateSharpeRatio(expectedReturn, volatility, ri
 }
 
 func (o *PortfolioOptimizer) applyConstraints(weights []decimal.Decimal, constraints OptimizationConstraints) []decimal.Decimal {
-	n := len(weights)
-	total := decimal.Zero
-	for _, w := range weights {
+	// 应用权重约束
+	for i, w := range weights {
 		if w.GreaterThan(constraints.MaxWeightPerAsset) {
-			w = constraints.MaxWeightPerAsset
+			weights[i] = constraints.MaxWeightPerAsset
+		} else if w.LessThan(constraints.MinWeightPerAsset) {
+			weights[i] = constraints.MinWeightPerAsset
+		} else if !constraints.AllowShort && w.LessThan(decimal.Zero) {
+			weights[i] = decimal.Zero
 		}
-		if w.LessThan(constraints.MinWeightPerAsset) {
-			w = constraints.MinWeightPerAsset
-		}
-		if !constraints.AllowShort && w.LessThan(decimal.Zero) {
-			w = decimal.Zero
-		}
-		total = total.Add(w)
 	}
 
-	if total.IsZero() {
-		for i := range weights {
-			weights[i] = decimal.NewFromFloat(1.0 / float64(n))
-		}
-		return weights
-	}
-
-	for i := range weights {
-		weights[i] = weights[i].Div(total)
-	}
-
-	return weights
+	return utils.NormalizeWeights(weights)
 }
 
 func (o *PortfolioOptimizer) GetEfficientFrontier(request PortfolioOptimizationRequest) ([]FrontierPoint, error) {

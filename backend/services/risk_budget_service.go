@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"etf-insight/models"
+	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -130,32 +131,14 @@ func (s *RiskBudgetService) calculateHistoricalCVaR(
 ) (decimal.Decimal, decimal.Decimal, error) {
 	sortedReturns := make([]decimal.Decimal, len(returns))
 	copy(sortedReturns, returns)
-
-	for i := 0; i < len(sortedReturns)-1; i++ {
-		for j := i + 1; j < len(sortedReturns); j++ {
-			if sortedReturns[i].GreaterThan(sortedReturns[j]) {
-				sortedReturns[i], sortedReturns[j] = sortedReturns[j], sortedReturns[i]
-			}
-		}
-	}
+	utils.SortDecimals(sortedReturns)
 
 	index := int(decimal.NewFromInt(int64(len(sortedReturns))).Mul(
 		decimal.NewFromInt(1).Sub(confidenceLevel),
 	).IntPart())
 
-	varSum := decimal.Zero
-	for _, r := range sortedReturns {
-		varSum = varSum.Add(r)
-	}
-	mean := varSum.Div(decimal.NewFromInt(int64(len(sortedReturns))))
-
-	variance := decimal.Zero
-	for _, r := range sortedReturns {
-		diff := r.Sub(mean)
-		variance = variance.Add(diff.Mul(diff))
-	}
-	variance = variance.Div(decimal.NewFromInt(int64(len(sortedReturns))))
-	stdDev := decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+	mean := utils.CalculateMean(sortedReturns)
+	stdDev := utils.CalculatePopulationStdDev(sortedReturns, mean)
 
 	zScore := decimal.NewFromFloat(-1.645)
 	if confidenceLevel.Equal(decimal.NewFromFloat(0.99)) {
@@ -180,19 +163,8 @@ func (s *RiskBudgetService) calculateParametricCVaR(
 	returns []decimal.Decimal,
 	confidenceLevel decimal.Decimal,
 ) (decimal.Decimal, decimal.Decimal, error) {
-	var sum decimal.Decimal
-	for _, r := range returns {
-		sum = sum.Add(r)
-	}
-	mean := sum.Div(decimal.NewFromInt(int64(len(returns))))
-
-	variance := decimal.Zero
-	for _, r := range returns {
-		diff := r.Sub(mean)
-		variance = variance.Add(diff.Mul(diff))
-	}
-	variance = variance.Div(decimal.NewFromInt(int64(len(returns))))
-	stdDev := decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+	mean := utils.CalculateMean(returns)
+	stdDev := utils.CalculatePopulationStdDev(returns, mean)
 
 	zScore := decimal.NewFromFloat(-1.645)
 	if confidenceLevel.Equal(decimal.NewFromFloat(0.99)) {
@@ -215,19 +187,8 @@ func (s *RiskBudgetService) calculateMonteCarloCVaR(
 	returns []decimal.Decimal,
 	confidenceLevel decimal.Decimal,
 ) (decimal.Decimal, decimal.Decimal, error) {
-	var sum decimal.Decimal
-	for _, r := range returns {
-		sum = sum.Add(r)
-	}
-	mean := sum.Div(decimal.NewFromInt(int64(len(returns))))
-
-	variance := decimal.Zero
-	for _, r := range returns {
-		diff := r.Sub(mean)
-		variance = variance.Add(diff.Mul(diff))
-	}
-	variance = variance.Div(decimal.NewFromInt(int64(len(returns))))
-	stdDev := decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+	mean := utils.CalculateMean(returns)
+	stdDev := utils.CalculatePopulationStdDev(returns, mean)
 
 	numSimulations := 10000
 	simulatedReturns := make([]decimal.Decimal, numSimulations)
@@ -241,13 +202,7 @@ func (s *RiskBudgetService) calculateMonteCarloCVaR(
 		simulatedReturns[i] = decimal.NewFromFloat(simulatedReturn)
 	}
 
-	for i := 0; i < numSimulations-1; i++ {
-		for j := i + 1; j < numSimulations; j++ {
-			if simulatedReturns[i].GreaterThan(simulatedReturns[j]) {
-				simulatedReturns[i], simulatedReturns[j] = simulatedReturns[j], simulatedReturns[i]
-			}
-		}
-	}
+	utils.SortDecimals(simulatedReturns)
 
 	index := int(decimal.NewFromInt(int64(numSimulations)).Mul(
 		decimal.NewFromInt(1).Sub(confidenceLevel),
@@ -390,27 +345,10 @@ func (s *RiskBudgetService) RunMonteCarloSimulation(
 		finalReturns[i] = price.Sub(decimal.NewFromInt(100)).Div(decimal.NewFromInt(100))
 	}
 
-	for i := 0; i < numSimulations-1; i++ {
-		for j := i + 1; j < numSimulations; j++ {
-			if finalReturns[i].GreaterThan(finalReturns[j]) {
-				finalReturns[i], finalReturns[j] = finalReturns[j], finalReturns[i]
-			}
-		}
-	}
+	utils.SortDecimals(finalReturns)
 
-	var simSum decimal.Decimal
-	for _, r := range finalReturns {
-		simSum = simSum.Add(r)
-	}
-	meanReturn := simSum.Div(decimal.NewFromInt(int64(numSimulations)))
-
-	var simVariance decimal.Decimal
-	for _, r := range finalReturns {
-		diff := r.Sub(meanReturn)
-		simVariance = simVariance.Add(diff.Mul(diff))
-	}
-	simVariance = simVariance.Div(decimal.NewFromInt(int64(numSimulations)))
-	stdReturn := decimalSqrt(simVariance)
+	meanReturn := utils.CalculateMean(finalReturns)
+	stdReturn := utils.CalculatePopulationStdDev(finalReturns, meanReturn)
 
 	percentile5Index := int(float64(numSimulations) * 0.05)
 	percentile95Index := int(float64(numSimulations) * 0.95)
@@ -614,32 +552,14 @@ func (s *RiskBudgetService) CalculatePortfolioSkewness(
 		}
 	}
 
-	var sum decimal.Decimal
-	for _, r := range portfolioReturns {
-		sum = sum.Add(r)
-	}
-	mean := sum.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
-
-	variance := decimal.Zero
-	for _, r := range portfolioReturns {
-		diff := r.Sub(mean)
-		variance = variance.Add(diff.Mul(diff))
-	}
-	variance = variance.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
-	stdDev := decimalSqrt(variance)
+	mean := utils.CalculateMean(portfolioReturns)
+	stdDev := utils.CalculatePopulationStdDev(portfolioReturns, mean)
 
 	if stdDev.IsZero() {
 		return decimal.Zero, nil
 	}
 
-	thirdMoment := decimal.Zero
-	for _, r := range portfolioReturns {
-		diff := r.Sub(mean)
-		thirdMoment = thirdMoment.Add(diff.Mul(diff).Mul(diff))
-	}
-	thirdMoment = thirdMoment.Div(decimal.NewFromInt(int64(len(portfolioReturns))))
-
-	skewness := thirdMoment.Div(decimalPow3(stdDev))
+	skewness := utils.CalculateSkewness(portfolioReturns, mean, stdDev)
 
 	return skewness, nil
 }

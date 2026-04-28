@@ -212,24 +212,23 @@ const ETFComparisonReport: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} interval={Math.ceil(chartData.length / 6)} />
             <YAxis tick={{ fontSize: 11, fill: '#888' }} tickFormatter={(v: number) => `${v}%`} domain={['auto', 'auto']} />
-            <RechartsTooltip 
-              contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 8 }} 
-              labelStyle={{ color: '#333' }} 
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={(value: any) => [`${Number(value).toFixed(2)}%`, '']} 
+            <RechartsTooltip
+              contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 8 }}
+              labelStyle={{ color: '#333' }}
+              formatter={(value: number | string) => [`${Number(value).toFixed(2)}%`, '']}
             />
             <Legend wrapperStyle={{ paddingTop: 20 }} />
             <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
             {etfData.map((etf, idx) => (
-              <Line 
-                key={String(etf.symbol)} 
-                type="monotone" 
-                dataKey={String(etf.symbol)} 
-                name={String(etf.symbol)} 
-                stroke={COLORS[idx % COLORS.length]} 
-                strokeWidth={2} 
-                dot={false} 
-                activeDot={{ r: 4 }} 
+              <Line
+                key={String(etf.symbol)}
+                type="monotone"
+                dataKey={String(etf.symbol)}
+                name={String(etf.symbol)}
+                stroke={COLORS[idx % COLORS.length]}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
               />
             ))}
           </LineChart>

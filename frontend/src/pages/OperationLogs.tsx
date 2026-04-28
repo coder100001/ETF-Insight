@@ -217,8 +217,8 @@ const OperationLogs: React.FC = () => {
   );
 
   // 筛选条件变更处理
-  const handleFilterChange = (key: keyof LogFilterParams, value: any) => {
-    const newParams = { ...filterParams, [key]: value, page: 1 }; // 回到第一页
+  const handleFilterChange = (key: keyof LogFilterParams, value: string | number | undefined) => {
+    const newParams = { ...filterParams, [key]: value, page: 1 };
     debouncedSearch(newParams);
   };
 
@@ -345,7 +345,7 @@ const OperationLogs: React.FC = () => {
       key: 'action',
       width: 80,
       align: 'center' as const,
-      render: (_: any, record: UnifiedLog) => (
+      render: (_: unknown, record: UnifiedLog) => (
         <Button
           type="text"
           size="small"
