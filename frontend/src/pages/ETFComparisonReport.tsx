@@ -215,7 +215,10 @@ const ETFComparisonReport: React.FC = () => {
             <RechartsTooltip
               contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 8 }}
               labelStyle={{ color: '#333' }}
-              formatter={(value: number | string) => [`${Number(value).toFixed(2)}%`, '']}
+              formatter={(value) => {
+                const numValue = Array.isArray(value) ? value[0] : value;
+                return [`${Number(numValue).toFixed(2)}%`, ''];
+              }}
             />
             <Legend wrapperStyle={{ paddingTop: 20 }} />
             <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />

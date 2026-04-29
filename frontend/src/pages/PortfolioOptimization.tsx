@@ -274,11 +274,12 @@ const EfficientFrontierDisplay: React.FC<{ frontier: EfficientFrontierPoint[] }>
             label={{ value: '预期年化收益率 (%)', angle: -90, position: 'insideLeft' }}
           />
           <ZAxis type="number" dataKey="sharpe" range={[50, 400]} name="夏普比率" />
-          <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value: number | string, name: number | string) => {
+          <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value, name) => {
+            const numValue = Array.isArray(value) ? value[0] : value;
             const nameStr = String(name);
-            if (nameStr === '波动率') return [`${Number(value).toFixed(2)}%`, nameStr];
-            if (nameStr === '收益率') return [`${Number(value).toFixed(2)}%`, nameStr];
-            return [Number(value).toFixed(2), nameStr];
+            if (nameStr === '波动率') return [`${Number(numValue).toFixed(2)}%`, nameStr];
+            if (nameStr === '收益率') return [`${Number(numValue).toFixed(2)}%`, nameStr];
+            return [Number(numValue).toFixed(2), nameStr];
           }} />
           <Legend />
           <Scatter name="有效前沿" data={frontierData} fill="#8884d8" shape="circle" />
