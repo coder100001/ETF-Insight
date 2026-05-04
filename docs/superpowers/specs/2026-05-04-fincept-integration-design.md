@@ -1,0 +1,790 @@
+# FinceptTerminal Integration Design
+
+## Summary
+
+Integrate FinceptTerminal's financial intelligence capabilities into ETF-Insight via a **hybrid architecture**: Phase 1 uses direct API integration (QuantLib cloud), Phase 2-4 use Python microservice bridge for extracted modules. Start with Phase 1 for immediate value, then progressively add AI Agents, data sources, and analytics.
+
+## Architecture Decision
+
+**Chosen approach**: Hybrid — Direct API + Python Microservice Bridge
+
+### Decision Rationale
+
+The brainstorming session recommended "方案 A: 插件化架构集成" (Plugin Architecture). We adopt a hybrid approach that aligns with the plugin philosophy while respecting FinceptTerminal's architecture constraints:
+
+| Phase | Approach | Why |
+|-------|----------|-----|
+| Phase 1 | Direct API Client | QuantLib is already a cloud API — no code extraction needed, just HTTP client |
+| Phase 2-4 | Python Microservice Bridge | FinceptTerminal's Python layer (250+ scripts) is cleanly separated from C++ UI via `PythonRunner` (QProcess-based IPC). We extract Python modules as FastAPI services without touching C++ code |
+
+### Why not pure plugin architecture for Phase 1
+
+- QuantLib API is a **cloud service** (`api.fincept.in`), not a local library
+- Writing a Go HTTP client is simpler and more reliable than a plugin wrapper
+- No AGPL license concerns — we're calling a public API, not using their code
+
+### Alternatives considered
+
+| Alternative | Verdict | Reason |
+|-------------|---------|--------|
+| Desktop engine + Web frontend | Rejected | Requires Qt6 dependency, too complex |
+| C++ Shared Library (CGO) | Rejected | Integration difficulty too high, ABI compatibility issues |
+| Docker + API Gateway | Deferred | Over-engineered for current scale, revisit if we exceed 3 microservices |
+| Pure plugin architecture | Partially adopted | Used for Phase 2-4 where we control the code |
+
+## Target Architecture
+
+```
+React Frontend (现有)
+    │
+Go Backend (现有 + QuantLib Client + Python Bridge Client)
+    │
+    ├── QuantLib API (cloud)          - api.fincept.in (Phase 1, direct HTTP)
+    │
+    └── Python Microservice Cluster (Phase 2-4, 新增)
+        ├── Agent Service (port 8091)  - 30+ AI agents, multi-LLM
+        ├── Data Service (port 8092)   - 60+ data sources
+        └── Analytics Service (port 8093) - 80+ analytics modules
+```
+
+### Data Flow
+
+```
+Frontend → Go API Handler → QuantLib Client → api.fincept.in/quantlib/
+                                    │
+                                    ├─ Cache hit → return cached result
+                                    ├─ API success → cache + return
+                                    └─ API failure → fallback to local calc / return error
+```
+
+---
+
+## Phase 1: QuantLib Direct Connection
+
+### Goal
+
+Connect to FinceptTerminal's existing QuantLib cloud API (`api.fincept.in/quantlib/`) to add institutional-grade quantitative analysis capabilities.
+
+### What We Get
+
+| Capability | Description | ETF-Insight Integration Point |
+|-----------|-------------|-------------------------------|
+| **Options Pricing** | Black-Scholes, Binomial, Monte Carlo | New: Options analysis tab |
+| **Greeks Calculation** | Delta, Gamma, Theta, Vega, Rho | New: Greeks dashboard |
+| **Yield Curves** | Construction, interpolation, zero rates | Enhance: bond/fixed income analysis |
+| **Fixed Income** | Bond pricing, duration, convexity | New: Bond calculator |
+| **Risk Metrics** | VaR, CVaR with QuantLib engine | Enhance: existing `risk_models.go` |
+| **Stochastic Processes** | GBM, CIR, Hull-White | Enhance: scenario analysis |
+| **Volatility Surfaces** | Implied vol, local vol | New: Vol surface visualization |
+
+### API Design
+
+FinceptTerminal's QuantLib API format (verified from `QuantLibClient.cpp` source code):
+
+```
+Base URL: https://api.fincept.in/quantlib/
+
+POST Endpoints (request body as JSON):
+- POST /options/european              - European option pricing
+- POST /options/american              - American option pricing
+- POST /bonds/fixed                   - Fixed bond pricing
+- POST /yield-curve/build             - Yield curve construction
+- POST /risk/var                      - Value at Risk calculation
+
+GET Endpoints (cached, 1-hour TTL):
+- GET  /core/types/currencies         - Supported currencies
+- GET  /core/types/frequencies        - Payment frequencies
+- GET  /scheduling/calendar/list      - Available calendars
+- GET  /scheduling/daycount/conventions - Day count conventions
+- GET  /scheduling/adjustment/methods - Adjustment methods
+
+Query Param Endpoints (POST with empty body, params as query string):
+- POST /core/types/spread/from-bps    - Spread from basis points
+```
+
+### Authentication
+
+The QuantLib API uses `X-API-Key` header for authentication (verified from QuantLibClient.cpp):
+
+```cpp
+auto& auth_mgr = auth::AuthManager::instance();
+if (auth_mgr.is_authenticated())
+    req.setRawHeader("X-API-Key", auth_mgr.session().api_key.toUtf8());
+```
+
+**Important**: The API key is NOT optional. While some endpoints may work without authentication, production use requires a valid API key. We must:
+
+1. Register for a FinceptTerminal API key
+2. Store it securely via environment variable
+3. Include it in all requests
+4. Handle 401/403 responses gracefully
+
+Request/Response format:
+```json
+// Request: European option pricing
+{
+  "spot": 100.0,
+  "strike": 105.0,
+  "rate": 0.05,
+  "volatility": 0.20,
+  "time_to_expiry": 1.0,
+  "option_type": "call"
+}
+
+// Response (API envelope format)
+{
+  "success": true,
+  "message": "Option priced successfully",
+  "data": {
+    "price": 8.02,
+    "delta": 0.54,
+    "gamma": 0.019,
+    "theta": -0.015,
+    "vega": 0.38,
+    "rho": 0.46
+  }
+}
+
+// Error response (FastAPI 422 validation)
+{
+  "detail": [
+    {
+      "loc": ["body", "spot"],
+      "msg": "ensure this value is greater than 0",
+      "type": "value_error.number.not_gt"
+    }
+  ]
+}
+```
+
+### Precision Handling (Critical)
+
+ETF-Insight mandates `decimal.Decimal` for all financial calculations. The QuantLib API returns `float64`. We must:
+
+1. **API Response → Go**: Parse JSON floats into `decimal.Decimal` immediately upon deserialization
+2. **Go → Frontend**: Serialize `decimal.Decimal` as strings (not floats) to avoid precision loss. Use `json:",string"` tag to force JSON string representation
+3. **Frontend Display**: Use `toFixed()` or `Intl.NumberFormat` for display, never raw float arithmetic
+4. **HKEX Compatibility**: All price fields must support HKEX tick sizes and lot sizes
+
+```go
+type OptionResult struct {
+    Price  decimal.Decimal `json:"price,string"`
+    Delta  decimal.Decimal `json:"delta,string"`
+    Gamma  decimal.Decimal `json:"gamma,string"`
+    Theta  decimal.Decimal `json:"theta,string"`
+    Vega   decimal.Decimal `json:"vega,string"`
+    Rho    decimal.Decimal `json:"rho,string"`
+}
+```
+
+### Implementation Plan
+
+#### 1. Go Backend - Data Models
+
+New file: `models/quantlib.go`
+
+> **WARNING**: Gin's binding validator does not support `gt` (greater than) on `decimal.Decimal` (it's a struct, not a primitive numeric type). All `decimal.Decimal` fields below use `binding:"required"` only. Range validation must be performed explicitly in handler code.
+
+```go
+type EuropeanOptionRequest struct {
+    Spot         decimal.Decimal `json:"spot" binding:"required"`
+    Strike       decimal.Decimal `json:"strike" binding:"required"`
+    Rate         decimal.Decimal `json:"rate" binding:"required"`
+    Volatility   decimal.Decimal `json:"volatility" binding:"required"`
+    TimeToExpiry decimal.Decimal `json:"time_to_expiry" binding:"required"`
+    OptionType   string          `json:"option_type" binding:"required,oneof=call put"`
+}
+
+type AmericanOptionRequest struct {
+    Spot         decimal.Decimal `json:"spot" binding:"required"`
+    Strike       decimal.Decimal `json:"strike" binding:"required"`
+    Rate         decimal.Decimal `json:"rate" binding:"required"`
+    Volatility   decimal.Decimal `json:"volatility" binding:"required"`
+    TimeToExpiry decimal.Decimal `json:"time_to_expiry" binding:"required"`
+    OptionType   string          `json:"option_type" binding:"required,oneof=call put"`
+    Steps        int             `json:"steps" binding:"omitempty,min=10,max=1000"`
+}
+
+type OptionResult struct {
+    Price  decimal.Decimal `json:"price,string"`
+    Delta  decimal.Decimal `json:"delta,string"`
+    Gamma  decimal.Decimal `json:"gamma,string"`
+    Theta  decimal.Decimal `json:"theta,string"`
+    Vega   decimal.Decimal `json:"vega,string"`
+    Rho    decimal.Decimal `json:"rho,string"`
+}
+
+type YieldCurveRequest struct {
+    CurveType  string          `json:"curve_type" binding:"required,oneof=flat zero forward"`
+    Rate       decimal.Decimal `json:"rate,string" binding:"required"`
+    DayCount   string          `json:"day_count" binding:"required"`
+    Calendar   string          `json:"calendar" binding:"required"`
+    Tenors     []string        `json:"tenors" binding:"required,min=1"`
+}
+
+type BondRequest struct {
+    FaceValue    decimal.Decimal `json:"face_value,string" binding:"required"`
+    CouponRate   decimal.Decimal `json:"coupon_rate,string" binding:"required"`
+    Frequency    string          `json:"frequency" binding:"required"`
+    Settlement   string          `json:"settlement" binding:"required"`
+    Maturity     string          `json:"maturity" binding:"required"`
+    Yield        decimal.Decimal `json:"yield,string" binding:"required"`
+}
+
+type QuantLibVaRRequest struct {
+    PortfolioValue decimal.Decimal `json:"portfolio_value,string" binding:"required"`
+    Confidence    decimal.Decimal `json:"confidence,string" binding:"required"`
+    Horizon       int             `json:"horizon" binding:"required,gt=0"`
+    Method        string          `json:"method" binding:"required,oneof=historical parametric monte_carlo"`
+}
+```
+
+#### 2. Go Backend - QuantLib Client
+
+New file: `services/quantlib/quantlib_client.go`
+
+```go
+type QuantLibClient struct {
+    baseURL       string
+    httpClient    *http.Client
+    apiKey        string
+    cache         engine.CacheService
+    retryCount    int
+    retryDelay    time.Duration
+    requestTimeout time.Duration
+}
+
+func NewQuantLibClient(cfg config.QuantLibConfig, cache engine.CacheService) *QuantLibClient {
+    return &QuantLibClient{
+        baseURL: cfg.APIURL,
+        httpClient: &http.Client{
+            Timeout: cfg.RequestTimeout,
+            Transport: &http.Transport{
+                MaxIdleConns:        10,
+                MaxConnsPerHost:     10,
+                IdleConnTimeout:     90 * time.Second,
+                DisableKeepAlives:   false,
+            },
+        },
+        apiKey:         cfg.APIKey,
+        cache:          cache,
+        retryCount:     3,
+        retryDelay:     100 * time.Millisecond,
+        requestTimeout: cfg.RequestTimeout,
+    }
+}
+
+// Required imports:
+//   "etf-insight/services/engine"
+//   "github.com/shopspring/decimal"
+
+func (c *QuantLibClient) PriceEuropeanOption(ctx context.Context, req EuropeanOptionRequest) (*OptionResult, error)
+func (c *QuantLibClient) PriceAmericanOption(ctx context.Context, req AmericanOptionRequest) (*OptionResult, error)
+func (c *QuantLibClient) BuildYieldCurve(ctx context.Context, req YieldCurveRequest) (*YieldCurveResult, error)
+func (c *QuantLibClient) PriceBond(ctx context.Context, req BondRequest) (*BondResult, error)
+func (c *QuantLibClient) CalculateVaR(ctx context.Context, req QuantLibVaRRequest) (*VaRResult, error)
+func (c *QuantLibClient) GetCurrencies(ctx context.Context) ([]Currency, error)
+func (c *QuantLibClient) GetCalendars(ctx context.Context) ([]Calendar, error)
+```
+
+#### 3. Error Handling and Resilience
+
+New file: `services/quantlib/resilience.go`
+
+```go
+type QuantLibError struct {
+    StatusCode int
+    Endpoint   string
+    Message    string
+    Retryable  bool
+}
+
+func (e *QuantLibError) Error() string {
+    return fmt.Sprintf("QuantLib API error: %s (endpoint=%s, status=%d, retryable=%v)",
+        e.Message, e.Endpoint, e.StatusCode, e.Retryable)
+}
+
+func classifyError(statusCode int) QuantLibError {
+    switch {
+    case statusCode == 401 || statusCode == 403:
+        return QuantLibError{StatusCode: statusCode, Retryable: false, Message: "authentication failed"}
+    case statusCode == 422:
+        return QuantLibError{StatusCode: statusCode, Retryable: false, Message: "validation error"}
+    case statusCode == 429:
+        return QuantLibError{StatusCode: statusCode, Retryable: true, Message: "rate limited"}
+    case statusCode >= 500:
+        return QuantLibError{StatusCode: statusCode, Retryable: true, Message: "server error"}
+    default:
+        return QuantLibError{StatusCode: statusCode, Retryable: false, Message: "unexpected error"}
+    }
+}
+
+func (c *QuantLibClient) doWithRetry(ctx context.Context, endpoint string, body interface{}, result interface{}) error {
+    var lastErr error
+    for attempt := 0; attempt <= c.retryCount; attempt++ {
+        if attempt > 0 {
+            select {
+            case <-ctx.Done():
+                return ctx.Err()
+            case <-time.After(time.Duration(float64(c.retryDelay) * float64(1<<attempt) * (0.5 + rand.Float64()*0.5))):
+            }
+        }
+        err := c.doRequest(ctx, endpoint, body, result)
+        if err == nil {
+            return nil
+        }
+        var qlErr *QuantLibError
+        if errors.As(err, &qlErr) && !qlErr.Retryable {
+            return err
+        }
+        lastErr = err
+    }
+    return fmt.Errorf("QuantLib API failed after %d retries: %w", c.retryCount, lastErr)
+}
+```
+
+#### 4. Fallback Strategy
+
+When the QuantLib API is unavailable, we fall back to existing local calculations:
+
+| Function | Primary | Fallback |
+|----------|---------|----------|
+| European option pricing | QuantLib API | Need to implement `localBlackScholes()` using Black-Scholes formula with `decimal.Decimal` (not yet in existing code) |
+| VaR calculation | QuantLib API | Existing `CalculateVaR()` in `services/risk_models.go` |
+| Yield curve | QuantLib API | Error with clear message (no local fallback) |
+| Reference data | QuantLib API cache | Stale cache (allow expired entries on API failure) |
+
+```go
+func (c *QuantLibClient) PriceEuropeanOptionWithFallback(ctx context.Context, req EuropeanOptionRequest) (*OptionResult, error) {
+    result, err := c.PriceEuropeanOption(ctx, req)
+    if err != nil {
+        utils.Warn("QuantLib API unavailable, falling back to local Black-Scholes", err)
+        return c.localBlackScholes(req)  // ⚠️ Requires implementing localBlackScholes() — Black-Scholes formula with decimal.Decimal
+    }
+    return result, nil
+}
+```
+
+#### 5. Go Backend - API Handlers
+
+New file: `handlers/quantlib_handler.go`
+
+```
+POST /api/quantlib/options/european     - European option pricing
+POST /api/quantlib/options/american     - American option pricing
+POST /api/quantlib/options/greeks       - Greeks calculation
+POST /api/quantlib/yield-curve/build    - Yield curve construction
+POST /api/quantlib/bonds/price          - Bond pricing
+POST /api/quantlib/risk/var             - VaR calculation
+GET  /api/quantlib/types/currencies     - Supported currencies
+GET  /api/quantlib/types/frequencies    - Payment frequencies
+GET  /api/quantlib/calendars            - Available calendars
+GET  /api/quantlib/daycount/conventions - Day count conventions
+GET  /api/quantlib/adjustment/methods   - Adjustment methods
+GET  /api/quantlib/health               - API connectivity check
+```
+
+Handler error handling follows ETF-Insight convention:
+```go
+func (h *QuantLibHandler) PriceEuropeanOption(c *gin.Context) {
+    var req models.EuropeanOptionRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        utils.Error("Invalid request", err)
+        c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid input parameters"})
+        return
+    }
+
+    result, err := h.client.PriceEuropeanOptionWithFallback(c.Request.Context(), req)
+    if err != nil {
+        utils.Error("QuantLib API error", err)
+        c.JSON(http.StatusServiceUnavailable, gin.H{
+            "success": false,
+            "error":   "Quantitative analysis service temporarily unavailable",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+}
+```
+
+#### 6. Frontend - QuantLib Analysis Page
+
+New file: `frontend/src/pages/QuantLibAnalysis.tsx`
+
+Components:
+- **OptionPricer**: Input spot/strike/rate/vol/expiry, get price + Greeks. Display Greeks as radar chart.
+- **YieldCurveBuilder**: Visualize yield curves with ECharts line chart. Support curve type selection.
+- **BondCalculator**: Bond pricing with duration/convexity display.
+- **VaRCalculator**: Portfolio VaR with QuantLib engine. Compare with existing local VaR results.
+
+Integration with existing pages:
+- **PortfolioOptimization.tsx**: Add "QuantLib VaR" tab alongside existing risk metrics
+- **RiskAnalysis.tsx**: Add "QuantLib Engine" option in VaR method selector
+- **FactorAnalysis.tsx**: Add yield curve reference data display
+
+New TypeScript types in `frontend/src/types/quantlib.ts`:
+```typescript
+export interface EuropeanOptionRequest {
+  spot: number;
+  strike: number;
+  rate: number;
+  volatility: number;
+  time_to_expiry: number;
+  option_type: 'call' | 'put';
+}
+
+export interface OptionResult {
+  price: string;
+  delta: string;
+  gamma: string;
+  theta: string;
+  vega: string;
+  rho: string;
+}
+
+export interface YieldCurvePoint {
+  tenor: string;
+  rate: string;
+}
+
+export interface BondResult {
+  price: string;
+  duration: string;
+  convexity: string;
+  yield_to_maturity: string;
+}
+```
+
+New API service in `frontend/src/services/quantlibService.ts`:
+```typescript
+export const quantlibAPI = {
+  priceEuropeanOption: (req: EuropeanOptionRequest) =>
+    api.post<ApiResponse<OptionResult>>('/api/quantlib/options/european', req),
+  priceAmericanOption: (req: AmericanOptionRequest) =>
+    api.post<ApiResponse<OptionResult>>('/api/quantlib/options/american', req),
+  buildYieldCurve: (req: YieldCurveRequest) =>
+    api.post<ApiResponse<YieldCurveResult>>('/api/quantlib/yield-curve/build', req),
+  priceBond: (req: BondRequest) =>
+    api.post<ApiResponse<BondResult>>('/api/quantlib/bonds/price', req),
+  calculateVaR: (req: QuantLibVaRRequest) =>
+    api.post<ApiResponse<VaRResult>>('/api/quantlib/risk/var', req),
+  getCurrencies: () =>
+    api.get<ApiResponse<Currency[]>>('/api/quantlib/types/currencies'),
+  getCalendars: () =>
+    api.get<ApiResponse<Calendar[]>>('/api/quantlib/calendars'),
+  healthCheck: () =>
+    api.get<ApiResponse<{ status: string }>>('/api/quantlib/health'),
+};
+```
+
+#### 7. Caching Strategy
+
+| Data Type | TTL | Cache Key | Invalidation |
+|-----------|-----|-----------|-------------|
+| Reference data (currencies, calendars) | 1 hour | `quantlib:ref:{endpoint}` | TTL expiry |
+| Option pricing results | 5 minutes | `quantlib:option:{hash(params)}` | TTL expiry |
+| Yield curve data | 15 minutes | `quantlib:yieldcurve:{hash(params)}` | TTL expiry |
+| Bond pricing results | 15 minutes | `quantlib:bond:{hash(params)}` | TTL expiry |
+
+Stale cache fallback: On API failure, return expired cache entries with a warning header:
+```go
+c.Header("X-Cache-Status", "STALE")
+c.Header("X-Cache-Age", fmt.Sprintf("%ds", ageSeconds))
+```
+
+#### 8. Configuration
+
+New section in `config/config.go`:
+```go
+type QuantLibConfig struct {
+    APIURL         string        `yaml:"api_url"`
+    APIKey         string        `yaml:"api_key"`
+    RequestTimeout time.Duration `yaml:"request_timeout"`
+    RetryCount     int           `yaml:"retry_count"`
+    EnableFallback bool          `yaml:"enable_fallback"`
+}
+```
+
+**Note**: Struct tags do NOT auto-load env vars. Add to `DefaultConfig()` in `config.go`:
+```go
+QuantLib: QuantLibConfig{
+    APIURL:         getEnv("QUANTLIB_API_URL", "https://api.fincept.in/quantlib"),
+    APIKey:         getEnv("QUANTLIB_API_KEY", ""),
+    RequestTimeout: getEnvAsDuration("QUANTLIB_REQUEST_TIMEOUT", 10*time.Second),
+    RetryCount:     getEnvAsInt("QUANTLIB_RETRY_COUNT", 3),
+    EnableFallback: getEnvAsBool("QUANTLIB_ENABLE_FALLBACK", true),
+},
+```
+(Note: `getEnvAsDuration` may need to be implemented — current helpers only have getEnv, getEnvAsInt, getEnvAsBool)
+
+Environment variables:
+```bash
+QUANTLIB_API_URL=https://api.fincept.in/quantlib
+QUANTLIB_API_KEY=your_api_key_here
+QUANTLIB_REQUEST_TIMEOUT=10s
+QUANTLIB_RETRY_COUNT=3
+QUANTLIB_ENABLE_FALLBACK=true
+```
+
+#### 9. Database
+
+No new database tables needed for Phase 1. All QuantLib data is either:
+- Cached in memory using existing `InMemoryCacheService` (sync.Map-based, in `services/engine/cache_service.go`) with TTL
+- Computed on-the-fly from API responses
+
+If we later need to persist QuantLib results, add a `quantlib_results` table in Phase 2.
+
+#### 10. Monitoring and Observability
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `quantlib_api_request_total` | Counter | Total API requests by endpoint |
+| `quantlib_api_request_duration_seconds` | Histogram | Request latency by endpoint |
+| `quantlib_api_error_total` | Counter | Errors by type (auth, timeout, server) |
+| `quantlib_cache_hit_total` | Counter | Cache hits by endpoint |
+| `quantlib_cache_miss_total` | Counter | Cache misses by endpoint |
+| `quantlib_fallback_total` | Counter | Fallback to local calculation |
+
+Logging:
+```go
+utils.Info("QuantLib API request", "endpoint", endpoint, "duration_ms", elapsed)
+utils.Warn("QuantLib API fallback triggered", "endpoint", endpoint, "error", err)
+utils.Error("QuantLib API authentication failed", nil)
+```
+
+#### 11. Security
+
+| Concern | Mitigation |
+|---------|-----------|
+| API Key exposure | Store in environment variable, never log, redact from error messages |
+| Input validation | Custom validation in handler layer using decimal.Decimal comparison functions (binding tags' gt=0 doesn't support decimal.Decimal struct type) |
+| CORS | Existing CORS middleware applies, no special config needed |
+| Rate limiting | Existing rate limiter applies (300 req/min per IP — configured in `middleware/security.go`) |
+| HTTPS | API uses HTTPS, enforced in client |
+| Error message leakage | Never expose internal errors to client, log server-side only |
+
+#### 12. Rollback Strategy
+
+Phase 1 is additive — no existing functionality is modified. Rollback steps:
+
+1. Remove QuantLib routes from `router/router.go`
+2. Remove `QUANTLIB_*` environment variables
+3. Remove `frontend/src/pages/QuantLibAnalysis.tsx` and route entry
+4. All existing features continue to work without QuantLib
+
+Feature flag support:
+```go
+if cfg.QuantLibConfig.APIKey == "" {
+    utils.Warn("QuantLib integration disabled: no API key configured")
+    return
+}
+```
+
+### Testing
+
+| Test Type | Target | Coverage Goal |
+|-----------|--------|---------------|
+| Unit tests - QuantLibClient | Mocked HTTP responses, error handling, retry logic | > 90% |
+| Unit tests - Data models | Validation, decimal precision, edge cases | > 90% |
+| Unit tests - Handlers | Request parsing, error responses | > 80% |
+| Integration tests - Live API | Skipped in CI, run manually with API key | Key scenarios |
+| Frontend tests - OptionPricer | Component rendering, form validation | Key interactions |
+
+Key test cases:
+```go
+func TestPriceEuropeanOption_Success(t *testing.T) {}
+func TestPriceEuropeanOption_APIError(t *testing.T) {}
+func TestPriceEuropeanOption_Timeout(t *testing.T) {}
+func TestPriceEuropeanOption_RetryOn429(t *testing.T) {}
+func TestPriceEuropeanOption_FallbackToLocal(t *testing.T) {}
+func TestPriceEuropeanOption_DecimalPrecision(t *testing.T) {}
+func TestPriceEuropeanOption_InvalidInput(t *testing.T) {}
+func TestGetCurrencies_CacheHit(t *testing.T) {}
+func TestGetCurrencies_StaleCacheOnFailure(t *testing.T) {}
+```
+
+---
+
+## Phase 2: AI Agent Microservice
+
+### Goal
+
+Extract FinceptTerminal's 30+ AI agents into a standalone FastAPI service.
+
+### Actual Agent Inventory (verified from source)
+
+| Category | Count | Key Agents |
+|----------|-------|------------|
+| Geopolitics (Grand Chessboard) | 5 | American Primacy, Eurasian Balkans, Heartland, Pivots, Players |
+| Geopolitics (Prisoners of Geography) | 10 | Russia, China, USA, Europe, Middle East, Africa, India/Pakistan, Japan/Korea, Latin America, Arctic |
+| Geopolitics (World Order) | 5 | American, Chinese, European, Islamic, Multipolar |
+| Hedge Funds | 8 | Bridgewater, Citadel, Renaissance, Two Sigma, D.E. Shaw, Elliott, Pershing Square, AQR |
+| Legendary Investors | 2 | Warren Buffett, Benjamin Graham |
+| Economic Analysis | 1 | Macroeconomic analysis |
+| **Total** | **31** | |
+
+### Key Components
+
+- `scripts/agents/finagent_core/` - Agent framework (base_agent.py, llm_executor.py, tool_registry.py, db_manager.py)
+- Multi-LLM support: Ollama (local), OpenAI, Anthropic, Gemini, Groq, DeepSeek, Kimi
+- Agent Manager: `scripts/agents/agent_manager.py` - Central orchestration
+- Agno Trading: `scripts/agno_trading/` - Multi-agent debate system
+
+### Architecture
+
+```
+FastAPI Service (port 8091)
+├── /agents/discover     - List available agents
+├── /agents/run          - Execute agent query
+├── /agents/stream       - Streaming execution (SSE)
+├── /agents/team         - Multi-agent collaboration
+└── /agents/workflow     - Workflow execution
+```
+
+### License Blocker
+
+FinceptTerminal's Python scripts are under **AGPL-3.0**. Extracting and running them as a network service triggers AGPL's copyleft requirement — we must make our entire network service's source code available.
+
+**Resolution options**:
+1. Obtain a commercial license from Fincept Corporation (`support@fincept.in`)
+2. Rewrite the agent framework from scratch, only using FinceptTerminal as reference
+3. Run agents as a separate AGPL-compliant service with clear boundary
+
+**Decision needed before Phase 2 begins.**
+
+---
+
+## Phase 3: Data Source Microservice
+
+### Goal
+
+Extract high-value data sources into a unified data service.
+
+### Priority Sources (verified from source)
+
+| Source | Data Type | Script | Category |
+|--------|----------|--------|----------|
+| FRED | Economic indicators | `fred_data.py` | Economic |
+| World Bank | Global economics | `world_bank_data.py` | Economic |
+| IMF | International finance | `imf_data.py` | Economic |
+| Yahoo Finance | Market data | `yfinance_data.py` | Market |
+| AkShare | China markets | `akshare_*.py` (9 modules) | China |
+| SEC EDGAR | Company filings | `edgar_data.py` | US Financial |
+| DBnomics | Statistical data | `dbnomics_data.py` | Economic |
+| CoinGecko | Crypto data | `coingecko_data.py` | Market |
+| Databento | Market data | `databento_data.py` | Market |
+
+### Integration with ETF-Insight
+
+- FRED/IMF/World Bank → Enhance `services/exchange_rate/` with macro indicators
+- Yahoo Finance → Alternative to Finage for market data
+- AkShare → Already partially integrated in `services/ashare/`
+- SEC EDGAR → New: fundamental data for equity analysis
+
+### License Blocker
+
+Same AGPL-3.0 concern as Phase 2. Data source scripts are part of the FinceptTerminal codebase.
+
+---
+
+## Phase 4: Analytics Microservice
+
+### Goal
+
+Extract financial analytics modules.
+
+### Actual Module Inventory (verified from source)
+
+| Category | Modules | Key Capabilities |
+|----------|---------|-----------------|
+| Equity Investment | 9 | DCF, DDM, multiples, residual income, fundamental analysis |
+| Portfolio Management | 11 | Optimization, risk management, ETF analytics, behavioral finance |
+| Derivatives | 7 | Options, forwards, arbitrage |
+| Economics | 11 | Growth, policy, currency, trade, capital flows |
+| Financial Analysis | 11 | Balance sheet, income, cash flow, quality, tax |
+| Alternative Investments | 10 | Real estate, hedge funds, private capital, crypto |
+| Quantitative Methods | 4 | CFA quant models, rate calculations |
+| ML for Trading | 3 | ML trading strategies |
+| Technical Analysis | 2 | Momentum, chart patterns |
+| Backtesting | 4 frameworks | LEAN, VectorBT, Backtrading.py, FastTrade |
+
+### Integration with ETF-Insight
+
+- Portfolio Management → Enhance existing `services/optimization/` with PyPortfolioOpt/RiskFolioLib
+- Derivatives → Complement Phase 1 QuantLib options pricing
+- Backtesting → Alternative to existing `services/backtest/` engine
+- Economics → New macro analysis capabilities
+
+### License Blocker
+
+Same AGPL-3.0 concern as Phase 2.
+
+---
+
+## License Analysis
+
+FinceptTerminal uses **AGPL-3.0 + Commercial dual license**.
+
+### Phase 1: No License Risk
+
+QuantLib API is a public cloud service. We are consuming it via HTTP, not using or distributing FinceptTerminal's code. This is clean API consumption with no AGPL obligations.
+
+### Phase 2-4: AGPL Risk
+
+AGPL-3.0 Section 13: "if you modify the Program, your modified version must prominently offer all users interacting with it remotely through a computer network [...] an opportunity to receive the Corresponding Source Code."
+
+Extracting and running FinceptTerminal's Python scripts as a network service **triggers AGPL copyleft**. This means:
+
+1. Our entire ETF-Insight backend would need to be made available under AGPL-3.0
+2. This conflicts with ETF-Insight's current MIT license
+3. We cannot proceed with Phase 2-4 without resolving this
+
+### Resolution Options
+
+| Option | Pros | Cons | Cost |
+|--------|------|------|------|
+| **A. Commercial License** | Clean legal standing, no copyleft | Recurring cost, dependency on Fincept Corp | Contact `support@fincept.in` |
+| **B. Rewrite from scratch** | No license issues, full control | Significant development effort | 2-3 months per phase |
+| **C. AGPL-compliant isolation** | Can use original code | Must open-source the microservice, clear boundary needed | Legal review required |
+| **D. API-only approach** | No code extraction, no AGPL | Limited to what FinceptTerminal exposes as API | Depends on their API roadmap |
+
+**Recommendation**: Start Phase 1 immediately (no license risk). For Phase 2-4, pursue Option A (commercial license) first. If cost is prohibitive, fall back to Option B (rewrite) for the most valuable modules only.
+
+---
+
+## Risk Register
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|-----------|
+| QuantLib API unavailable | Medium | High | Fallback to local calculations, stale cache |
+| QuantLib API changes without notice | Low | High | Pin API version in URL, monitor for breaking changes |
+| API key revoked or rate limited | Low | Medium | Implement rate limiting on our side, monitor usage |
+| AGPL license blocks Phase 2-4 | High | High | Resolve before Phase 2, consider rewrite |
+| Float precision loss in financial calculations | Medium | High | Use decimal.Decimal everywhere, string serialization |
+| HKEX data format incompatibility | Low | Medium | Validate with HKEX tick sizes, add format adapters |
+| Performance degradation from API latency | Medium | Medium | Connection pooling, caching, async requests |
+
+---
+
+## Success Metrics
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| QuantLib API response time | < 500ms (P95) | Prometheus histogram |
+| Options pricing accuracy | Match Black-Scholes within 0.01 | Unit test comparison |
+| API availability | > 99.5% | Health check monitoring |
+| Fallback activation rate | < 5% of requests | Counter metric |
+| Frontend load time | < 2s | Lighthouse score |
+| Test coverage (new code) | > 80% | Go test -cover |
+| Zero precision loss | 0 incidents | Decimal comparison tests |
+
+---
+
+## References
+
+- [FinceptTerminal GitHub](https://github.com/Fincept-Corporation/FinceptTerminal)
+- [QuantLibClient.cpp](https://github.com/Fincept-Corporation/FinceptTerminal/blob/main/fincept-qt/src/services/quantlib/QuantLibClient.cpp) — Verified API format and authentication
+- [Python Scripts Library](https://github.com/Fincept-Corporation/FinceptTerminal/tree/main/fincept-qt/scripts) — 250+ scripts, 60+ data sources
+- [Agents README](https://github.com/Fincept-Corporation/FinceptTerminal/tree/main/fincept-qt/scripts/agents) — 30+ agents inventory
+- [Analytics README](https://github.com/Fincept-Corporation/FinceptTerminal/tree/main/fincept-qt/scripts/Analytics) — 80+ analytics modules

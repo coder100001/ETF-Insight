@@ -20,6 +20,9 @@ type Handlers struct {
 	Optimizer       *handlers.PortfolioOptimizerHandler
 	Optimization    *handlers.OptimizationHandler
 	Factor          *handlers.FactorHandler
+	FactorTiming    *handlers.FactorTimingHandler
+	AlphaView       *handlers.AlphaViewHandler
+	BlackLitterman  *handlers.BlackLittermanHandler
 	ETFHolding      *handlers.ETFHoldingHandler
 	PortfolioPen    *handlers.PortfolioPenetrationHandler
 	Backtest        *handlers.BacktestHandler
@@ -29,6 +32,8 @@ type Handlers struct {
 	UniversalETF    *handlers.UniversalETFHandler
 	ExchangeRate    *handlers.ExchangeRateHandler
 	OperationLogs   *handlers.OperationLogsHandler
+	Report          *handlers.ReportHandler
+	QuantLib        *handlers.QuantLibHandler
 }
 
 type Router struct {
@@ -70,7 +75,17 @@ func NewRouter(
 		UniversalETF:    handlers.NewUniversalETFHandler(),
 		ExchangeRate:    handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask),
 		OperationLogs:   handlers.NewOperationLogsHandler(services.NewOperationLogsService(models.DB)),
+		Report:          handlers.NewReportHandler(services.NewReportService(models.DB)),
 	}
+
+	factorDataService := services.NewFactorDataService(models.DB)
+	alphaViewService := services.NewAlphaViewService(models.DB, factorDataService)
+	blService := services.NewBlackLittermanService(models.DB, alphaViewService)
+
+	h.FactorTiming = handlers.NewFactorTimingHandler(factorDataService)
+	h.AlphaView = handlers.NewAlphaViewHandler(alphaViewService)
+	h.BlackLitterman = handlers.NewBlackLittermanHandler(blService)
+	h.QuantLib = handlers.NewQuantLibHandler()
 
 	return &Router{engine: engine, handlers: h, config: cfg}
 }
@@ -85,6 +100,9 @@ func (r *Router) RegisterRoutes() {
 	r.registerPortfolioRoutes()
 	r.registerOptimizationRoutes()
 	r.registerFactorRoutes()
+	r.registerFactorTimingRoutes()
+	r.registerAlphaViewRoutes()
+	r.registerBlackLittermanRoutes()
 	r.registerCacheRoutes()
 	r.registerBacktestRoutes()
 	r.registerETFConfigRoutes()
@@ -92,6 +110,8 @@ func (r *Router) RegisterRoutes() {
 	r.registerUniversalETFRoutes()
 	r.registerExchangeRateRoutes()
 	r.registerOperationLogsRoutes()
+	r.registerReportRoutes()
+	r.registerQuantLibRoutes()
 	r.registerStaticRoutes()
 	docs.RegisterSwaggerRoutes(r.engine)
 }
@@ -279,6 +299,26 @@ func (r *Router) registerOperationLogsRoutes() {
 	}
 }
 
+func (r *Router) registerReportRoutes() {
+	reports := r.engine.Group("/api/reports")
+	{
+		// 模板相关路由
+		reports.GET("/templates", r.handlers.Report.GetTemplates)
+		reports.GET("/templates/default", r.handlers.Report.GetDefaultTemplates)
+		reports.GET("/templates/:id", r.handlers.Report.GetTemplate)
+		reports.POST("/templates", r.handlers.Report.CreateTemplate)
+		reports.PUT("/templates/:id", r.handlers.Report.UpdateTemplate)
+		reports.DELETE("/templates/:id", r.handlers.Report.DeleteTemplate)
+
+		// 报告生成相关路由
+		reports.POST("/generate", r.handlers.Report.GenerateReport)
+		reports.GET("", r.handlers.Report.GetReports)
+		reports.GET("/:id", r.handlers.Report.GetReport)
+		reports.GET("/:id/download", r.handlers.Report.DownloadReport)
+		reports.DELETE("/:id", r.handlers.Report.DeleteReport)
+	}
+}
+
 func (r *Router) registerStaticRoutes() {
 	r.engine.Static("/assets", "../frontend/dist/assets")
 	r.engine.StaticFile("/favicon.svg", "../frontend/dist/favicon.svg")
@@ -286,4 +326,50 @@ func (r *Router) registerStaticRoutes() {
 	r.engine.NoRoute(func(c *gin.Context) {
 		c.File("../frontend/dist/index.html")
 	})
+}
+
+func (r *Router) registerFactorTimingRoutes() {
+	timing := r.engine.Group("/api/factor/timing")
+	{
+		timing.POST("/calculate", r.handlers.FactorTiming.CalculateFactorTiming)
+		timing.GET("/history/:factor_name", r.handlers.FactorTiming.GetFactorTimingHistory)
+		timing.GET("/signal/:factor_name", r.handlers.FactorTiming.GetLatestSignal)
+	}
+}
+
+func (r *Router) registerAlphaViewRoutes() {
+	views := r.engine.Group("/api/alpha-views")
+	{
+		views.POST("/", r.handlers.AlphaView.CreateView)
+		views.GET("/", r.handlers.AlphaView.GetActiveViews)
+		views.GET("/active", r.handlers.AlphaView.GetActiveViews)
+		views.GET("/:id", r.handlers.AlphaView.GetView)
+		views.PUT("/:id", r.handlers.AlphaView.UpdateView)
+		views.DELETE("/:id", r.handlers.AlphaView.DeactivateView)
+		views.POST("/generate-from-factor", r.handlers.AlphaView.GenerateFromFactor)
+	}
+}
+
+func (r *Router) registerBlackLittermanRoutes() {
+	bl := r.engine.Group("/api/black-litterman")
+	{
+		bl.POST("/configs", r.handlers.BlackLitterman.CreateConfig)
+		bl.GET("/configs/:id", r.handlers.BlackLitterman.GetConfig)
+		bl.PUT("/configs/:id", r.handlers.BlackLitterman.UpdateConfig)
+		bl.POST("/calculate", r.handlers.BlackLitterman.CalculatePosterior)
+		bl.GET("/results/:id", r.handlers.BlackLitterman.GetPosteriorResults)
+	}
+}
+
+func (r *Router) registerQuantLibRoutes() {
+	ql := r.engine.Group("/api/quantlib")
+	{
+		ql.POST("/options/european", r.handlers.QuantLib.PriceEuropeanOption)
+		ql.POST("/options/american", r.handlers.QuantLib.PriceAmericanOption)
+		ql.POST("/options/greeks", r.handlers.QuantLib.CalculateGreeks)
+		ql.POST("/yield-curve/build", r.handlers.QuantLib.BuildYieldCurve)
+		ql.POST("/bonds/price", r.handlers.QuantLib.PriceBond)
+		ql.POST("/risk/var", r.handlers.QuantLib.CalculateVaR)
+		ql.GET("/reference/:type", r.handlers.QuantLib.GetReferenceData)
+	}
 }
