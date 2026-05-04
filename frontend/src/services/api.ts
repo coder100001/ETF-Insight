@@ -6,6 +6,10 @@ import type {
   BlackLittermanConfig, BLPosteriorReturn, CreateBLConfigRequest,
   RiskBudgetConfig, MonteCarloSimulation, CVaRResult, CreateRiskBudgetRequest
 } from '../types';
+import type {
+  EuropeanOptionRequest, AmericanOptionRequest, GreeksRequest, OptionResult,
+  YieldCurveRequest, YieldCurveResult, BondRequest, BondResult, VaRRequest, VaRResult
+} from '../types/quantlib';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -887,5 +891,54 @@ export const riskBudgetAPI = {
         time_steps: timeSteps,
       }),
     });
+  },
+};
+
+// QuantLib API
+export const quantlibAPI = {
+  priceEuropeanOption: async (req: EuropeanOptionRequest): Promise<ApiResponse<OptionResult>> => {
+    return request<ApiResponse<OptionResult>>('/quantlib/options/european', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  priceAmericanOption: async (req: AmericanOptionRequest): Promise<ApiResponse<OptionResult>> => {
+    return request<ApiResponse<OptionResult>>('/quantlib/options/american', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  calculateGreeks: async (req: GreeksRequest): Promise<ApiResponse<OptionResult>> => {
+    return request<ApiResponse<OptionResult>>('/quantlib/options/greeks', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  buildYieldCurve: async (req: YieldCurveRequest): Promise<ApiResponse<YieldCurveResult>> => {
+    return request<ApiResponse<YieldCurveResult>>('/quantlib/yield-curve/build', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  priceBond: async (req: BondRequest): Promise<ApiResponse<BondResult>> => {
+    return request<ApiResponse<BondResult>>('/quantlib/bonds/price', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  calculateVaR: async (req: VaRRequest): Promise<ApiResponse<VaRResult>> => {
+    return request<ApiResponse<VaRResult>>('/quantlib/risk/var', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  getReferenceData: async (type: string): Promise<ApiResponse<unknown>> => {
+    return request<ApiResponse<unknown>>(`/quantlib/reference/${encodeURIComponent(type)}`);
   },
 };

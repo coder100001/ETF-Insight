@@ -4,3 +4,4 @@ export * from './portfolio';
 export * from './optimization';
 export * from './common';
 export * from './factor';
+export * from './quantlib';

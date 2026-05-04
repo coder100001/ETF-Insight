@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	"etf-insight/models"
 	"etf-insight/utils"
@@ -172,6 +173,7 @@ func (o *PortfolioOptimizer) calculateCovarianceMatrix(returns map[string][]deci
 	for symbol := range returns {
 		symbols = append(symbols, symbol)
 	}
+	sort.Strings(symbols)
 
 	covMatrix := make(map[string]map[string]decimal.Decimal)
 	for _, s1 := range symbols {
@@ -333,6 +335,7 @@ func (o *PortfolioOptimizer) calculateNegativeSharpeGradients(weights []decimal.
 	for symbol := range meanReturns {
 		symbols = append(symbols, symbol)
 	}
+	sort.Strings(symbols)
 
 	weightsMap := make(map[string]decimal.Decimal)
 	for i, symbol := range symbols {
@@ -372,6 +375,7 @@ func (o *PortfolioOptimizer) calculateVolatilityGradients(weights []decimal.Deci
 	for symbol := range covMatrix {
 		symbols = append(symbols, symbol)
 	}
+	sort.Strings(symbols)
 
 	volatility := o.calculatePortfolioVolatilityFromArray(weights, covMatrix, symbols)
 	if volatility.IsZero() {
@@ -405,6 +409,7 @@ func (o *PortfolioOptimizer) calculatePortfolioVolatility(weights map[string]dec
 	for symbol := range weights {
 		symbols = append(symbols, symbol)
 	}
+	sort.Strings(symbols)
 
 	variance := decimal.Zero
 	for _, s1 := range symbols {
@@ -552,6 +557,7 @@ func (o *PortfolioOptimizer) minimizeVolatilityForTarget(request PortfolioOptimi
 	for symbol := range meanReturns {
 		symbols = append(symbols, symbol)
 	}
+	sort.Strings(symbols)
 
 	for iteration := 0; iteration < maxIterations; iteration++ {
 		weightsMap := make(map[string]decimal.Decimal)

@@ -20,6 +20,7 @@ import FactorTiming from './pages/FactorTiming';
 import AlphaViews from './pages/AlphaViews';
 import BlackLittermanConfig from './pages/BlackLittermanConfig';
 import RiskBudget from './pages/RiskBudget';
+import QuantLibAnalysis from './pages/QuantLibAnalysis';
 import './App.css';
 
 const antdTheme = {
@@ -72,6 +73,7 @@ const App: FC = () => {
             <Route path="/alpha-views" element={<AlphaViews />} />
             <Route path="/black-litterman" element={<BlackLittermanConfig />} />
             <Route path="/risk-budget" element={<RiskBudget />} />
+            <Route path="/quantlib" element={<QuantLibAnalysis />} />
 
             <Route path="/operation-logs" element={<OperationLogs />} />
             <Route path="/exchange-rate" element={<ExchangeRate />} />

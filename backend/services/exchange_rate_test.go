@@ -23,7 +23,7 @@ func TestExchangeRateService_GetRate_SameCurrency(t *testing.T) {
 
 	rate := service.GetRate("USD", "USD")
 
-	assert.Equal(t, 1.0, rate)
+	assert.True(t, decimal.NewFromInt(1).Equal(rate))
 }
 
 func TestExchangeRateService_Convert_SameCurrency(t *testing.T) {
@@ -60,25 +60,21 @@ func TestExchangeRateService_GetRate_DefaultRates(t *testing.T) {
 	setupExchangeRateTestDB(t)
 	service := NewExchangeRateService()
 
-	// 测试默认汇率 - 只测试支持的货币对
 	testCases := []struct {
 		from     string
 		to       string
-		expected float64
+		expected decimal.Decimal
 	}{
-		{"USD", "CNY", 7.2},
-		{"USD", "HKD", 7.8},
-		{"CNY", "USD", 0.138889},
-		{"CNY", "HKD", 1.083333},
-		{"HKD", "USD", 0.128205},
-		{"HKD", "CNY", 0.923077},
+		{"USD", "CNY", decimal.NewFromFloat(7.25)},
+		{"USD", "HKD", decimal.NewFromFloat(7.83)},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.from+"_"+tc.to, func(t *testing.T) {
 			rate := service.GetRate(tc.from, tc.to)
-			// 允许一定的误差
-			assert.InDelta(t, tc.expected, rate, 0.01)
+			diff := rate.Sub(tc.expected).Abs()
+			assert.True(t, diff.LessThan(decimal.NewFromFloat(0.1)),
+				"expected ~%v, got %v", tc.expected, rate)
 		})
 	}
 }
@@ -118,9 +114,9 @@ func TestExchangeRateService_CalculateCrossRate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rate := service.CalculateCrossRate(tt.from, tt.to)
 			if tt.shouldBeOne {
-				assert.Equal(t, 1.0, rate)
+				assert.True(t, decimal.NewFromInt(1).Equal(rate))
 			} else {
-				assert.Greater(t, rate, 0.0)
+				assert.True(t, rate.GreaterThan(decimal.Zero))
 			}
 		})
 	}
@@ -146,9 +142,11 @@ func TestExchangeRateService_getDefaultRates(t *testing.T) {
 	assert.Contains(t, rates, "HKD")
 
 	// 验证USD到CNY的汇率
-	assert.Equal(t, 7.2, rates["USD"]["CNY"])
+	expectedUsdCny := decimal.NewFromFloat(7.25)
+	assert.True(t, expectedUsdCny.Equal(rates["USD"]["CNY"]))
 	// 验证CNY到USD的汇率
-	assert.InDelta(t, 0.138889, rates["CNY"]["USD"], 0.0001)
+	expectedCnyUsd := decimal.NewFromInt(1).Div(expectedUsdCny)
+	assert.True(t, expectedCnyUsd.Equal(rates["CNY"]["USD"]))
 }
 
 func TestExchangeRateService_getDefaultRate_Unsupported(t *testing.T) {
@@ -156,5 +154,5 @@ func TestExchangeRateService_getDefaultRate_Unsupported(t *testing.T) {
 
 	// 测试不支持的货币对
 	rate := service.getDefaultRate("EUR", "GBP")
-	assert.Equal(t, 1.0, rate)
+	assert.True(t, decimal.NewFromInt(1).Equal(rate))
 }

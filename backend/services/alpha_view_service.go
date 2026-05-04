@@ -214,6 +214,19 @@ func (s *BlackLittermanService) CalculatePosteriorReturns(configID uint, views [
 	return posterior, nil
 }
 
+func (s *BlackLittermanService) CalculatePosteriorReturnsByIDs(configID uint, viewIDs []uint) (*models.BLPosteriorReturn, error) {
+	var views []models.AlphaView
+	if err := s.db.Where("id IN ?", viewIDs).Find(&views).Error; err != nil {
+		return nil, fmt.Errorf("failed to load alpha views: %w", err)
+	}
+
+	if len(views) == 0 {
+		return nil, fmt.Errorf("no alpha views found for the given IDs")
+	}
+
+	return s.CalculatePosteriorReturns(configID, views)
+}
+
 func (s *BlackLittermanService) GetPosteriorReturns(configID uint) (*models.BLPosteriorReturn, error) {
 	var posterior models.BLPosteriorReturn
 	err := s.db.Where("config_id = ?", configID).
@@ -323,32 +336,112 @@ func (s *BlackLittermanService) buildViewMatrices(views []models.AlphaView, nAss
 
 func (s *BlackLittermanService) blFormula(pi []decimal.Decimal, cov [][]decimal.Decimal, P [][]decimal.Decimal, Q []decimal.Decimal, Omega [][]decimal.Decimal, tau, riskAversion decimal.Decimal) (string, string) {
 	n := len(pi)
-
-	tauCov := make([][]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
-		tauCov[i] = make([]decimal.Decimal, n)
-		for j := 0; j < n; j++ {
-			tauCov[i][j] = cov[i][j].Mul(tau)
-		}
+	if n == 0 {
+		return "[]", "[]"
 	}
 
-	posteriorReturns := make([]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
-		posteriorReturns[i] = pi[i].Add(Q[0].Mul(decimal.NewFromFloat(0.1)))
+	tauCov := scaleMatrix(cov, tau)
+	tauCovInv, err := calculateMatrixInverse(tauCov)
+	if err != nil {
+		returnsJSON, _ := json.Marshal(pi)
+		covJSON, _ := json.Marshal(cov)
+		return string(returnsJSON), string(covJSON)
 	}
 
-	posteriorCov := make([][]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
-		posteriorCov[i] = make([]decimal.Decimal, n)
-		for j := 0; j < n; j++ {
-			posteriorCov[i][j] = cov[i][j].Add(tauCov[i][j])
-		}
+	k := len(Q)
+	if k == 0 || P == nil || len(P) == 0 || Omega == nil || len(Omega) == 0 {
+		returnsJSON, _ := json.Marshal(pi)
+		covJSON, _ := json.Marshal(cov)
+		return string(returnsJSON), string(covJSON)
 	}
+
+	omegaInv, err := calculateMatrixInverse(Omega)
+	if err != nil {
+		returnsJSON, _ := json.Marshal(pi)
+		covJSON, _ := json.Marshal(cov)
+		return string(returnsJSON), string(covJSON)
+	}
+
+	pT := calculateMatrixTranspose(P)
+	pTOmegaInv, err := calculateMatrixMultiply(pT, omegaInv)
+	if err != nil {
+		returnsJSON, _ := json.Marshal(pi)
+		covJSON, _ := json.Marshal(cov)
+		return string(returnsJSON), string(covJSON)
+	}
+	pTOmegaInvP, err := calculateMatrixMultiply(pTOmegaInv, P)
+	if err != nil {
+		returnsJSON, _ := json.Marshal(pi)
+		covJSON, _ := json.Marshal(cov)
+		return string(returnsJSON), string(covJSON)
+	}
+
+	sum := addMatrices(tauCovInv, pTOmegaInvP)
+	sumInv, err := calculateMatrixInverse(sum)
+	if err != nil {
+		returnsJSON, _ := json.Marshal(pi)
+		covJSON, _ := json.Marshal(cov)
+		return string(returnsJSON), string(covJSON)
+	}
+
+	tauCovInvPi := matrixVectorMultiply(tauCovInv, pi)
+	pTOmegaInvQ := matrixVectorMultiply(pTOmegaInv, Q)
+	rhs := addVectors(tauCovInvPi, pTOmegaInvQ)
+
+	posteriorReturns := matrixVectorMultiply(sumInv, rhs)
+
+	posteriorCov := addMatrices(cov, sumInv)
 
 	returnsJSON, _ := json.Marshal(posteriorReturns)
 	covJSON, _ := json.Marshal(posteriorCov)
 
 	return string(returnsJSON), string(covJSON)
+}
+
+func scaleMatrix(matrix [][]decimal.Decimal, scalar decimal.Decimal) [][]decimal.Decimal {
+	n := len(matrix)
+	result := make([][]decimal.Decimal, n)
+	for i := 0; i < n; i++ {
+		result[i] = make([]decimal.Decimal, len(matrix[i]))
+		for j := 0; j < len(matrix[i]); j++ {
+			result[i][j] = matrix[i][j].Mul(scalar)
+		}
+	}
+	return result
+}
+
+func addMatrices(A, B [][]decimal.Decimal) [][]decimal.Decimal {
+	n := len(A)
+	result := make([][]decimal.Decimal, n)
+	for i := 0; i < n; i++ {
+		result[i] = make([]decimal.Decimal, len(A[i]))
+		for j := 0; j < len(A[i]); j++ {
+			result[i][j] = A[i][j].Add(B[i][j])
+		}
+	}
+	return result
+}
+
+func addVectors(a, b []decimal.Decimal) []decimal.Decimal {
+	n := len(a)
+	result := make([]decimal.Decimal, n)
+	for i := 0; i < n; i++ {
+		result[i] = a[i].Add(b[i])
+	}
+	return result
+}
+
+func matrixVectorMultiply(matrix [][]decimal.Decimal, vector []decimal.Decimal) []decimal.Decimal {
+	m := len(matrix)
+	result := make([]decimal.Decimal, m)
+	for i := 0; i < m; i++ {
+		sum := decimal.Zero
+		for j := 0; j < len(vector); j++ {
+			sum = sum.Add(matrix[i][j].Mul(vector[j]))
+		}
+		result[i] = sum
+	}
+	return result
 }
 
 func calculateMatrixInverse(matrix [][]decimal.Decimal) ([][]decimal.Decimal, error) {

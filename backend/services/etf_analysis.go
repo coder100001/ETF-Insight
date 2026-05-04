@@ -552,7 +552,7 @@ func (s *ETFAnalysisService) convertToUSD(amount decimal.Decimal, currency strin
 	}
 
 	rate := s.exchangeRate.GetRate(currency, "USD")
-	return amount.Mul(decimal.NewFromFloat(rate))
+	return amount.Mul(rate)
 }
 
 // GetComparisonData 获取ETF对比数据

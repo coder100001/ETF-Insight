@@ -11,16 +11,17 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import uvicorn
+import os
 
 app = FastAPI(title="AKShare Data Service", version="2.6.0")
 
-# CORS配置
+allowed_origins = os.getenv("AKSHARE_CORS_ORIGINS", "http://localhost:5173,http://localhost:8080").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 

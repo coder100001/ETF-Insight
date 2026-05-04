@@ -27,12 +27,13 @@ type ExchangeRateConfig struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Host         string        `yaml:"host"`
-	Port         int           `yaml:"port"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout"`
-	CertFile     string        `yaml:"cert_file"`
-	KeyFile      string        `yaml:"key_file"`
+	Host                string        `yaml:"host"`
+	Port                int           `yaml:"port"`
+	ReadTimeout         time.Duration `yaml:"read_timeout"`
+	WriteTimeout        time.Duration `yaml:"write_timeout"`
+	CertFile            string        `yaml:"cert_file"`
+	KeyFile             string        `yaml:"key_file"`
+	InsecureHealthCheck bool          `yaml:"insecure_health_check"` // 开发环境跳过 TLS 证书验证
 }
 
 // DatabaseConfig 数据库配置
@@ -116,12 +117,13 @@ type LogConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Host:         getEnv("SERVER_HOST", "0.0.0.0"),
-			Port:         getEnvAsInt("SERVER_PORT", 8080),
-			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
-			CertFile:     getEnv("TLS_CERT_FILE", ""),
-			KeyFile:      getEnv("TLS_KEY_FILE", ""),
+			Host:                getEnv("SERVER_HOST", "0.0.0.0"),
+			Port:                getEnvAsInt("SERVER_PORT", 8080),
+			ReadTimeout:         30 * time.Second,
+			WriteTimeout:        30 * time.Second,
+			CertFile:            getEnv("TLS_CERT_FILE", ""),
+			KeyFile:             getEnv("TLS_KEY_FILE", ""),
+			InsecureHealthCheck: getEnvAsBool("INSECURE_HEALTH_CHECK", true), // 默认允许开发环境跳过验证
 		},
 		Database: DatabaseConfig{
 			DSN:      getEnv("DB_DSN", "etf_insight.db"),
@@ -201,6 +203,15 @@ func getEnvAsInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intVal, err := strconv.Atoi(value); err == nil {
 			return intVal
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolVal, err := strconv.ParseBool(value); err == nil {
+			return boolVal
 		}
 	}
 	return defaultValue

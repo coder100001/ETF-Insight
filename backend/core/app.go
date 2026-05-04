@@ -179,7 +179,20 @@ func (a *App) Start() error {
 }
 
 func (a *App) waitForServerReady(errChan <-chan error) error {
-	healthURL := fmt.Sprintf("http://localhost:%d/health", a.config.Server.Port)
+	protocol := "http"
+	httpClient := &http.Client{Timeout: 2 * time.Second}
+
+	if a.config.Server.CertFile != "" && a.config.Server.KeyFile != "" {
+		protocol = "https"
+		if a.config.Server.InsecureHealthCheck {
+			httpClient.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+			utils.Warn("HTTPS health check with InsecureSkipVerify enabled - use only in development")
+		}
+	}
+
+	healthURL := fmt.Sprintf("%s://localhost:%d/health", protocol, a.config.Server.Port)
 	timeout := time.After(5 * time.Second)
 	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
@@ -191,7 +204,7 @@ func (a *App) waitForServerReady(errChan <-chan error) error {
 		case <-timeout:
 			return fmt.Errorf("server startup timeout: health check failed after 5 seconds")
 		case <-ticker.C:
-			resp, err := http.Get(healthURL)
+			resp, err := httpClient.Get(healthURL)
 			if err == nil {
 				resp.Body.Close()
 				if resp.StatusCode == http.StatusOK {

@@ -18,6 +18,7 @@ import {
   EyeOutlined,
   CalculatorOutlined,
   SafetyOutlined,
+  NumberOutlined,
 } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 
@@ -169,6 +170,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <NavLink to="/risk-budget" $active={isActive('/risk-budget')}>
             <SafetyOutlined />
             风险预算
+          </NavLink>
+          <NavLink to="/quantlib" $active={isActive('/quantlib')}>
+            <NumberOutlined />
+            QuantLib 分析
           </NavLink>
           <Divider />
           <NavLink to="/operation-logs" $active={isActive('/operation-logs')}>

@@ -35,13 +35,12 @@ type ExchangeRateAPIResponse struct {
 	Date  string             `json:"date"`
 }
 
-// GetRate 获取汇率
-func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
+// GetRate 获取汇率 (返回 decimal.Decimal 以满足金融计算精度要求)
+func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) decimal.Decimal {
 	if fromCurrency == toCurrency {
-		return 1.0
+		return decimal.NewFromInt(1)
 	}
 
-	// 先尝试从数据库获取
 	var rate models.ExchangeRate
 	result := models.DB.Where(
 		"from_currency = ? AND to_currency = ?",
@@ -49,10 +48,9 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
 	).Order("rate_date DESC").First(&rate)
 
 	if result.Error == nil {
-		return rate.Rate.InexactFloat64()
+		return rate.Rate
 	}
 
-	// 使用默认汇率
 	return s.getDefaultRate(fromCurrency, toCurrency)
 }
 
@@ -63,7 +61,7 @@ func (s *ExchangeRateService) Convert(amount decimal.Decimal, fromCurrency, toCu
 	}
 
 	rate := s.GetRate(fromCurrency, toCurrency)
-	return amount.Mul(decimal.NewFromFloat(rate))
+	return amount.Mul(rate)
 }
 
 // UpdateRates 更新汇率
@@ -83,7 +81,7 @@ func (s *ExchangeRateService) UpdateRates() error {
 			exchangeRate := models.ExchangeRate{
 				FromCurrency: fromCurrency,
 				ToCurrency:   toCurrency,
-				Rate:         decimal.NewFromFloat(rate),
+				Rate:         rate,
 				DataSource:   "api",
 			}
 			models.DB.Clauses(clause.OnConflict{
@@ -100,7 +98,7 @@ func (s *ExchangeRateService) UpdateRates() error {
 }
 
 // fetchFromFreeAPI 从免费API获取汇率
-func (s *ExchangeRateService) fetchFromFreeAPI() (map[string]map[string]float64, error) {
+func (s *ExchangeRateService) fetchFromFreeAPI() (map[string]map[string]decimal.Decimal, error) {
 	url := "https://api.exchangerate-api.com/v4/latest/USD"
 
 	resp, err := s.client.Get(url)
@@ -123,64 +121,66 @@ func (s *ExchangeRateService) fetchFromFreeAPI() (map[string]map[string]float64,
 		return nil, err
 	}
 
-	// 构建汇率矩阵
-	rates := make(map[string]map[string]float64)
+	rates := make(map[string]map[string]decimal.Decimal)
 
-	// USD基础汇率
-	usdCny := apiResp.Rates["CNY"]
-	usdHkd := apiResp.Rates["HKD"]
+	usdCny := decimal.NewFromFloat(apiResp.Rates["CNY"])
+	usdHkd := decimal.NewFromFloat(apiResp.Rates["HKD"])
+	one := decimal.NewFromInt(1)
 
-	rates["USD"] = map[string]float64{
-		"USD": 1.0,
+	rates["USD"] = map[string]decimal.Decimal{
+		"USD": one,
 		"CNY": usdCny,
 		"HKD": usdHkd,
 	}
 
-	rates["CNY"] = map[string]float64{
-		"CNY": 1.0,
-		"USD": 1.0 / usdCny,
-		"HKD": usdHkd / usdCny,
+	rates["CNY"] = map[string]decimal.Decimal{
+		"CNY": one,
+		"USD": one.Div(usdCny),
+		"HKD": usdHkd.Div(usdCny),
 	}
 
-	rates["HKD"] = map[string]float64{
-		"HKD": 1.0,
-		"USD": 1.0 / usdHkd,
-		"CNY": usdCny / usdHkd,
+	rates["HKD"] = map[string]decimal.Decimal{
+		"HKD": one,
+		"USD": one.Div(usdHkd),
+		"CNY": usdCny.Div(usdHkd),
 	}
 
 	return rates, nil
 }
 
 // getDefaultRates 获取默认汇率
-func (s *ExchangeRateService) getDefaultRates() map[string]map[string]float64 {
-	return map[string]map[string]float64{
+func (s *ExchangeRateService) getDefaultRates() map[string]map[string]decimal.Decimal {
+	usdCny := decimal.NewFromFloat(7.25)
+	usdHkd := decimal.NewFromFloat(7.83)
+
+	return map[string]map[string]decimal.Decimal{
 		"USD": {
-			"USD": 1.0,
-			"CNY": 7.2,
-			"HKD": 7.8,
+			"USD": decimal.NewFromInt(1),
+			"CNY": usdCny,
+			"HKD": usdHkd,
 		},
 		"CNY": {
-			"CNY": 1.0,
-			"USD": 0.138889,
-			"HKD": 1.083333,
+			"CNY": decimal.NewFromInt(1),
+			"USD": decimal.NewFromInt(1).Div(usdCny),
+			"HKD": usdHkd.Div(usdCny),
 		},
 		"HKD": {
-			"HKD": 1.0,
-			"USD": 0.128205,
-			"CNY": 0.923077,
+			"HKD": decimal.NewFromInt(1),
+			"USD": decimal.NewFromInt(1).Div(usdHkd),
+			"CNY": usdCny.Div(usdHkd),
 		},
 	}
 }
 
 // getDefaultRate 获取默认汇率
-func (s *ExchangeRateService) getDefaultRate(fromCurrency, toCurrency string) float64 {
+func (s *ExchangeRateService) getDefaultRate(fromCurrency, toCurrency string) decimal.Decimal {
 	rates := s.getDefaultRates()
 	if fromRates, ok := rates[fromCurrency]; ok {
 		if rate, ok := fromRates[toCurrency]; ok {
 			return rate
 		}
 	}
-	return 1.0
+	return decimal.NewFromInt(1)
 }
 
 // GetHistory 获取汇率历史
@@ -190,20 +190,19 @@ func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days i
 }
 
 // CalculateCrossRate 计算交叉汇率
-func (s *ExchangeRateService) CalculateCrossRate(fromCurrency, toCurrency string) float64 {
+func (s *ExchangeRateService) CalculateCrossRate(fromCurrency, toCurrency string) decimal.Decimal {
 	if fromCurrency == toCurrency {
-		return 1.0
+		return decimal.NewFromInt(1)
 	}
 
-	// 尝试直接获取
 	directRate := s.GetRate(fromCurrency, toCurrency)
-	if directRate != 1.0 {
+	one := decimal.NewFromInt(1)
+	if !directRate.Equal(one) {
 		return directRate
 	}
 
-	// 通过USD计算交叉汇率
 	fromToUSD := s.GetRate(fromCurrency, "USD")
 	usdToTarget := s.GetRate("USD", toCurrency)
 
-	return fromToUSD * usdToTarget
+	return fromToUSD.Mul(usdToTarget)
 }

@@ -102,6 +102,11 @@ func AutoMigrate() error {
 		&PluginExecutionLog{},
 		&ModelBenchmarkMatrix{},
 		&StrategyExperiment{},
+		// 新增报告系统模型
+		&ReportTemplate{},
+		&ReportSection{},
+		&GeneratedReport{},
+		&ReportParameter{},
 	)
 }
 
