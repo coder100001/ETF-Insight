@@ -35,7 +35,7 @@ class BaseAgent(ABC):
             name=self.name,
             category=self.category,
             description=self.description,
-            system_prompt_preview=prompt[:200] + ("..." if len(prompt) > 200 else ""),
+            system_prompt_preview=(prompt[:197] + "...") if len(prompt) > 200 else prompt,
         )
 
     async def run(
