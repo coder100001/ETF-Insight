@@ -610,48 +610,80 @@ func TestGetCurrencies_StaleCacheOnFailure(t *testing.T) {}
 
 ### Goal
 
-Extract FinceptTerminal's 30+ AI agents into a standalone FastAPI service.
+Build a standalone FastAPI microservice (port 8091) providing AI agents for financial analysis, with Go backend integration and React frontend.
 
-### Actual Agent Inventory (verified from source)
+### License Resolution
 
-| Category | Count | Key Agents |
-|----------|-------|------------|
-| Geopolitics (Grand Chessboard) | 5 | American Primacy, Eurasian Balkans, Heartland, Pivots, Players |
-| Geopolitics (Prisoners of Geography) | 10 | Russia, China, USA, Europe, Middle East, Africa, India/Pakistan, Japan/Korea, Latin America, Arctic |
-| Geopolitics (World Order) | 5 | American, Chinese, European, Islamic, Multipolar |
-| Hedge Funds | 8 | Bridgewater, Citadel, Renaissance, Two Sigma, D.E. Shaw, Elliott, Pershing Square, AQR |
-| Legendary Investors | 2 | Warren Buffett, Benjamin Graham |
-| Economic Analysis | 1 | Macroeconomic analysis |
-| **Total** | **31** | |
+**Decision**: Option B — Rewrite from scratch (零 AGPL 风险)
 
-### Key Components
-
-- `scripts/agents/finagent_core/` - Agent framework (base_agent.py, llm_executor.py, tool_registry.py, db_manager.py)
-- Multi-LLM support: Ollama (local), OpenAI, Anthropic, Gemini, Groq, DeepSeek, Kimi
-- Agent Manager: `scripts/agents/agent_manager.py` - Central orchestration
-- Agno Trading: `scripts/agno_trading/` - Multi-agent debate system
+Agent 框架完全自主实现，仅参考 FinceptTerminal 的架构设计，不使用任何 AGPL 代码。
 
 ### Architecture
 
 ```
-FastAPI Service (port 8091)
-├── /agents/discover     - List available agents
-├── /agents/run          - Execute agent query
-├── /agents/stream       - Streaming execution (SSE)
-├── /agents/team         - Multi-agent collaboration
-└── /agents/workflow     - Workflow execution
+React Frontend (/ai-agents)
+    │
+Go Backend (/api/agents/*)
+    │
+Python FastAPI Service (port 8091)
+├── GET  /health           - 健康检查
+├── GET  /agents/discover   - Agent 列表
+├── POST /agents/run        - 单 Agent 执行
+├── POST /agents/stream     - SSE 流式响应
+└── POST /agents/team       - 多 Agent 团队辩论
 ```
 
-### License Blocker
+### Implemented Agent Inventory (Phase 2 初始版本)
 
-FinceptTerminal's Python scripts are under **AGPL-3.0**. Extracting and running them as a network service triggers AGPL's copyleft requirement — we must make our entire network service's source code available.
+| Category | Count | Agents |
+|----------|-------|--------|
+| Legendary Investors | 2 | Warren Buffett, Benjamin Graham |
+| Hedge Funds | 1 | Bridgewater Associates |
+| Macro Economic | 1 | Macroeconomic Analyst |
+| **Total** | **4** | (框架支持无限扩展) |
 
-**Resolution options**:
-1. Obtain a commercial license from Fincept Corporation (`support@fincept.in`)
-2. Rewrite the agent framework from scratch, only using FinceptTerminal as reference
-3. Run agents as a separate AGPL-compliant service with clear boundary
+> 后续可通过 `agents/registry.py` 轻松添加更多 Agent（地缘政治、技术分析等）
 
-**Decision needed before Phase 2 begins.**
+### Key Components (from scratch)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| LLM Provider | `core/llm_provider.py` | 多模型抽象层 (OpenAI/Ollama/DeepSeek) |
+| Base Agent | `core/base_agent.py` | Agent 抽象基类 |
+| Tool Registry | `core/tool_registry.py` | 工具注册与调用机制 |
+| Agent Manager | `core/agent_manager.py` | Agent 注册/发现/执行/团队协作 |
+| FastAPI Server | `agent_server.py` | HTTP API 服务 (port 8091) |
+| Pydantic Schemas | `models/schemas.py` | 请求/响应模型 (8 个类型) |
+| Tests | `tests/` | 19 个单元测试全部通过 |
+| Dockerfile | `Dockerfile` | 容器化部署 |
+
+### Multi-LLM Support
+
+| Provider | Base URL | Models |
+|----------|----------|--------|
+| OpenAI | `https://api.openai.com/v1` | gpt-4o, gpt-4o-mini, gpt-4-turbo |
+| DeepSeek | `https://api.deepseek.com/v1` | deepseek-chat, deepseek-reasoner |
+| Ollama | `http://localhost:11434` | llama3.1, qwen2.5, deepseek-r1 |
+
+通过 `get_provider(name)` 工厂函数切换，支持 OpenAI-compatible API 的任意提供商。
+
+### Go Backend Integration
+
+| Component | File |
+|-----------|------|
+| Client | `services/agent/agent_client.go` |
+| Handler | `handlers/agent_handler.go` |
+| Routes | `router/router.go` → `registerAgentRoutes()` |
+
+### Frontend Integration
+
+| Component | File |
+|-----------|------|
+| Types | `frontend/src/types/agent.ts` |
+| API Service | `frontend/src/services/api.ts` → `agentAPI` |
+| Page | `frontend/src/pages/AIAgents.tsx` |
+| Route | `/ai-agents` |
+| Sidebar | "AI Agent" (RobotOutlined icon) |
 
 ---
 
@@ -826,8 +858,53 @@ GET  /api/quantlib/reference/:type     — 参考数据 (currencies/frequencies/
 
 ### Phase 2: AI Agent Microservice
 
-**Status**: 📋 Not Started
-**Target**: 2026-Q2
+**Status**: ✅ Complete (2026-05-05)
+**License**: Option B — 从零重写，零 AGPL 风险
+
+| Component | File | Status |
+|-----------|------|--------|
+| Schemas | `backend/services/agent/models/schemas.py` | ✅ 8 Pydantic v2 类型 |
+| LLM Provider | `backend/services/agent/core/llm_provider.py` | ✅ OpenAI/Ollama/DeepSeek |
+| Base Agent | `backend/services/agent/core/base_agent.py` | ✅ 抽象基类 + run() |
+| Tool Registry | `backend/services/agent/core/tool_registry.py` | ✅ @decorator 注册 |
+| Agent Manager | `backend/services/agent/core/agent_manager.py` | ✅ 注册/发现/执行/团队 |
+| Buffett Agent | `backend/services/agent/agents/buffett.py` | ✅ 价值投资大师 |
+| Graham Agent | `backend/services/agent/agents/graham.py` | ✅ 防御型投资 |
+| Bridgewater Agent | `backend/services/agent/agents/bridgewater.py` | ✅ 宏观风险平价 |
+| Macro Agent | `backend/services/agent/agents/macro.py` | ✅ 宏观经济分析 |
+| Agent Registry | `backend/services/agent/agents/registry.py` | ✅ 自动注册 |
+| FastAPI Server | `backend/services/agent/agent_server.py` | ✅ 6 endpoints |
+| Tests | `backend/services/agent/tests/` | ✅ 19 tests passing |
+| Dockerfile | `backend/services/agent/Dockerfile` | ✅ Python 3.11-slim |
+| Go Client | `backend/services/agent/agent_client.go` | ✅ 4 methods |
+| Go Handler | `backend/handlers/agent_handler.go` | ✅ 4 handlers |
+| Go Router | `backend/router/router.go` | ✅ 4 endpoints |
+| Frontend Types | `frontend/src/types/agent.ts` | ✅ 6 interfaces |
+| Frontend API | `frontend/src/services/api.ts` | ✅ `agentAPI` (4 methods) |
+| Frontend Page | `frontend/src/pages/AIAgents.tsx` | ✅ 单Agent/团队模式 |
+| Frontend Route | `frontend/src/App.tsx`, `Layout.tsx` | ✅ `/ai-agents` + 侧边栏 |
+
+**API Endpoints**:
+```
+GET  /api/agents/health    — 健康检查 (Agent数量/LLM提供商)
+GET  /api/agents/discover  — Agent列表 (id/name/category/description)
+POST /api/agents/run       — 单Agent执行 (支持4个LLM提供商)
+POST /api/agents/team      — 多Agent团队辩论 (2-5个Agent, 1-3轮)
+```
+
+**Commits**:
+```
+c657028 feat(agent-service): scaffold Python agent service project structure
+e82a4a8 fix(agent-service): improve schema type safety and add docstring
+de8992c feat(agent-service): add LLM provider abstraction with OpenAI/Ollama support
+3fefd27 feat(agent-service): add base agent class and tool registry
+32955df feat(agent-service): add agent manager with discovery and team execution
+eccaf0f fix(agent-service): truncate system prompt preview to exactly 200 chars
+2d14804 feat(agent-service): add FastAPI server with discover/run/stream/team endpoints
+1f70917 feat(agent-service): add 4 financial agents (Buffett, Graham, Bridgewater, Macro)
+84fa2e3 feat(agent): add Go client, handler, and routes for agent service
+5442592 feat(agent): add AI Agents page with single and team analysis modes
+```
 
 ### Phase 3: Data Source Microservice
 
