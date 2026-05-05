@@ -32,6 +32,14 @@ ETF-Insight 后端坚持以下设计理念：
 - **VaR 计算**: QuantLib 引擎驱动的历史模拟法/参数法
 - **参考数据**: 缓存 1 小时 TTL，自动清理过期缓存
 
+### AI Agent 微服务 (v2.9 新增)
+- **投资大师分析**: Warren Buffett (价值投资)、Benjamin Graham (防御型投资)
+- **对冲基金视角**: Bridgewater Associates (宏观风险平价)
+- **宏观经济分析**: 自上而下宏观经济分析
+- **多 Agent 团队辩论**: 2-5 个 Agent 同时分析，综合观点
+- **多 LLM 支持**: OpenAI/Ollama/DeepSeek，通过工厂函数切换
+- **FastAPI 服务**: port 8091，19 个单元测试
+
 ### 数据服务 (v2.6 重构)
 - **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
 - **ETF持仓穿透**: 底层持仓明细查询、权重分析
@@ -83,6 +91,7 @@ backend/
 │   ├── health_handler.go  # 健康检查
 │   ├── middleware.go      # 中间件
 │   └── quantlib_handler.go   # QuantLib API 接口 (v2.8)
+│   └── agent_handler.go      # Agent 服务 Handler (v2.9)
 ├── middleware/            # 中间件
 │   ├── audit.go           # 审计日志中间件
 │   ├── validation.go      # 数据验证中间件
@@ -112,6 +121,24 @@ backend/
 │   └── quantlib/              # QuantLib 云 API 客户端 (v2.8)
 │       ├── quantlib_client.go      # HTTP 客户端 (10 方法 + 缓存)
 │       └── quantlib_client_test.go # 单元测试 (httptest mock)
+│   └── agent/                # AI Agent 微服务 (v2.9)
+│       ├── core/
+│       │   ├── base_agent.py        # Agent 抽象基类
+│       │   ├── llm_provider.py      # 多模型抽象层 (OpenAI/Ollama/DeepSeek)
+│       │   ├── tool_registry.py     # 工具注册机制
+│       │   └── agent_manager.py     # Agent 管理器
+│       ├── agents/
+│       │   ├── buffett.py           # Warren Buffett Agent
+│       │   ├── graham.py            # Benjamin Graham Agent
+│       │   ├── bridgewater.py       # Bridgewater Agent
+│       │   ├── macro.py             # 宏观经济分析 Agent
+│       │   └── registry.py          # Agent 自动注册
+│       ├── models/schemas.py        # Pydantic v2 请求/响应模型
+│       ├── agent_server.py          # FastAPI 入口 (port 8091)
+│       ├── Dockerfile               # 容器化部署
+│       └── tests/                   # 19 个单元测试
+│   └── agent/                # Agent 服务 Go 客户端
+│       └── agent_client.go       # HTTP 客户端 (4 方法)
 ├── tasks/                 # 定时任务
 │   ├── scheduler.go       # 主调度器
 │   ├── exchange_rate_task.go
@@ -165,6 +192,8 @@ go build -o etf-insight
 ```
 
 服务将在 http://localhost:8080 启动
+
+AI Agent 服务: http://localhost:8091 (Python FastAPI)
 
 ## 📚 API 文档
 
@@ -238,6 +267,13 @@ go build -o etf-insight
 - `POST /api/quantlib/bonds/price` - 债券定价
 - `POST /api/quantlib/risk/var` - VaR 计算
 - `GET /api/quantlib/reference/:type` - 参考数据 (currencies/frequencies/calendars/daycount)
+
+### AI Agent 微服务接口 (v2.9 新增)
+- `GET /api/agents/health` - 健康检查 (Agent数量/LLM提供商)
+- `GET /api/agents/discover` - Agent 列表发现
+- `POST /api/agents/run` - 单 Agent 执行
+- `POST /api/agents/stream` - SSE 流式响应
+- `POST /api/agents/team` - 多 Agent 团队辩论
 
 ### 回测引擎接口
 - `POST /api/backtest/run` - 运行回测
@@ -363,6 +399,7 @@ func init() {
 | services/technical | 100% | RSI、MACD、布林带 |
 | services/risk | 100% | VaR、CVaR、风险指标 |
 | services/quantlib | 9 tests | QuantLib 云 API 客户端、缓存、错误处理 |
+| services/agent | 19 tests | Agent 框架、LLM Provider、Agent Manager、API 端点 |
 | middleware | 68.8% | 审计、安全 |
 | utils | 81.2% | 工具函数 |
 
