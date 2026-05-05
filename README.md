@@ -1,4 +1,4 @@
-# ETF-Insight (v2.6.0) 🚀
+# ETF-Insight (v2.8.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
@@ -28,6 +28,16 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **字段名对齐**: 前后端响应字段完全一致（weights/volatility/target_return等）
 - ✅ **有效前沿图表修复**: 动态坐标轴、格式化显示、边距优化
 - ✅ **文档清理**: 移除所有JWT/登录相关残留描述
+
+**v2.8 FinceptTerminal QuantLib 集成** (2026-05-04):
+- ✅ **QuantLib 云 API 对接**: 直接调用 `api.fincept.in/quantlib/` 云服务
+  - 期权定价: 欧式/美式 Black-Scholes 定价，完整 Greeks (Delta/Gamma/Theta/Vega/Rho)
+  - 收益率曲线: 构建和可视化，支持多货币 (USD/EUR/CNY/GBP/JPY)
+  - 债券定价: 固定收益分析，包含久期、修正久期、凸性
+  - VaR 计算: QuantLib 引擎驱动的风险价值计算
+  - 参考数据: 缓存 1 小时 TTL (货币/频率/日历/计息基准)
+- ✅ **前端量化分析页面**: `QuantLibAnalysis.tsx` - 4 个 Tab (期权/债券/收益率曲线/VaR)
+- ✅ **代码审查**: 2 轮审查，10 个问题已修复 (P0×3, P1×4, P2×3)
 
 **v2.5 实时数据与量化分析升级**:
 - ✅ **实时数据获取**: Finage API 集成，3年历史数据同步(约388天)
@@ -185,6 +195,13 @@ ETF-Insight 坚持**开源、专业、透明**的理念：
 - **Black-Litterman** - 贝叶斯观点融合、后验收益分布
 - **权重约束** - 支持单资产上下限约束
 - **优化目标** - 最大夏普/最小波动/目标收益
+
+### 🔬 QuantLib 量化分析 (v2.8 新增)
+- **期权定价** - 欧式/美式 Black-Scholes 定价，完整 Greeks 计算
+- **收益率曲线** - 构建和可视化收益率曲线，支持多货币
+- **债券定价** - 固定收益债券定价分析，久期/凸性计算
+- **VaR 计算** - QuantLib 引擎驱动的历史模拟法/参数法 VaR
+- **交互式分析** - 4 个 Tab 的专业分析界面
 
 ### 📈 因子分析 (v2.5 新增)
 - **Fama-French模型** - 三因子/五因子模型支持
@@ -355,11 +372,12 @@ ETF-Insight/
 - ✅ 集中度指标（Top10/Top20、Herfindahl指数）
 - ✅ 智能缓存与事件驱动失效
 
-### v2.7-2.8 (3-6个月) 📋
-- 📋 回测引擎前端UI
-- 📋 跨资产ETF前端页面
-- 📋 策略框架实现
-- 📋 性能监控集成
+### v2.7-2.8 ✅
+- ✅ QuantLib 云 API 集成 (期权/债券/收益率曲线/VaR)
+- ✅ QuantLib 前端分析页面 (4 Tab 交互式界面)
+- ✅ 代码审查与质量保证 (2 轮审查)
+- 📋 AI Agent 微服务 (37 投资大师)
+- 📋 数据源微服务 (60+ 数据源)
 
 ### v3.0 (6-12个月) 🚀
 - 🚀 插件系统架构

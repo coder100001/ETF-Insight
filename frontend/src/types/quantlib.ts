@@ -1,4 +1,5 @@
 // QuantLib API Types
+// Note: decimal fields are strings to preserve precision (shopspring/decimal serializes as JSON string)
 
 export interface EuropeanOptionRequest {
   spot: number;
@@ -30,13 +31,14 @@ export interface GreeksRequest {
   option_type: 'call' | 'put';
 }
 
+// Result types use string for decimal precision (backend serializes decimal.Decimal as JSON string)
 export interface OptionResult {
-  price: number;
-  delta: number;
-  gamma: number;
-  theta: number;
-  vega: number;
-  rho: number;
+  price: string;
+  delta: string;
+  gamma: string;
+  theta: string;
+  vega: string;
+  rho: string;
 }
 
 export interface YieldCurveRequest {
@@ -52,10 +54,10 @@ export interface YieldCurveRequest {
 export interface YieldCurveResult {
   currency: string;
   tenors: string[];
-  rates: number[];
-  zero_rates: number[];
-  forward_rates: number[];
-  discount_factors: number[];
+  rates: string[];
+  zero_rates: string[];
+  forward_rates: string[];
+  discount_factors: string[];
 }
 
 export interface BondRequest {
@@ -69,13 +71,13 @@ export interface BondRequest {
 }
 
 export interface BondResult {
-  dirty_price: number;
-  clean_price: number;
-  duration: number;
-  modified_duration: number;
-  convexity: number;
-  yield_to_maturity: number;
-  accrued_interest: number;
+  dirty_price: string;
+  clean_price: string;
+  duration: string;
+  modified_duration: string;
+  convexity: string;
+  yield_to_maturity: string;
+  accrued_interest: string;
 }
 
 export interface VaRRequest {
@@ -87,9 +89,9 @@ export interface VaRRequest {
 }
 
 export interface VaRResult {
-  var: number;
-  cvar: number;
-  confidence: number;
+  var: string;
+  cvar: string;
+  confidence: string;
   holding_period: number;
   method: string;
 }

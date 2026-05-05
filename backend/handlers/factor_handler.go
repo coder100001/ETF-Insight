@@ -130,9 +130,11 @@ func (h *FactorHandler) AnalyzeFactorExposure(c *gin.Context) {
 
 // PortfolioFactorAnalysisRequest 组合因子分析请求
 type PortfolioFactorAnalysisRequest struct {
-	PortfolioReturns []float64          `json:"portfolio_returns" binding:"required"` // 组合收益率
-	Weights          map[string]float64 `json:"weights,omitempty"`                    // 组合权重
-	UseFiveFactor    bool               `json:"use_five_factor,omitempty"`            // 是否使用五因子
+	PortfolioReturns []float64          `json:"portfolio_returns"`         // 组合收益率（可选，如果不提供则使用示例数据）
+	Weights          map[string]float64 `json:"weights,omitempty"`         // 组合权重
+	Allocation       map[string]float64 `json:"allocation,omitempty"`      // 组合权重（别名，与 weights 二选一）
+	UseFiveFactor    bool               `json:"use_five_factor,omitempty"` // 是否使用五因子
+	Periods          int                `json:"periods,omitempty"`         // 数据周期数（当不提供 portfolio_returns 时使用）
 }
 
 // PortfolioFactorAnalysisResponse 组合因子分析响应
@@ -161,20 +163,33 @@ func (h *FactorHandler) AnalyzePortfolioFactors(c *gin.Context) {
 		return
 	}
 
-	// 验证输入数据
-	if len(req.PortfolioReturns) == 0 {
-		c.JSON(http.StatusBadRequest, PortfolioFactorAnalysisResponse{
-			Success: false,
-			Error:   "投资组合收益率数据不能为空",
-		})
-		return
+	// 处理权重字段（支持 weights 和 allocation 两种命名）
+	weights := req.Weights
+	if weights == nil && req.Allocation != nil {
+		weights = req.Allocation
+	}
+
+	// 如果没有提供收益率数据，使用示例数据
+	portfolioReturns := req.PortfolioReturns
+	periods := req.Periods
+
+	if len(portfolioReturns) == 0 {
+		// 如果没有指定周期数，使用默认值
+		if periods == 0 {
+			periods = 60 // 默认 60 个周期（约 5 年的月度数据）
+		}
+
+		// 生成示例组合收益率
+		// 在实际应用中，这里应该从数据库获取 ETF 历史数据并计算组合收益率
+		portfolioReturns = factor.GenerateSamplePortfolioReturns(periods)
+	} else {
+		periods = len(portfolioReturns)
 	}
 
 	// 设置模型
 	h.ffModel.SetFiveFactor(req.UseFiveFactor)
 
 	// 加载示例因子数据
-	periods := len(req.PortfolioReturns)
 	if req.UseFiveFactor {
 		marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns := factor.GenerateSampleFiveFactorData(periods)
 		h.ffModel.LoadFiveFactorData(marketReturns, smbReturns, hmlReturns, rmwReturns, cmaReturns, riskFreeReturns)
@@ -184,7 +199,7 @@ func (h *FactorHandler) AnalyzePortfolioFactors(c *gin.Context) {
 	}
 
 	// 执行分析
-	result, err := h.ffModel.AnalyzePortfolio(req.PortfolioReturns, req.Weights)
+	result, err := h.ffModel.AnalyzePortfolio(portfolioReturns, weights)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, PortfolioFactorAnalysisResponse{
 			Success: false,

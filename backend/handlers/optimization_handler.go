@@ -344,8 +344,8 @@ func calculateCovarianceMatrix(returns map[string][]float64) map[string]map[stri
 // RiskParityRequest 风险平价优化请求
 type RiskParityRequest struct {
 	Symbols     []string                      `json:"symbols" binding:"required,min=2"`
-	Returns     map[string]float64            `json:"returns" binding:"required"`
-	CovMatrix   map[string]map[string]float64 `json:"cov_matrix" binding:"required"`
+	Returns     map[string]float64            `json:"returns"`    // 各资产预期收益率（可选，不提供则使用示例数据）
+	CovMatrix   map[string]map[string]float64 `json:"cov_matrix"` // 协方差矩阵（可选，不提供则使用示例数据）
 	Constraints *RiskParityConstraintConfig   `json:"constraints,omitempty"`
 	Method      string                        `json:"method" binding:"omitempty,oneof=parity inverse_vol budget"`
 	RiskBudget  map[string]float64            `json:"risk_budget,omitempty"`
@@ -386,6 +386,14 @@ func (h *OptimizationHandler) RiskParityOptimize(c *gin.Context) {
 		return
 	}
 
+	// 如果没有提供收益率和协方差矩阵，生成示例数据
+	returns := req.Returns
+	covMatrix := req.CovMatrix
+
+	if returns == nil || covMatrix == nil {
+		returns, covMatrix = generateSampleRiskParityData(req.Symbols)
+	}
+
 	// 构建约束条件
 	constraint := optimization.NewRiskParityConstraint(req.Symbols)
 	if req.Constraints != nil {
@@ -410,7 +418,7 @@ func (h *OptimizationHandler) RiskParityOptimize(c *gin.Context) {
 
 	switch req.Method {
 	case "inverse_vol":
-		result, err = h.riskParityOptimizer.OptimizeInverseVol(req.Returns, req.CovMatrix, constraint)
+		result, err = h.riskParityOptimizer.OptimizeInverseVol(returns, covMatrix, constraint)
 	case "budget":
 		if len(req.RiskBudget) == 0 {
 			c.JSON(http.StatusBadRequest, RiskParityResponse{
@@ -419,9 +427,9 @@ func (h *OptimizationHandler) RiskParityOptimize(c *gin.Context) {
 			})
 			return
 		}
-		result, err = h.riskParityOptimizer.CalculateRiskBudget(req.Returns, req.CovMatrix, req.RiskBudget, constraint)
+		result, err = h.riskParityOptimizer.CalculateRiskBudget(returns, covMatrix, req.RiskBudget, constraint)
 	default:
-		result, err = h.riskParityOptimizer.Optimize(req.Returns, req.CovMatrix, constraint)
+		result, err = h.riskParityOptimizer.Optimize(returns, covMatrix, constraint)
 	}
 
 	if err != nil {
@@ -438,18 +446,88 @@ func (h *OptimizationHandler) RiskParityOptimize(c *gin.Context) {
 	})
 }
 
+// generateSampleRiskParityData 生成示例风险平价数据
+func generateSampleRiskParityData(symbols []string) (map[string]float64, map[string]map[string]float64) {
+	returns := make(map[string]float64)
+	covMatrix := make(map[string]map[string]float64)
+
+	// 为每个资产生成示例预期收益率和波动率
+	// 在实际应用中，这些数据应该从数据库或市场数据API获取
+	sampleData := map[string]struct {
+		expectedReturn float64
+		volatility     float64
+	}{
+		"SPY": {expectedReturn: 0.08, volatility: 0.20}, // 标普500: 8%收益, 20%波动率
+		"TLT": {expectedReturn: 0.04, volatility: 0.15}, // 长期国债: 4%收益, 15%波动率
+		"GLD": {expectedReturn: 0.05, volatility: 0.18}, // 黄金: 5%收益, 18%波动率
+		"VNQ": {expectedReturn: 0.06, volatility: 0.22}, // 房地产: 6%收益, 22%波动率
+		"EFA": {expectedReturn: 0.07, volatility: 0.21}, // 发达市场: 7%收益, 21%波动率
+		"EEM": {expectedReturn: 0.09, volatility: 0.28}, // 新兴市场: 9%收益, 28%波动率
+		"AGG": {expectedReturn: 0.03, volatility: 0.05}, // 综合债券: 3%收益, 5%波动率
+		"LQD": {expectedReturn: 0.04, volatility: 0.08}, // 公司债: 4%收益, 8%波动率
+		"HYG": {expectedReturn: 0.05, volatility: 0.12}, // 高收益债: 5%收益, 12%波动率
+		"DBC": {expectedReturn: 0.03, volatility: 0.16}, // 大宗商品: 3%收益, 16%波动率
+	}
+
+	// 生成收益率
+	for _, symbol := range symbols {
+		if data, exists := sampleData[symbol]; exists {
+			returns[symbol] = data.expectedReturn
+		} else {
+			// 对于未知资产，使用默认值
+			returns[symbol] = 0.06
+		}
+	}
+
+	// 生成协方差矩阵
+	for i, symbol1 := range symbols {
+		covMatrix[symbol1] = make(map[string]float64)
+		vol1 := 0.20 // 默认波动率
+		if data, exists := sampleData[symbol1]; exists {
+			vol1 = data.volatility
+		}
+
+		for j, symbol2 := range symbols {
+			vol2 := 0.20 // 默认波动率
+			if data, exists := sampleData[symbol2]; exists {
+				vol2 = data.volatility
+			}
+
+			if i == j {
+				// 对角线元素：方差
+				covMatrix[symbol1][symbol2] = vol1 * vol1
+			} else {
+				// 非对角线元素：协方差（假设相关系数为0.3）
+				correlation := 0.3
+				covMatrix[symbol1][symbol2] = correlation * vol1 * vol2
+			}
+		}
+	}
+
+	return returns, covMatrix
+}
+
 // ==================== Black-Litterman 优化 API ====================
 
 // BlackLittermanRequest Black-Litterman优化请求
 type BlackLittermanRequest struct {
-	MarketWeights map[string]float64              `json:"market_weights" binding:"required"`
-	CovMatrix     map[string]map[string]float64   `json:"cov_matrix" binding:"required"`
-	AbsoluteViews map[string]float64              `json:"absolute_views,omitempty"`
-	RelativeViews []*RelativeViewConfig           `json:"relative_views,omitempty"`
+	Symbols       []string                        `json:"symbols,omitempty"`        // 资产列表（可选，用于生成示例数据）
+	MarketWeights map[string]float64              `json:"market_weights"`           // 市场均衡权重（可选，不提供则使用等权重）
+	CovMatrix     map[string]map[string]float64   `json:"cov_matrix"`               // 协方差矩阵（可选，不提供则使用示例数据）
+	Views         []BLViewInput                   `json:"views,omitempty"`          // 投资者观点（前端格式）
+	AbsoluteViews map[string]float64              `json:"absolute_views,omitempty"` // 绝对观点（直接指定资产收益）
+	RelativeViews []*RelativeViewConfig           `json:"relative_views,omitempty"` // 相对观点
 	RiskAversion  float64                         `json:"risk_aversion,omitempty"`
 	Tau           float64                         `json:"tau,omitempty"`
 	RiskFreeRate  float64                         `json:"risk_free_rate,omitempty"`
 	Constraints   *BlackLittermanConstraintConfig `json:"constraints,omitempty"`
+}
+
+// BLViewInput 前端传入的观点格式
+type BLViewInput struct {
+	Symbol     string  `json:"symbol" binding:"required"`
+	Return     float64 `json:"return" binding:"required"`
+	Confidence float64 `json:"confidence,omitempty"`
 }
 
 // RelativeViewConfig 相对观点配置
@@ -492,6 +570,52 @@ func (h *OptimizationHandler) BlackLittermanOptimize(c *gin.Context) {
 		return
 	}
 
+	// 如果没有提供市场权重和协方差矩阵，生成示例数据
+	marketWeights := req.MarketWeights
+	covMatrix := req.CovMatrix
+	symbols := req.Symbols
+
+	if len(symbols) == 0 {
+		// 从市场权重中提取资产列表
+		symbols = make([]string, 0, len(marketWeights))
+		for symbol := range marketWeights {
+			symbols = append(symbols, symbol)
+		}
+	}
+
+	if len(symbols) == 0 {
+		c.JSON(http.StatusBadRequest, BlackLittermanResponse{
+			Success: false,
+			Error:   "请提供资产列表(symbols)或市场权重(market_weights)",
+		})
+		return
+	}
+
+	// 生成示例市场权重（等权重）
+	if marketWeights == nil {
+		marketWeights = make(map[string]float64)
+		equalWeight := 1.0 / float64(len(symbols))
+		for _, symbol := range symbols {
+			marketWeights[symbol] = equalWeight
+		}
+	}
+
+	// 生成示例协方差矩阵
+	if covMatrix == nil {
+		covMatrix = generateSampleCovMatrix(symbols)
+	}
+
+	// 转换前端观点格式为绝对观点
+	absoluteViews := req.AbsoluteViews
+	if absoluteViews == nil {
+		absoluteViews = make(map[string]float64)
+	}
+
+	// 将前端 views 转换为 absolute_views
+	for _, view := range req.Views {
+		absoluteViews[view.Symbol] = view.Return
+	}
+
 	// 设置参数
 	if req.Tau > 0 {
 		h.blackLittermanOptimizer.SetTau(req.Tau)
@@ -501,10 +625,6 @@ func (h *OptimizationHandler) BlackLittermanOptimize(c *gin.Context) {
 	}
 
 	// 构建约束条件
-	symbols := make([]string, 0, len(req.MarketWeights))
-	for symbol := range req.MarketWeights {
-		symbols = append(symbols, symbol)
-	}
 	constraint := optimization.NewBlackLittermanConstraint(symbols)
 	if req.Constraints != nil {
 		if req.Constraints.MinWeights != nil {
@@ -536,9 +656,9 @@ func (h *OptimizationHandler) BlackLittermanOptimize(c *gin.Context) {
 
 	// 执行优化
 	result, err := h.blackLittermanOptimizer.OptimizeWithViews(
-		req.MarketWeights,
-		req.CovMatrix,
-		req.AbsoluteViews,
+		marketWeights,
+		covMatrix,
+		absoluteViews,
 		relativeViews,
 		constraint,
 	)
@@ -555,6 +675,46 @@ func (h *OptimizationHandler) BlackLittermanOptimize(c *gin.Context) {
 		Success: true,
 		Data:    result,
 	})
+}
+
+// generateSampleCovMatrix 生成示例协方差矩阵
+func generateSampleCovMatrix(symbols []string) map[string]map[string]float64 {
+	covMatrix := make(map[string]map[string]float64)
+
+	// 为常见资产提供示例波动率
+	volatilities := map[string]float64{
+		"SPY": 0.20, "VTI": 0.20, "VOO": 0.20, "QQQ": 0.25,
+		"TLT": 0.15, "AGG": 0.05, "BND": 0.05, "LQD": 0.08,
+		"GLD": 0.18, "SLV": 0.25, "USO": 0.30, "DBA": 0.20,
+		"EFA": 0.21, "EEM": 0.28, "IWM": 0.24, "VUG": 0.22,
+		"VTV": 0.18, "VIG": 0.17, "VYM": 0.18, "VNQ": 0.22,
+	}
+
+	for i, symbol1 := range symbols {
+		covMatrix[symbol1] = make(map[string]float64)
+		vol1 := 0.20 // 默认波动率
+		if v, exists := volatilities[symbol1]; exists {
+			vol1 = v
+		}
+
+		for j, symbol2 := range symbols {
+			vol2 := 0.20 // 默认波动率
+			if v, exists := volatilities[symbol2]; exists {
+				vol2 = v
+			}
+
+			if i == j {
+				// 对角线元素：方差
+				covMatrix[symbol1][symbol2] = vol1 * vol1
+			} else {
+				// 非对角线元素：协方差（假设相关系数为0.3）
+				correlation := 0.3
+				covMatrix[symbol1][symbol2] = correlation * vol1 * vol2
+			}
+		}
+	}
+
+	return covMatrix
 }
 
 // MarketImpliedReturnsRequest 市场隐含收益请求

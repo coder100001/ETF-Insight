@@ -326,3 +326,83 @@ func TestAPIKeyHeader(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "my-secret-key", receivedKey)
 }
+
+func TestDecimalSerializationPrecision(t *testing.T) {
+	// TDD RED: This test verifies that decimal fields are serialized as strings
+	// in JSON to prevent JavaScript precision loss.
+	//
+	// Current behavior: decimal.Decimal serializes as JSON number: {"price": 10.4506}
+	// Desired behavior: decimal.Decimal serializes as JSON string: {"price": "10.4506"}
+	//
+	// Why: JavaScript's number type (IEEE 754 float64) loses precision for
+	// values with more than 15-17 significant digits. Financial calculations
+	// require exact decimal representation.
+
+	result := models.OptionResult{
+		Price: decimal.RequireFromString("10.4506"),
+		Delta: decimal.RequireFromString("0.594823456789012345"),
+		Gamma: decimal.RequireFromString("0.0188"),
+		Theta: decimal.RequireFromString("-0.0128"),
+		Vega:  decimal.RequireFromString("0.3756"),
+		Rho:   decimal.RequireFromString("0.4502"),
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	require.NoError(t, err)
+
+	jsonStr := string(jsonBytes)
+
+	// Verify decimal values are quoted strings, not raw numbers
+	// Current: {"price":10.4506,...} (number - FAILS)
+	// Expected: {"price":"10.4506",...} (string - PASSES)
+	assert.Contains(t, jsonStr, `"price":"10.4506"`, "Price should be serialized as JSON string")
+	assert.Contains(t, jsonStr, `"delta":"0.594823456789012345"`, "Delta should preserve full precision as string")
+	assert.NotContains(t, jsonStr, `"price":10.4506`, "Price should NOT be a raw JSON number")
+
+	// Verify round-trip: deserialize back should preserve exact value
+	var parsed models.OptionResult
+	err = json.Unmarshal(jsonBytes, &parsed)
+	require.NoError(t, err)
+	assert.True(t, parsed.Price.Equal(decimal.RequireFromString("10.4506")), "Round-trip should preserve price")
+	assert.True(t, parsed.Delta.Equal(decimal.RequireFromString("0.594823456789012345")), "Round-trip should preserve full precision delta")
+}
+
+func TestDecimalSerializationBondResult(t *testing.T) {
+	result := models.BondResult{
+		DirtyPrice:       decimal.RequireFromString("103.25"),
+		CleanPrice:       decimal.RequireFromString("102.50"),
+		Duration:         decimal.RequireFromString("4.5230"),
+		ModifiedDuration: decimal.RequireFromString("4.3510"),
+		Convexity:        decimal.RequireFromString("22.1500"),
+		YieldToMaturity:  decimal.RequireFromString("0.0450"),
+		AccruedInterest:  decimal.RequireFromString("0.7500"),
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	require.NoError(t, err)
+
+	jsonStr := string(jsonBytes)
+	assert.Contains(t, jsonStr, `"dirty_price":"103.25"`, "Bond dirty_price should be string")
+	assert.Contains(t, jsonStr, `"duration":"4.523"`, "Bond duration should be string")
+	assert.NotContains(t, jsonStr, `"dirty_price":103.25`, "Bond dirty_price should NOT be raw number")
+}
+
+func TestDecimalSerializationVaRResult(t *testing.T) {
+	result := models.VaRResult{
+		VaR:           decimal.RequireFromString("-25000.50"),
+		CVaR:          decimal.RequireFromString("-35000.75"),
+		Confidence:    decimal.RequireFromString("0.95"),
+		HoldingPeriod: 10,
+		Method:        "historical",
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	require.NoError(t, err)
+
+	jsonStr := string(jsonBytes)
+	assert.Contains(t, jsonStr, `"var":"-25000.5"`, "VaR should be string")
+	assert.Contains(t, jsonStr, `"cvar":"-35000.75"`, "CVaR should be string")
+	assert.Contains(t, jsonStr, `"confidence":"0.95"`, "Confidence should be string")
+	assert.Contains(t, jsonStr, `"holding_period":10`, "HoldingPeriod (int) should remain number")
+	assert.Contains(t, jsonStr, `"method":"historical"`, "Method (string) should remain string")
+}

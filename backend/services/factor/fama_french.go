@@ -805,6 +805,22 @@ func GenerateSampleFiveFactorData(periods int) (
 	return
 }
 
+// GenerateSamplePortfolioReturns 生成示例组合收益率数据 (用于测试或当真实数据不可用时)
+func GenerateSamplePortfolioReturns(periods int) []float64 {
+	returns := make([]float64, periods)
+
+	// 生成模拟的组合收益率
+	// 假设组合有适度的市场暴露和一定的超额收益
+	for i := 0; i < periods; i++ {
+		// 基于市场收益 + alpha + 噪声
+		marketReturn := 0.005 + randNorm()*0.045 // 市场收益
+		alpha := 0.001                           // 月度 alpha ~0.1%
+		returns[i] = marketReturn + alpha + randNorm()*0.01
+	}
+
+	return returns
+}
+
 // FactorDataSource 因子数据来源
 const (
 	FactorSourceKennethFrench = "kenneth_french" // Kenneth French数据库

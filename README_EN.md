@@ -1,4 +1,4 @@
-# ETF-Insight (v2.6.0) 🚀
+# ETF-Insight (v2.8.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
@@ -28,6 +28,16 @@ ETF-Insight is an open-source ETF analysis platform for professional investors, 
 - ✅ **Field Name Alignment**: Frontend/backend response fields fully consistent (weights/volatility/target_return etc.)
 - ✅ **Efficient Frontier Chart Fix**: Dynamic axis, formatted display, margin optimization
 - ✅ **Documentation Cleanup**: Removed all JWT/login-related residual descriptions
+
+**v2.8 FinceptTerminal QuantLib Integration** (2026-05-04):
+- ✅ **QuantLib Cloud API**: Direct integration with `api.fincept.in/quantlib/` cloud service
+  - Options pricing: European/American Black-Scholes, full Greeks (Delta/Gamma/Theta/Vega/Rho)
+  - Yield curves: Construction and visualization, multi-currency (USD/EUR/CNY/GBP/JPY)
+  - Bond pricing: Fixed income analysis, duration, modified duration, convexity
+  - VaR calculation: QuantLib engine-driven historical simulation/parametric methods
+  - Reference data: 1-hour TTL cache (currencies/frequencies/calendars/daycount)
+- ✅ **Frontend QuantLib Analysis Page**: `QuantLibAnalysis.tsx` - 4 Tabs (Options/Bonds/Yield Curve/VaR)
+- ✅ **Code Review**: 2 rounds, 10 issues fixed (P0×3, P1×4, P2×3)
 
 **v2.5 Real-time Data & Quantitative Analysis Upgrade**:
 - ✅ **Real-time Data Acquisition**: Finage API integration, 3-year historical data sync (~388 days)

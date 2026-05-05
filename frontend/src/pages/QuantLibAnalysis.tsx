@@ -170,12 +170,12 @@ const QuantLibAnalysis: React.FC = () => {
   const getOptionTableData = () => {
     if (!optionResult) return [];
     return [
-      { key: 'price', label: '期权价格', value: optionResult.price.toFixed(4) },
-      { key: 'delta', label: 'Delta', value: optionResult.delta.toFixed(4) },
-      { key: 'gamma', label: 'Gamma', value: optionResult.gamma.toFixed(4) },
-      { key: 'theta', label: 'Theta', value: optionResult.theta.toFixed(4) },
-      { key: 'vega', label: 'Vega', value: optionResult.vega.toFixed(4) },
-      { key: 'rho', label: 'Rho', value: optionResult.rho.toFixed(4) },
+      { key: 'price', label: '期权价格', value: parseFloat(optionResult.price).toFixed(4) },
+      { key: 'delta', label: 'Delta', value: parseFloat(optionResult.delta).toFixed(4) },
+      { key: 'gamma', label: 'Gamma', value: parseFloat(optionResult.gamma).toFixed(4) },
+      { key: 'theta', label: 'Theta', value: parseFloat(optionResult.theta).toFixed(4) },
+      { key: 'vega', label: 'Vega', value: parseFloat(optionResult.vega).toFixed(4) },
+      { key: 'rho', label: 'Rho', value: parseFloat(optionResult.rho).toFixed(4) },
     ];
   };
 
@@ -183,9 +183,9 @@ const QuantLibAnalysis: React.FC = () => {
     if (!yieldCurveData) return [];
     return yieldCurveData.tenors.map((tenor, index) => ({
       tenor,
-      spot: yieldCurveData.rates[index],
-      zero: yieldCurveData.zero_rates[index],
-      forward: yieldCurveData.forward_rates[index],
+      spot: parseFloat(yieldCurveData.rates[index]),
+      zero: parseFloat(yieldCurveData.zero_rates[index]),
+      forward: parseFloat(yieldCurveData.forward_rates[index]),
     }));
   };
 
@@ -307,22 +307,22 @@ const QuantLibAnalysis: React.FC = () => {
                   {bondResult ? (
                     <Row gutter={[16, 16]}>
                       <Col span={12}>
-                        <Statistic title="净价 (Clean Price)" value={bondResult.clean_price} precision={4} />
+                        <Statistic title="净价 (Clean Price)" value={parseFloat(bondResult.clean_price)} precision={4} />
                       </Col>
                       <Col span={12}>
-                        <Statistic title="全价 (Dirty Price)" value={bondResult.dirty_price} precision={4} />
+                        <Statistic title="全价 (Dirty Price)" value={parseFloat(bondResult.dirty_price)} precision={4} />
                       </Col>
                       <Col span={12}>
-                        <Statistic title="久期 (Duration)" value={bondResult.duration} precision={4} suffix="年" />
+                        <Statistic title="久期 (Duration)" value={parseFloat(bondResult.duration)} precision={4} suffix="年" />
                       </Col>
                       <Col span={12}>
-                        <Statistic title="修正久期" value={bondResult.modified_duration} precision={4} />
+                        <Statistic title="修正久期" value={parseFloat(bondResult.modified_duration)} precision={4} />
                       </Col>
                       <Col span={12}>
-                        <Statistic title="凸性 (Convexity)" value={bondResult.convexity} precision={4} />
+                        <Statistic title="凸性 (Convexity)" value={parseFloat(bondResult.convexity)} precision={4} />
                       </Col>
                       <Col span={12}>
-                        <Statistic title="应计利息" value={bondResult.accrued_interest} precision={4} />
+                        <Statistic title="应计利息" value={parseFloat(bondResult.accrued_interest)} precision={4} />
                       </Col>
                     </Row>
                   ) : (
@@ -471,7 +471,7 @@ const QuantLibAnalysis: React.FC = () => {
                       <Col span={12}>
                         <Statistic
                           title="VaR (风险价值)"
-                          value={varResult.var}
+                          value={parseFloat(varResult.var)}
                           precision={2}
                           prefix="$"
                           valueStyle={{ color: '#cf1322' }}
@@ -480,7 +480,7 @@ const QuantLibAnalysis: React.FC = () => {
                       <Col span={12}>
                         <Statistic
                           title="CVaR (条件风险价值)"
-                          value={varResult.cvar}
+                          value={parseFloat(varResult.cvar)}
                           precision={2}
                           prefix="$"
                           valueStyle={{ color: '#a8071a' }}
@@ -489,7 +489,7 @@ const QuantLibAnalysis: React.FC = () => {
                       <Col span={12}>
                         <Statistic
                           title="置信水平"
-                          value={varResult.confidence * 100}
+                          value={parseFloat(varResult.confidence) * 100}
                           precision={0}
                           suffix="%"
                         />

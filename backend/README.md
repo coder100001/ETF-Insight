@@ -25,6 +25,13 @@ ETF-Insight 后端坚持以下设计理念：
 - **多因子模型**: Fama-French 三因子/五因子模型、归因分析
 - **回测引擎**: 事件驱动架构、完整订单系统、滑点/手续费模型
 
+### QuantLib 量化引擎 (v2.8 新增)
+- **期权定价**: 欧式/美式 Black-Scholes 定价，完整 Greeks (Delta/Gamma/Theta/Vega/Rho)
+- **收益率曲线**: 构建和可视化，支持多货币 (USD/EUR/CNY/GBP/JPY)
+- **债券定价**: 固定收益分析，久期、修正久期、凸性
+- **VaR 计算**: QuantLib 引擎驱动的历史模拟法/参数法
+- **参考数据**: 缓存 1 小时 TTL，自动清理过期缓存
+
 ### 数据服务 (v2.6 重构)
 - **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
 - **ETF持仓穿透**: 底层持仓明细查询、权重分析
@@ -63,7 +70,9 @@ backend/
 │   ├── exchange_rate.go   # 汇率相关模型
 │   ├── a_share_dividend_etf.go  # A股ETF模型
 │   ├── audit_log.go       # 审计日志模型
-│   └── pagination.go      # 分页模型
+│   ├── pagination.go      # 分页模型
+│   ├── quantlib.go           # QuantLib 请求/响应模型 (v2.8)
+│   └── quantlib_validator.go # QuantLib 输入验证 (v2.8)
 ├── handlers/              # HTTP 处理器
 │   ├── etf_handler.go     # ETF 行情/历史/指标接口
 │   ├── etf_holding_handler.go  # ETF持仓穿透接口 (v2.6)
@@ -72,7 +81,8 @@ backend/
 │   ├── a_share_portfolio_handler.go  # A股ETF组合接口
 │   ├── exchange_rate.go   # 汇率管理接口
 │   ├── health_handler.go  # 健康检查
-│   └── middleware.go      # 中间件
+│   ├── middleware.go      # 中间件
+│   └── quantlib_handler.go   # QuantLib API 接口 (v2.8)
 ├── middleware/            # 中间件
 │   ├── audit.go           # 审计日志中间件
 │   ├── validation.go      # 数据验证中间件
@@ -98,7 +108,10 @@ backend/
 │   ├── portfolio_analytics.go  # 组合分析服务(金融公式计算)
 │   ├── scenario_analysis.go    # 情景分析服务(蒙特卡洛模拟)
 │   ├── technical_indicators.go # 技术指标服务(RSI/MACD/布林带)
-│   └── risk_models.go          # 风险模型服务(VaR/CVaR)
+│   ├── risk_models.go          # 风险模型服务(VaR/CVaR)
+│   └── quantlib/              # QuantLib 云 API 客户端 (v2.8)
+│       ├── quantlib_client.go      # HTTP 客户端 (10 方法 + 缓存)
+│       └── quantlib_client_test.go # 单元测试 (httptest mock)
 ├── tasks/                 # 定时任务
 │   ├── scheduler.go       # 主调度器
 │   ├── exchange_rate_task.go
@@ -216,6 +229,15 @@ go build -o etf-insight
 - `GET /api/factor/statistics` - 因子统计信息
 - `POST /api/factor/risk-decomposition` - 风险分解
 - `POST /api/factor/compare` - 因子归因对比
+
+### QuantLib 量化分析接口 (v2.8 新增)
+- `POST /api/quantlib/options/european` - 欧式期权定价
+- `POST /api/quantlib/options/american` - 美式期权定价
+- `POST /api/quantlib/options/greeks` - Greeks 计算
+- `POST /api/quantlib/yield-curve/build` - 收益率曲线构建
+- `POST /api/quantlib/bonds/price` - 债券定价
+- `POST /api/quantlib/risk/var` - VaR 计算
+- `GET /api/quantlib/reference/:type` - 参考数据 (currencies/frequencies/calendars/daycount)
 
 ### 回测引擎接口
 - `POST /api/backtest/run` - 运行回测
@@ -340,6 +362,7 @@ func init() {
 | services/factor | **80.8%** | Fama-French 三因子/五因子模型 |
 | services/technical | 100% | RSI、MACD、布林带 |
 | services/risk | 100% | VaR、CVaR、风险指标 |
+| services/quantlib | 9 tests | QuantLib 云 API 客户端、缓存、错误处理 |
 | middleware | 68.8% | 审计、安全 |
 | utils | 81.2% | 工具函数 |
 

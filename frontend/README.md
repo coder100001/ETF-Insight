@@ -35,6 +35,14 @@ ETF-Insight 前端致力于提供：
 - **风险分析**: VaR/CVaR风险指标展示
 - **有效前沿图**: 马科维茨投资组合优化的有效前沿展示
 
+### QuantLib 量化分析 (v2.8 新增)
+- **期权定价**: 欧式/美式 Black-Scholes 定价，完整 Greeks 计算
+- **收益率曲线**: 构建和可视化，支持多货币 (USD/EUR/CNY/GBP/JPY)
+- **债券定价**: 固定收益分析，久期/凸性计算
+- **VaR 计算**: QuantLib 引擎驱动的历史模拟法/参数法
+- **交互式界面**: 4 个 Tab 的专业分析页面
+- **实时图表**: Recharts 收益率曲线可视化
+
 ### 回测引擎 (v2.5 新增)
 - **策略回测**: 事件驱动回测可视化
 - **订单管理**: 市价单/限价单/止损单模拟
@@ -122,6 +130,7 @@ frontend/
 │   │   ├── TechnicalAnalysis.tsx   # 技术分析(RSI/MACD/布林带)
 │   │   ├── RiskAnalysis.tsx        # 风险分析(VaR/CVaR)
 │   │   ├── FactorAnalysis.tsx      # 因子分析
+│   │   ├── QuantLibAnalysis.tsx    # QuantLib 量化分析 (v2.8)
 │   │   ├── ASharePortfolio.tsx     # A股红利ETF组合
 │   │   ├── InvestmentStrategy.tsx  # 投资策略
 │   │   ├── ExchangeRate.tsx        # 汇率管理
@@ -139,7 +148,8 @@ frontend/
 │   │   ├── api.ts                 # API调用封装
 │   │   └── portfolio.ts           # 投资组合API
 │   ├── types/              # TypeScript 类型
-│   │   └── index.ts               # 全局类型定义
+│   │   ├── index.ts               # 全局类型定义
+│   │   └── quantlib.ts            # QuantLib 类型 (v2.8)
 │   ├── utils/              # 工具函数
 │   │   └── api.ts                 # API工具函数
 │   └── styles/             # 样式
