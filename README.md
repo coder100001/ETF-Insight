@@ -1,4 +1,4 @@
-# ETF-Insight (v2.8.0) 🚀
+# ETF-Insight (v2.9.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
@@ -28,6 +28,16 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **字段名对齐**: 前后端响应字段完全一致（weights/volatility/target_return等）
 - ✅ **有效前沿图表修复**: 动态坐标轴、格式化显示、边距优化
 - ✅ **文档清理**: 移除所有JWT/登录相关残留描述
+
+**v2.9 AI Agent 微服务** (2026-05-05):
+- ✅ **从零重写 Agent 框架**: 零 AGPL 风险，完全自主实现
+  - 多 LLM 支持: OpenAI/Ollama/DeepSeek，通过 `get_provider()` 工厂切换
+  - Agent 抽象基类 + 工具注册机制 + Agent 管理器
+- ✅ **4 个金融 Agent**: Warren Buffett、Benjamin Graham、Bridgewater、Macroeconomic Analyst
+- ✅ **FastAPI 服务** (port 8091): discover/run/stream/team 4 个端点
+- ✅ **Go 后端集成**: `/api/agents/*` 代理路由
+- ✅ **前端页面**: `AIAgents.tsx` - 单 Agent 分析 + 多 Agent 团队辩论
+- ✅ **测试覆盖**: 19 个 Python 单元测试全部通过
 
 **v2.8 FinceptTerminal QuantLib 集成** (2026-05-04):
 - ✅ **QuantLib 云 API 对接**: 直接调用 `api.fincept.in/quantlib/` 云服务
@@ -203,6 +213,14 @@ ETF-Insight 坚持**开源、专业、透明**的理念：
 - **VaR 计算** - QuantLib 引擎驱动的历史模拟法/参数法 VaR
 - **交互式分析** - 4 个 Tab 的专业分析界面
 
+### 🤖 AI Agent 微服务 (v2.9 新增)
+- **投资大师分析** - Warren Buffett (价值投资)、Benjamin Graham (防御型投资)
+- **对冲基金视角** - Bridgewater Associates (宏观风险平价)
+- **宏观经济分析** - 自上而下宏观经济分析
+- **多 Agent 团队辩论** - 2-5 个 Agent 同时分析，综合观点
+- **多 LLM 模型** - 支持 OpenAI/Ollama/DeepSeek 等
+- **Go 后端代理** - `/api/agents/*` 路由转发
+
 ### 📈 因子分析 (v2.5 新增)
 - **Fama-French模型** - 三因子/五因子模型支持
 - **因子暴露度** - 组合在各因子上的暴露分析
@@ -334,6 +352,7 @@ npm run dev
 ETF-Insight/
 ├── backend/          # Go 后端服务
 ├── frontend/         # React 前端应用
+├── services/agent/     # Python AI Agent 微服务 (port 8091)
 ├── AGENTS.md         # 项目核心上下文文档
 ├── README.md         # 中文文档
 └── README_EN.md      # 英文文档
@@ -376,8 +395,16 @@ ETF-Insight/
 - ✅ QuantLib 云 API 集成 (期权/债券/收益率曲线/VaR)
 - ✅ QuantLib 前端分析页面 (4 Tab 交互式界面)
 - ✅ 代码审查与质量保证 (2 轮审查)
-- 📋 AI Agent 微服务 (37 投资大师)
+- ✅ AI Agent 微服务 (4 个金融 Agent，框架支持无限扩展)
 - 📋 数据源微服务 (60+ 数据源)
+
+### v2.9 ✅
+- ✅ AI Agent 微服务 (Python FastAPI, port 8091)
+- ✅ 多 LLM 支持 (OpenAI/Ollama/DeepSeek)
+- ✅ 4 个金融 Agent (Buffett/Graham/Bridgewater/Macro)
+- ✅ 多 Agent 团队辩论模式
+- ✅ Go 后端集成 + 前端交互页面
+- 📋 更多 Agent (地缘政治/技术分析/对冲基金)
 
 ### v3.0 (6-12个月) 🚀
 - 🚀 插件系统架构
