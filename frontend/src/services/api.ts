@@ -10,6 +10,10 @@ import type {
   EuropeanOptionRequest, AmericanOptionRequest, GreeksRequest, OptionResult,
   YieldCurveRequest, YieldCurveResult, BondRequest, BondResult, VaRRequest, VaRResult
 } from '../types/quantlib';
+import type {
+  AgentInfo, AgentRunRequest, AgentRunResponse,
+  AgentTeamRequest, AgentTeamResponse
+} from '../types/agent';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -940,5 +944,30 @@ export const quantlibAPI = {
 
   getReferenceData: async (type: string): Promise<ApiResponse<unknown>> => {
     return request<ApiResponse<unknown>>(`/quantlib/reference/${encodeURIComponent(type)}`);
+  },
+};
+
+// Agent Service API
+export const agentAPI = {
+  health: async (): Promise<ApiResponse<Record<string, unknown>>> => {
+    return request<ApiResponse<Record<string, unknown>>>('/agents/health');
+  },
+
+  discover: async (): Promise<ApiResponse<AgentInfo[]>> => {
+    return request<ApiResponse<AgentInfo[]>>('/agents/discover');
+  },
+
+  run: async (req: AgentRunRequest): Promise<ApiResponse<AgentRunResponse>> => {
+    return request<ApiResponse<AgentRunResponse>>('/agents/run', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  runTeam: async (req: AgentTeamRequest): Promise<ApiResponse<AgentTeamResponse>> => {
+    return request<ApiResponse<AgentTeamResponse>>('/agents/team', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
   },
 };
