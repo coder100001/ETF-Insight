@@ -1,4 +1,4 @@
-# ETF-Insight (v2.8.0) 🚀
+# ETF-Insight (v2.9.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
@@ -38,6 +38,16 @@ ETF-Insight is an open-source ETF analysis platform for professional investors, 
   - Reference data: 1-hour TTL cache (currencies/frequencies/calendars/daycount)
 - ✅ **Frontend QuantLib Analysis Page**: `QuantLibAnalysis.tsx` - 4 Tabs (Options/Bonds/Yield Curve/VaR)
 - ✅ **Code Review**: 2 rounds, 10 issues fixed (P0×3, P1×4, P2×3)
+
+**v2.9 AI Agent Microservice** (2026-05-05):
+- ✅ **Agent Framework from Scratch**: Zero AGPL risk, fully independent implementation
+  - Multi-LLM support: OpenAI/Ollama/DeepSeek via `get_provider()` factory
+  - Abstract base agent + tool registry + agent manager
+- ✅ **4 Financial Agents**: Warren Buffett, Benjamin Graham, Bridgewater, Macroeconomic Analyst
+- ✅ **FastAPI Service** (port 8091): discover/run/stream/team endpoints
+- ✅ **Go Backend Integration**: `/api/agents/*` proxy routes
+- ✅ **Frontend Page**: `AIAgents.tsx` - Single agent analysis + multi-agent team debate
+- ✅ **Test Coverage**: 19 Python unit tests all passing
 
 **v2.5 Real-time Data & Quantitative Analysis Upgrade**:
 - ✅ **Real-time Data Acquisition**: Finage API integration, 3-year historical data sync (~388 days)
@@ -155,6 +165,21 @@ ETF-Insight aims to become a powerful ETF analysis tool for professional investo
 - **Rich ETF Types** - Index/Sector/Factor/Thematic/Active/Leveraged/Inverse
 - **Multi-Dimensional Filtering** - Asset class/region/type/sector/expense ratio
 - **Portfolio Allocation Suggestions** - Conservative/Balanced/Aggressive/Dividend strategy templates
+
+### 🔬 QuantLib Quantitative Analysis (v2.8)
+- **Options Pricing** - European/American Black-Scholes with full Greeks
+- **Yield Curves** - Construction and visualization, multi-currency support
+- **Bond Pricing** - Fixed income analysis with duration/convexity
+- **VaR Calculation** - QuantLib engine-driven historical/parametric VaR
+- **Interactive Analysis** - 4-tab professional analysis interface
+
+### 🤖 AI Agent Microservice (v2.9)
+- **Legendary Investors** - Warren Buffett (value investing), Benjamin Graham (defensive investing)
+- **Hedge Fund Perspective** - Bridgewater Associates (macro risk parity)
+- **Macro Economic Analysis** - Top-down macroeconomic analysis
+- **Multi-Agent Team Debate** - 2-5 agents analyze simultaneously, synthesize views
+- **Multi-LLM Models** - Supports OpenAI/Ollama/DeepSeek
+- **Go Backend Proxy** - `/api/agents/*` route forwarding
 
 ### ⚙️ ETF Configuration Management
 - **CRUD Operations** - Create, read, update, delete ETF configuration information
@@ -274,6 +299,7 @@ npm run dev
 ETF-Insight/
 ├── backend/          # Go backend service
 ├── frontend/         # React frontend application
+├── services/agent/   # Python AI Agent Microservice (port 8091)
 ├── AGENTS.md         # Project core context document
 ├── README.md         # Chinese documentation
 └── README_EN.md      # English documentation
@@ -310,11 +336,15 @@ ETF-Insight/
 - ✅ Concentration Metrics (Top10/Top20, Herfindahl Index)
 - ✅ Smart Caching & event-driven invalidation
 
-### v2.7-2.8 (3-6 months) 📋
-- 📋 Backtest engine frontend UI
-- 📋 Cross-asset ETF frontend page
-- 📋 Strategy framework implementation
-- 📋 Performance monitoring integration
+### v2.7-2.8 ✅
+- ✅ QuantLib Cloud API Integration (Options/Bonds/Yield Curve/VaR)
+- ✅ QuantLib Frontend Analysis Page (4-tab interactive interface)
+- ✅ Code Review & Quality Assurance (2 rounds of review)
+- ✅ AI Agent Microservice (Python FastAPI, port 8091)
+- ✅ Multi-LLM Support (OpenAI/Ollama/DeepSeek)
+- ✅ 4 Financial Agents (Buffett/Graham/Bridgewater/Macro)
+- 📋 More Agents (Geopolitics/Technical Analysis/Hedge Funds)
+- 📋 Data Source Microservice (60+ data sources)
 
 ### v3.0 (6-12 months) 🚀
 - 🚀 Plugin system architecture
