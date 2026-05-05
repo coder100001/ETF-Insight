@@ -43,6 +43,14 @@ ETF-Insight 前端致力于提供：
 - **交互式界面**: 4 个 Tab 的专业分析页面
 - **实时图表**: Recharts 收益率曲线可视化
 
+### 🤖 AI Agent 分析 (v2.9 新增)
+- **单 Agent 分析**: 选择投资大师进行独立分析
+- **团队辩论模式**: 多 Agent 同时分析并综合观点
+- **4 个金融 Agent**: Buffett、Graham、Bridgewater、Macro
+- **多 LLM 模型**: 支持 OpenAI/Ollama/DeepSeek 切换
+- **SSE 流式响应**: 实时展示分析过程
+- **中文界面**: 全中文标签和提示
+
 ### 回测引擎 (v2.5 新增)
 - **策略回测**: 事件驱动回测可视化
 - **订单管理**: 市价单/限价单/止损单模拟
@@ -131,6 +139,7 @@ frontend/
 │   │   ├── RiskAnalysis.tsx        # 风险分析(VaR/CVaR)
 │   │   ├── FactorAnalysis.tsx      # 因子分析
 │   │   ├── QuantLibAnalysis.tsx    # QuantLib 量化分析 (v2.8)
+│   │   ├── AIAgents.tsx            # AI Agent 分析页面 (v2.9)
 │   │   ├── ASharePortfolio.tsx     # A股红利ETF组合
 │   │   ├── InvestmentStrategy.tsx  # 投资策略
 │   │   ├── ExchangeRate.tsx        # 汇率管理
@@ -145,11 +154,12 @@ frontend/
 │   │   ├── HoldingPieChart.tsx    # 持仓饼图
 │   │   └── ...
 │   ├── services/           # API 服务
-│   │   ├── api.ts                 # API调用封装
+│   │   ├── api.ts                 # API调用封装 (含 agentAPI 模块 v2.9)
 │   │   └── portfolio.ts           # 投资组合API
 │   ├── types/              # TypeScript 类型
 │   │   ├── index.ts               # 全局类型定义
-│   │   └── quantlib.ts            # QuantLib 类型 (v2.8)
+│   │   ├── quantlib.ts            # QuantLib 类型 (v2.8)
+│   │   └── agent.ts               # AI Agent 类型定义 (v2.9)
 │   ├── utils/              # 工具函数
 │   │   └── api.ts                 # API工具函数
 │   └── styles/             # 样式
@@ -158,6 +168,33 @@ frontend/
 ├── package.json
 └── vite.config.ts
 ```
+
+## 🧭 路由与导航
+
+### 路由表
+
+| 路径 | 页面 | 说明 |
+|------|------|------|
+| `/` | Dashboard | 仪表盘 |
+| `/etf` | ETFDashboard | ETF市场总览 |
+| `/portfolio/analysis` | PortfolioAnalysis | 投资组合情景分析 |
+| `/portfolio/optimization` | PortfolioOptimization | 组合优化 |
+| `/quantlib` | QuantLibAnalysis | QuantLib 量化分析 |
+| `/ai-agents` | AIAgents | AI Agent 分析页面 |
+| `/factor` | FactorAnalysis | 因子分析 |
+| `/risk` | RiskAnalysis | 风险分析 |
+
+### 侧边栏导航
+
+| 图标 | 菜单项 | 说明 |
+|------|--------|------|
+| DashboardOutlined | 仪表盘 | 系统概览 |
+| FundOutlined | ETF 管理 | ETF 列表和详情 |
+| PieChartOutlined | 投资组合 | 组合分析和优化 |
+| LineChartOutlined | 量化分析 | QuantLib 分析 |
+| RobotOutlined | AI Agent | AI 投资分析助手 |
+| ExperimentOutlined | 因子分析 | Fama-French 分析 |
+| SafetyOutlined | 风险分析 | VaR/CVaR 分析 |
 
 ## 🎨 技术栈
 
