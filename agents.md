@@ -136,7 +136,7 @@ LOG_LEVEL=info
   - 风险贡献分解与优化
   - 极端行情回撤改善验证
 
-#### 微内核架构 (v2.8 进行中)
+#### 微内核架构 (v2.8 - v2.9)
 - ✅ **QuantLib 云 API 集成**: 直接调用 `api.fincept.in/quantlib/` 云服务
   - 期权定价: 欧式/美式 Black-Scholes，完整 Greeks
   - 收益率曲线: 多货币构建和可视化
@@ -144,6 +144,9 @@ LOG_LEVEL=info
   - VaR 计算: 历史模拟法/参数法
   - 参考数据: 缓存 1 小时 TTL
 - ✅ **前端量化分析页面**: `QuantLibAnalysis.tsx` - 4 Tab 交互式界面
+- ✅ **AI Agent 微服务**: 从零重写 Agent 框架，4 个金融 Agent，多 LLM 支持
+  - 路由: `/ai-agents`
+  - 支持单 Agent 执行和多 Agent 团队辩论
 - 📋 **插件接口标准化**:
   - Alpha Generator插件（输入行情/因子，输出观点）
   - Portfolio Optimizer插件（输入观点，输出权重）
@@ -260,7 +263,35 @@ git push origin feature/your-feature-name
 
 - ✅ **代码审查**: 2 轮审查，10 个问题已修复 (P0×3, P1×4, P2×3)
 
-- 📋 **下一步**: Phase 2 - AI Agent 微服务 (37 个投资大师 Agent)
+#### AI Agent 微服务 (v2.9 新增)
+- ✅ **从零重写 Agent 框架**: 零 AGPL 风险，完全自主实现
+  - `services/agent/core/base_agent.py` - Agent 抽象基类
+  - `services/agent/core/llm_provider.py` - 多模型抽象层 (OpenAI/Ollama/DeepSeek)
+  - `services/agent/core/tool_registry.py` - 工具注册与调用机制
+  - `services/agent/core/agent_manager.py` - Agent 注册/发现/执行/团队协作
+- ✅ **4 个金融 Agent**:
+  - Warren Buffett - 价值投资大师 (经济护城河、内在价值)
+  - Benjamin Graham - 防御型投资 (安全边际、净净值分析)
+  - Bridgewater Associates - 宏观风险平价 (经济机器模型)
+  - Macroeconomic Analyst - 自上而下宏观分析
+- ✅ **FastAPI 服务** (port 8091): 6 个端点
+  - `GET /health` - 健康检查
+  - `GET /agents/discover` - Agent 列表
+  - `POST /agents/run` - 单 Agent 执行
+  - `POST /agents/stream` - SSE 流式响应
+  - `POST /agents/team` - 多 Agent 团队辩论 (2-5 Agent, 1-3 轮)
+- ✅ **Go 后端集成**:
+  - `services/agent/agent_client.go` - HTTP 客户端
+  - `handlers/agent_handler.go` - 4 个 Gin handler
+  - `router/router.go` - `/api/agents/*` 路由
+- ✅ **前端页面**: `AIAgents.tsx` - 单 Agent/团队分析模式
+  - 路由: `/ai-agents`
+  - 侧边栏: "AI Agent" (RobotOutlined)
+  - 支持 4 个 LLM 模型选择
+- ✅ **测试覆盖**: 19 个 Python 单元测试全部通过
+- ✅ **容器化**: Dockerfile (Python 3.11-slim)
+
+- 📋 **下一步**: 添加更多 Agent (地缘政治/技术分析/对冲基金)
 
 ### v2.5 更新内容
 
@@ -1871,5 +1902,5 @@ POST /api/data-logs/rollback
 
 ---
 
-*本文档最后更新: 2026-05-04 (v2.8 QuantLib 集成版)*
+*本文档最后更新: 2026-05-05 (v2.9 AI Agent 微服务版)*
 *强制上下文绑定版本: v2.0*
