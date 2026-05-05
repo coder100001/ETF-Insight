@@ -50,6 +50,7 @@ func getCORSAllowedOrigins() []string {
 		// 默认允许本地开发环境
 		return []string{
 			"http://localhost:3000",
+			"http://localhost:5173",
 			"http://localhost:8080",
 		}
 	}

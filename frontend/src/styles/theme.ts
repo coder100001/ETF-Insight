@@ -39,10 +39,10 @@ export const theme = {
     chartColors: ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'],
   },
 
-  // 字体
+  // 字体 - 包含中文字体回退
   fonts: {
-    family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    familyMono: '"SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace',
+    family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
+    familyMono: '"SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Noto Sans Mono CJK SC", monospace',
     size: {
       xs: '11px',
       sm: '12px',

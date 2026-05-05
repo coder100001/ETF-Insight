@@ -96,7 +96,13 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (chartRef.current) {
-      const chart = echarts.init(chartRef.current);
+      // Safari 兼容性处理
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+      const chart = echarts.init(chartRef.current, undefined, {
+        renderer: 'canvas',
+      });
+
       const option: echarts.EChartsOption = {
         tooltip: {
           trigger: 'axis',
@@ -119,6 +125,8 @@ const Dashboard: React.FC = () => {
         yAxis: {
           type: 'value',
         },
+        // Safari 中禁用动画避免闪烁
+        animation: !isSafari,
         series: [
           {
             name: '成功',
@@ -126,6 +134,8 @@ const Dashboard: React.FC = () => {
             smooth: true,
             data: mockDailyStats.map(d => d.success),
             itemStyle: { color: theme.colors.success },
+            // Safari 中禁用系列动画
+            animation: !isSafari,
           },
           {
             name: '失败',
@@ -133,6 +143,8 @@ const Dashboard: React.FC = () => {
             smooth: true,
             data: mockDailyStats.map(d => d.failed),
             itemStyle: { color: theme.colors.danger },
+            // Safari 中禁用系列动画
+            animation: !isSafari,
           },
         ],
       };

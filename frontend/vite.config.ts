@@ -18,6 +18,9 @@ export default defineConfig({
     sourcemap: true,
     // 确保生成静态资源到正确位置
     assetsDir: 'assets',
+    // 浏览器兼容性目标
+    target: ['es2015', 'chrome58', 'firefox57', 'safari11', 'edge16'],
+    cssTarget: ['chrome58', 'firefox57', 'safari11', 'edge16'],
     rollupOptions: {
       output: {
         manualChunks: (id: string) => {

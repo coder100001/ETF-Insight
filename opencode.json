@@ -1,4 +1,13 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"]
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git",
+    "opencode-copilot-plugin@latest",
+    "oh-my-openagent@latest",
+    "@tarquinen/opencode-dynamic-context-pruning@latest",
+    "@morphllm/opencode-morph-plugin@latest",
+    "opencode-websearch-cited@latest",
+    "opencode-vibeguard@latest",
+    "opencode-wakatime@latest"
+  ]
 }
