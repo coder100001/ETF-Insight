@@ -50,6 +50,16 @@ ETF-Insight 后端坚持以下设计理念：
 - **CoinGecko**: 加密货币价格、市场数据、趋势
 - **AGPL 合规**: 直接使用 FinceptTerminal 代码，NOTICE 文件声明
 
+### 分析微服务 (v2.11 新增)
+- **TDD 开发**: RED → GREEN → REFACTOR 流程
+- **Portfolio Management**: 16 个分析模块从 FinceptTerminal 提取
+- **Portfolio Optimization**: 组合优化 (最大夏普/最小波动率/等权重)
+- **Risk Management**: VaR/CVaR 计算、风险预算、情景分析
+- **Portfolio Analytics**: CAPM 分析、有效前沿、组合指标
+- **Portfolio Planning**: 资产配置、风险容忍度分析
+- **FastAPI 服务**: port 8093，4 个路由模块
+- **AGPL 合规**: 直接使用 FinceptTerminal 代码，NOTICE 文件声明
+
 ### 数据服务 (v2.6 重构)
 - **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
 - **ETF持仓穿透**: 底层持仓明细查询、权重分析

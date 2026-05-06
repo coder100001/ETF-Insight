@@ -53,6 +53,19 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **测试覆盖**: 3 个单元测试通过
 - ✅ **AGPL 合规**: `NOTICE` 文件声明
 
+**v2.11 分析微服务** (2026-05-06):
+- ✅ **TDD 开发**: RED → GREEN → REFACTOR 流程
+- ✅ **Portfolio Management 模块**: 16 个分析模块从 FinceptTerminal 提取
+  - Portfolio Optimization: 组合优化 (最大夏普/最小波动率/等权重)
+  - Risk Management: VaR/CVaR 计算、风险预算、情景分析
+  - Portfolio Analytics: CAPM 分析、有效前沿、组合指标
+  - Portfolio Planning: 资产配置、风险容忍度分析
+- ✅ **FastAPI 服务** (port 8093): 4 个路由模块
+- ✅ **Go 后端代理**: `/api/analytics/*` 路由代理转发
+- ✅ **Docker 支持**: `Dockerfile` 容器化部署
+- ✅ **测试覆盖**: 4 个单元测试 (跳过 scipy 依赖)
+- ✅ **AGPL 合规**: `NOTICE` 文件声明
+
 **v2.8 FinceptTerminal QuantLib 集成** (2026-05-04):
 - ✅ **QuantLib 云 API 对接**: 直接调用 `api.fincept.in/quantlib/` 云服务
   - 期权定价: 欧式/美式 Black-Scholes 定价，完整 Greeks (Delta/Gamma/Theta/Vega/Rho)
