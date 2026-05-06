@@ -36,6 +36,7 @@ type Handlers struct {
 	QuantLib        *handlers.QuantLibHandler
 	Agent           *handlers.AgentHandler
 	Data            *handlers.DataHandler
+	Analytics       *handlers.AnalyticsHandler
 }
 
 type Router struct {
@@ -90,6 +91,7 @@ func NewRouter(
 	h.QuantLib = handlers.NewQuantLibHandler()
 	h.Agent = handlers.NewAgentHandler()
 	h.Data = handlers.NewDataHandler()
+	h.Analytics = handlers.NewAnalyticsHandler()
 
 	return &Router{engine: engine, handlers: h, config: cfg}
 }
@@ -118,6 +120,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerQuantLibRoutes()
 	r.registerAgentRoutes()
 	r.registerDataRoutes()
+	r.registerAnalyticsRoutes()
 	r.registerStaticRoutes()
 	docs.RegisterSwaggerRoutes(r.engine)
 }
@@ -397,5 +400,15 @@ func (r *Router) registerDataRoutes() {
 		d.GET("/fred/series/:series_id", r.handlers.Data.FredSeries)
 		d.GET("/yfinance/quote/:symbol", r.handlers.Data.YFinanceQuote)
 		d.GET("/akshare/stock/spot", r.handlers.Data.AkShareStockSpot)
+	}
+}
+
+func (r *Router) registerAnalyticsRoutes() {
+	a := r.engine.Group("/api/analytics")
+	{
+		a.GET("/health", r.handlers.Analytics.Health)
+		a.POST("/optimize", r.handlers.Analytics.OptimizePortfolio)
+		a.POST("/var", r.handlers.Analytics.CalculateVaR)
+		a.POST("/capm", r.handlers.Analytics.CalculateCAPM)
 	}
 }
