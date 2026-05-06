@@ -1173,10 +1173,7 @@ func TestFamaFrench_FactorModeSwitching(t *testing.T) {
 }
 
 func TestFamaFrench_GenerateSampleData(t *testing.T) {
-	m, s, h, rf, err := GenerateSampleFactorData(10)
-	if err != nil {
-		t.Fatalf("GenerateSampleData failed: %v", err)
-	}
+	m, s, h, rf := GenerateSampleFactorData(10)
 	if len(m) != 10 || len(s) != 10 || len(h) != 10 || len(rf) != 10 {
 		t.Errorf("Expected 10 data points each, got market=%d smb=%d hml=%d rf=%d", len(m), len(s), len(h), len(rf))
 	}

@@ -468,7 +468,7 @@ func TestBlackLittermanService_parseMarketWeights(t *testing.T) {
 	alphaService := NewAlphaViewService(db, factorService)
 	service := NewBlackLittermanService(db, alphaService)
 
-	weightsJSON := "[0.25, 0.25, 0.25, 0.25]"
+	weightsJSON := models.JSONMap{"0": 0.25, "1": 0.25, "2": 0.25, "3": 0.25}
 	weights, err := service.parseMarketWeights(weightsJSON)
 	if err != nil {
 		t.Errorf("parseMarketWeights failed: %v", err)
@@ -493,7 +493,10 @@ func TestBlackLittermanService_parseCovarianceMatrix(t *testing.T) {
 	alphaService := NewAlphaViewService(db, factorService)
 	service := NewBlackLittermanService(db, alphaService)
 
-	covJSON := "[[0.04, 0.01], [0.01, 0.09]]"
+	covJSON := models.JSONMap{
+		"0": models.JSONMap{"0": 0.04, "1": 0.01},
+		"1": models.JSONMap{"0": 0.01, "1": 0.09},
+	}
 	cov, err := service.parseCovarianceMatrix(covJSON)
 	if err != nil {
 		t.Errorf("parseCovarianceMatrix failed: %v", err)

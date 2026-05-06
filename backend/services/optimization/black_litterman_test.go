@@ -3,8 +3,6 @@ package optimization
 import (
 	"math"
 	"testing"
-
-	"github.com/shopspring/decimal"
 )
 
 func TestNewBlackLittermanOptimizer(t *testing.T) {
@@ -718,7 +716,7 @@ func TestBlackLitterman_Optimize_EmptySymbols(t *testing.T) {
 	optimizer.SetTau(0.025)
 	optimizer.SetRiskFreeRate(0.04)
 
-	_, err := optimizer.Optimize(map[string]float64{}, map[string]map[string]float64{})
+	_, err := optimizer.Optimize(map[string]float64{}, map[string]map[string]float64{}, nil, nil)
 	if err == nil {
 		t.Error("Empty input should return error")
 	}
@@ -732,10 +730,10 @@ func TestBlackLitterman_OptimizeWithViews_NoViews(t *testing.T) {
 	}
 
 	optimizer := NewBlackLittermanOptimizer()
-	optimizer.SetTau(decimal.NewFromFloat(0.025))
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer.SetTau(0.025)
+	optimizer.SetRiskFreeRate(0.04)
 
-	result, err := optimizer.OptimizeWithViews(returns, cov, nil, nil)
+	result, err := optimizer.OptimizeWithViews(returns, cov, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("No views should work: %v", err)
 	}
