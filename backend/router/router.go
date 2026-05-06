@@ -35,6 +35,7 @@ type Handlers struct {
 	Report          *handlers.ReportHandler
 	QuantLib        *handlers.QuantLibHandler
 	Agent           *handlers.AgentHandler
+	Data            *handlers.DataHandler
 }
 
 type Router struct {
@@ -88,6 +89,7 @@ func NewRouter(
 	h.BlackLitterman = handlers.NewBlackLittermanHandler(blService)
 	h.QuantLib = handlers.NewQuantLibHandler()
 	h.Agent = handlers.NewAgentHandler()
+	h.Data = handlers.NewDataHandler()
 
 	return &Router{engine: engine, handlers: h, config: cfg}
 }
@@ -115,6 +117,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerReportRoutes()
 	r.registerQuantLibRoutes()
 	r.registerAgentRoutes()
+	r.registerDataRoutes()
 	r.registerStaticRoutes()
 	docs.RegisterSwaggerRoutes(r.engine)
 }
@@ -384,5 +387,15 @@ func (r *Router) registerAgentRoutes() {
 		ag.GET("/discover", r.handlers.Agent.Discover)
 		ag.POST("/run", r.handlers.Agent.Run)
 		ag.POST("/team", r.handlers.Agent.RunTeam)
+	}
+}
+
+func (r *Router) registerDataRoutes() {
+	d := r.engine.Group("/api/data")
+	{
+		d.GET("/health", r.handlers.Data.Health)
+		d.GET("/fred/series/:series_id", r.handlers.Data.FredSeries)
+		d.GET("/yfinance/quote/:symbol", r.handlers.Data.YFinanceQuote)
+		d.GET("/akshare/stock/spot", r.handlers.Data.AkShareStockSpot)
 	}
 }
