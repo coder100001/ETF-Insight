@@ -3,6 +3,8 @@ package optimization
 import (
 	"math"
 	"testing"
+
+	"github.com/shopspring/decimal"
 )
 
 func TestNewMPTOptimizer(t *testing.T) {
@@ -569,5 +571,40 @@ func TestCalculateDiversificationRatio_ZeroVolatility(t *testing.T) {
 
 	if ratio != 1.0 {
 		t.Errorf("DiversificationRatio should be 1.0 for zero volatility, got %f", ratio)
+	}
+}
+
+func TestMPTOptimizer_SingularCovariance(t *testing.T) {
+	returns := map[string]float64{"A": 0.08, "B": 0.06}
+	cov := map[string]map[string]float64{
+		"A": {"A": 0.04, "B": 0.04},
+		"B": {"A": 0.04, "B": 0.04},
+	}
+
+	optimizer := NewMPTOptimizer()
+	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+
+	_, err := optimizer.Optimize(returns, cov)
+	if err != nil {
+		t.Logf("Singular covariance returned error (acceptable): %v", err)
+	}
+}
+
+func TestMPTOptimizer_ZeroReturns(t *testing.T) {
+	returns := map[string]float64{"A": 0, "B": 0}
+	cov := map[string]map[string]float64{
+		"A": {"A": 0.04, "B": 0.02},
+		"B": {"A": 0.02, "B": 0.03},
+	}
+
+	optimizer := NewMPTOptimizer()
+	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+
+	result, err := optimizer.Optimize(returns, cov)
+	if err != nil {
+		t.Fatalf("Zero returns should not crash: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Result should not be nil for zero returns")
 	}
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"math"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -351,4 +352,59 @@ func TestGetFirstKey_Empty(t *testing.T) {
 	m := map[string][]decimal.Decimal{}
 	key := getFirstKey(m)
 	assert.Empty(t, key)
+}
+
+func TestRiskModels_ParametricVsHistoricalConsistency(t *testing.T) {
+	rm := NewRiskModels()
+	returns := []decimal.Decimal{
+		decimal.NewFromFloat(0.01), decimal.NewFromFloat(0.02),
+		decimal.NewFromFloat(-0.01), decimal.NewFromFloat(0.03),
+		decimal.NewFromFloat(-0.02), decimal.NewFromFloat(0.015),
+		decimal.NewFromFloat(0.008), decimal.NewFromFloat(-0.005),
+		decimal.NewFromFloat(0.012), decimal.NewFromFloat(0.025),
+	}
+	confidence := 0.95
+
+	parametricResult, _ := rm.CalculateParametricVaR(returns, confidence)
+	historicalResult, _ := rm.CalculateHistoricalVaR(returns, confidence)
+
+	if parametricResult == nil || historicalResult == nil {
+		t.Skip("One or both methods returned nil")
+	}
+
+	pVar := parametricResult.VaR.InexactFloat64()
+	hVar := historicalResult.VaR.InexactFloat64()
+
+	if pVar == 0 && hVar == 0 {
+		t.Skip("Both methods returned zero VaR")
+	}
+
+	ratio := math.Abs(pVar-hVar) / math.Max(math.Abs(hVar), 0.0001)
+	if ratio > 0.5 {
+		t.Errorf("VaR methods diverge too much: parametric=%.6f, historical=%.6f, ratio=%.2f",
+			pVar, hVar, ratio)
+	}
+}
+
+func TestRiskModels_EmptyReturns(t *testing.T) {
+	rm := NewRiskModels()
+	_, err := rm.CalculateHistoricalVaR([]decimal.Decimal{}, 0.95)
+	if err == nil {
+		t.Error("Empty returns should return error")
+	}
+}
+
+func TestRiskModels_ConstantReturns(t *testing.T) {
+	rm := NewRiskModels()
+	constantReturns := make([]decimal.Decimal, 100)
+	for i := range constantReturns {
+		constantReturns[i] = decimal.NewFromFloat(0.01)
+	}
+	result, err := rm.CalculateHistoricalVaR(constantReturns, 0.95)
+	if err != nil {
+		t.Fatalf("Constant returns should not error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Result should not be nil")
+	}
 }

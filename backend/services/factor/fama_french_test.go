@@ -1,6 +1,7 @@
 package factor
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -1139,5 +1140,31 @@ abc,not,numbers,here,test
 	}
 	if len(marketReturns) != 4 {
 		t.Errorf("Expected 4 valid market returns, got %d", len(marketReturns))
+	}
+}
+
+func TestFamaFrench_FiveFactorEmptyData(t *testing.T) {
+	model := NewFamaFrenchModel()
+
+	result, err := model.LoadFiveFactorData([]string{}, []string{})
+	if err != nil {
+		t.Fatalf("Empty data should not error: %v", err)
+	}
+	if result == nil {
+		t.Error("Result should not be nil for empty data")
+	}
+}
+
+func TestFamaFrench_TikhonovRegularization_EdgeCases(t *testing.T) {
+	model := NewFamaFrenchModel()
+
+	testCases := []float64{0, 0.001, 1, 100, 10000}
+	for _, lambda := range testCases {
+		t.Run(fmt.Sprintf("lambda=%v", lambda), func(t *testing.T) {
+			model.SetLambda(lambda)
+			if model.GetLambda() != lambda {
+				t.Errorf("Lambda mismatch: expected %v, got %v", lambda, model.GetLambda())
+			}
+		})
 	}
 }

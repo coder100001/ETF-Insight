@@ -541,6 +541,23 @@ func TestRiskParity_CalculateDiversificationRatio_ZeroVolatility(t *testing.T) {
 	}
 }
 
+func TestRiskParity_ZeroVolatilityAsset(t *testing.T) {
+	returns := map[string]float64{"A": 0.05, "B": 0.05}
+	cov := map[string]map[string]float64{
+		"A": {"A": 0, "B": 0},
+		"B": {"A": 0, "B": 0.04},
+	}
+
+	optimizer := NewRiskParityOptimizer()
+
+	result, err := optimizer.Optimize(returns, cov)
+	if err != nil {
+		t.Logf("Zero volatility returned error (acceptable): %v", err)
+	} else if result != nil {
+		t.Log("Zero volatility handled gracefully")
+	}
+}
+
 func TestApplyConstraints(t *testing.T) {
 	optimizer := NewRiskParityOptimizer()
 
