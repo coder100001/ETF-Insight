@@ -13,31 +13,18 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 
 ## 📢 最新动态
 
-**v2.6 数据层重构与穿透分析**:
-- ✅ **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
-- ✅ **ETF持仓穿透**: 底层持仓明细查询、权重分析
-- ✅ **重叠度计算**: 两只ETF持仓重叠度分析(最小权重法)
-- ✅ **组合穿透分析**: 投资组合底层资产行业/地理分布
-- ✅ **集中度指标**: Top10/Top20权重、Herfindahl指数、有效持仓数
-- ✅ **智能缓存**: 重叠度计算结果缓存(7天TTL)、自动失效
-- ✅ **事件驱动**: 持仓更新自动触发缓存失效
-- ✅ **测试覆盖**: portfolio 84.9%, event 73.2%
-
-**v2.6.1 前后端接口一致性修复** (2026-04-25):
-- ✅ **API参数优化**: MPT/有效前沿的Returns/CovMatrix改为可选，自动从历史数据计算
-- ✅ **字段名对齐**: 前后端响应字段完全一致（weights/volatility/target_return等）
-- ✅ **有效前沿图表修复**: 动态坐标轴、格式化显示、边距优化
-- ✅ **文档清理**: 移除所有JWT/登录相关残留描述
-
-**v2.9 AI Agent 微服务** (2026-05-05):
-- ✅ **从零重写 Agent 框架**: 零 AGPL 风险，完全自主实现
-  - 多 LLM 支持: OpenAI/Ollama/DeepSeek，通过 `get_provider()` 工厂切换
-  - Agent 抽象基类 + 工具注册机制 + Agent 管理器
-- ✅ **4 个金融 Agent**: Warren Buffett、Benjamin Graham、Bridgewater、Macroeconomic Analyst
-- ✅ **FastAPI 服务** (port 8091): discover/run/stream/team 4 个端点
-- ✅ **Go 后端集成**: `/api/agents/*` 代理路由
-- ✅ **前端页面**: `AIAgents.tsx` - 单 Agent 分析 + 多 Agent 团队辩论
-- ✅ **测试覆盖**: 19 个 Python 单元测试全部通过
+**v2.11 分析微服务** (2026-05-06):
+- ✅ **TDD 开发**: RED → GREEN → REFACTOR 流程
+- ✅ **Portfolio Management 模块**: 16 个分析模块从 FinceptTerminal 提取
+  - Portfolio Optimization: 组合优化 (最大夏普/最小波动率/等权重)
+  - Risk Management: VaR/CVaR 计算、风险预算、情景分析
+  - Portfolio Analytics: CAPM 分析、有效前沿、组合指标
+  - Portfolio Planning: 资产配置、风险容忍度分析
+- ✅ **FastAPI 服务** (port 8093): 4 个路由模块
+- ✅ **Go 后端代理**: `/api/analytics/*` 路由代理转发
+- ✅ **Docker 支持**: `Dockerfile` 容器化部署
+- ✅ **测试覆盖**: 4 个单元测试 (跳过 scipy 依赖)
+- ✅ **AGPL 合规**: `NOTICE` 文件声明
 
 **v2.10 数据源微服务** (2026-05-06):
 - ✅ **直接集成 FinceptTerminal 脚本**: AGPL 非商业使用，16 个数据源脚本
@@ -53,18 +40,15 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **测试覆盖**: 3 个单元测试通过
 - ✅ **AGPL 合规**: `NOTICE` 文件声明
 
-**v2.11 分析微服务** (2026-05-06):
-- ✅ **TDD 开发**: RED → GREEN → REFACTOR 流程
-- ✅ **Portfolio Management 模块**: 16 个分析模块从 FinceptTerminal 提取
-  - Portfolio Optimization: 组合优化 (最大夏普/最小波动率/等权重)
-  - Risk Management: VaR/CVaR 计算、风险预算、情景分析
-  - Portfolio Analytics: CAPM 分析、有效前沿、组合指标
-  - Portfolio Planning: 资产配置、风险容忍度分析
-- ✅ **FastAPI 服务** (port 8093): 4 个路由模块
-- ✅ **Go 后端代理**: `/api/analytics/*` 路由代理转发
-- ✅ **Docker 支持**: `Dockerfile` 容器化部署
-- ✅ **测试覆盖**: 4 个单元测试 (跳过 scipy 依赖)
-- ✅ **AGPL 合规**: `NOTICE` 文件声明
+**v2.9 AI Agent 微服务** (2026-05-05):
+- ✅ **从零重写 Agent 框架**: 零 AGPL 风险，完全自主实现
+  - 多 LLM 支持: OpenAI/Ollama/DeepSeek，通过 `get_provider()` 工厂切换
+  - Agent 抽象基类 + 工具注册机制 + Agent 管理器
+- ✅ **4 个金融 Agent**: Warren Buffett、Benjamin Graham、Bridgewater、Macroeconomic Analyst
+- ✅ **FastAPI 服务** (port 8091): discover/run/stream/team 4 个端点
+- ✅ **Go 后端集成**: `/api/agents/*` 代理路由
+- ✅ **前端页面**: `AIAgents.tsx` - 单 Agent 分析 + 多 Agent 团队辩论
+- ✅ **测试覆盖**: 19 个 Python 单元测试全部通过
 
 **v2.8 FinceptTerminal QuantLib 集成** (2026-05-04):
 - ✅ **QuantLib 云 API 对接**: 直接调用 `api.fincept.in/quantlib/` 云服务
@@ -75,6 +59,29 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
   - 参考数据: 缓存 1 小时 TTL (货币/频率/日历/计息基准)
 - ✅ **前端量化分析页面**: `QuantLibAnalysis.tsx` - 4 个 Tab (期权/债券/收益率曲线/VaR)
 - ✅ **代码审查**: 2 轮审查，10 个问题已修复 (P0×3, P1×4, P2×3)
+
+**v2.6.1 前后端接口一致性修复** (2026-04-25):
+- ✅ **API参数优化**: MPT/有效前沿的Returns/CovMatrix改为可选，自动从历史数据计算
+- ✅ **字段名对齐**: 前后端响应字段完全一致（weights/volatility/target_return等）
+- ✅ **有效前沿图表修复**: 动态坐标轴、格式化显示、边距优化
+- ✅ **文档清理**: 移除所有JWT/登录相关残留描述
+
+**v2.6 数据层重构与穿透分析**:
+- ✅ **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
+- ✅ **ETF持仓穿透**: 底层持仓明细查询、权重分析
+- ✅ **重叠度计算**: 两只ETF持仓重叠度分析(最小权重法)
+- ✅ **组合穿透分析**: 投资组合底层资产行业/地理分布
+- ✅ **集中度指标**: Top10/Top20权重、Herfindahl指数、有效持仓数
+- ✅ **智能缓存**: 重叠度计算结果缓存(7天TTL)、自动失效
+- ✅ **事件驱动**: 持仓更新自动触发缓存失效
+- ✅ **测试覆盖**: portfolio 84.9%, event 73.2%
+
+**v2.5 量化引擎增强**:
+- ✅ **回测引擎**: 事件驱动架构、完整订单系统、滑点/手续费模型
+- ✅ **组合优化增强**: 马科维茨MPT、风险平价、Black-Litterman三种模型
+- ✅ **因子分析模块**: Fama-French三因子/五因子模型、归因分析
+- ✅ **A股数据源**: AKShare/TuShare接入、实时行情同步
+- ✅ **跨资产类别**: 股票/债券/商品/REIT/货币/多资产全覆盖
 
 **v2.5 实时数据与量化分析升级**:
 - ✅ **实时数据获取**: Finage API 集成，3年历史数据同步(约388天)
@@ -96,13 +103,6 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **测试覆盖率**: factor 80.8%, middleware 68.8%, utils 81.2%
 - ✅ **因子分析修复**: Fama-French模型数值稳定性优化、Tikhonov正则化、随机数生成修复
 - ✅ **CI/CD**: 覆盖率检测、Codecov集成
-
-**v2.5 量化引擎增强**:
-- ✅ **回测引擎**: 事件驱动架构、完整订单系统、滑点/手续费模型
-- ✅ **组合优化增强**: 马科维茨MPT、风险平价、Black-Litterman三种模型
-- ✅ **因子分析模块**: Fama-French三因子/五因子模型、归因分析
-- ✅ **A股数据源**: AKShare/TuShare接入、实时行情同步
-- ✅ **跨资产类别**: 股票/债券/商品/REIT/货币/多资产全覆盖
 
 **v2.4 API文档与基础设施升级**:
 - ✅ **审计日志**: 异步写入，敏感信息自动脱敏，Request ID追踪
