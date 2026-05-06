@@ -148,7 +148,7 @@ frontend/
 │   │   ├── InstanceList.tsx        # 实例列表
 │   │   └── ...
 │   ├── components/         # 公共组件
-│   │   ├── Layout.tsx             # 布局组件
+│   │   ├── Layout.tsx             # 布局组件（含侧边栏展开/收起、closeSidebar）
 │   │   ├── PriceChart.tsx         # 价格图表
 │   │   ├── ComparisonRadarChart.tsx # 对比雷达图
 │   │   ├── HoldingPieChart.tsx    # 持仓饼图
