@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/shopspring/decimal"
+	"etf-insight/services/optimization"
 )
 
 func TestBLImplementations_ConsistentEquilibriumReturns(t *testing.T) {
@@ -21,14 +21,11 @@ func TestBLImplementations_ConsistentEquilibriumReturns(t *testing.T) {
 		"AMZN": {"AAPL": 0.025, "MSFT": 0.02, "GOOG": 0.015, "AMZN": 0.05},
 	}
 
-	optimizer := NewBlackLittermanOptimizer()
-	optimizer.SetTau(decimal.NewFromFloat(0.025))
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer := optimization.NewBlackLittermanOptimizer()
+	optimizer.SetTau(0.025)
+	optimizer.SetRiskFreeRate(0.04)
 
-	result, err := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix)
-	if err != nil {
-		t.Fatalf("Optimization BL failed: %v", err)
-	}
+	result := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix, 2.5)
 
 	for _, sym := range symbols {
 		impliedReturn, exists := result[sym]
@@ -47,14 +44,12 @@ func TestBLImplementations_SingleAsset(t *testing.T) {
 	marketWeights := map[string]float64{"AAPL": 1.0}
 	covMatrix := map[string]map[string]float64{"AAPL": {"AAPL": 0.04}}
 
-	optimizer := NewBlackLittermanOptimizer()
-	optimizer.SetTau(decimal.NewFromFloat(0.025))
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer := optimization.NewBlackLittermanOptimizer()
+	optimizer.SetTau(0.025)
+	optimizer.SetRiskFreeRate(0.04)
 
-	result, err := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix)
-	if err != nil {
-		t.Fatalf("Single asset should not fail: %v", err)
-	}
+	result := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix, 2.5)
+
 	if len(result) != 1 {
 		t.Errorf("Expected 1 result, got %d", len(result))
 	}
@@ -67,13 +62,21 @@ func TestBLImplementations_DegenerateCovariance(t *testing.T) {
 		"B": {"A": 0, "B": 0},
 	}
 
-	optimizer := NewBlackLittermanOptimizer()
-	optimizer.SetTau(decimal.NewFromFloat(0.025))
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer := optimization.NewBlackLittermanOptimizer()
+	optimizer.SetTau(0.025)
+	optimizer.SetRiskFreeRate(0.04)
 
-	_, err := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix)
-	if err == nil {
-		t.Error("Degenerate covariance matrix should return error")
+	result := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix, 2.5)
+
+	for _, sym := range []string{"A", "B"} {
+		ret, ok := result[sym]
+		if !ok {
+			t.Errorf("Missing result for %s", sym)
+			continue
+		}
+		if math.IsNaN(ret) || math.IsInf(ret, 0) {
+			t.Errorf("Invalid return for %s with degenerate covariance: %f", sym, ret)
+		}
 	}
 }
 
@@ -84,14 +87,11 @@ func TestBLImplementations_NonSumToOneWeights(t *testing.T) {
 		"B": {"A": 0.02, "B": 0.03},
 	}
 
-	optimizer := NewBlackLittermanOptimizer()
-	optimizer.SetTau(decimal.NewFromFloat(0.025))
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer := optimization.NewBlackLittermanOptimizer()
+	optimizer.SetTau(0.025)
+	optimizer.SetRiskFreeRate(0.04)
 
-	result, err := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix)
-	if err != nil {
-		t.Logf("Non-sum-to-one weights returned error (may be expected): %v", err)
-	} else {
-		t.Logf("Non-sum-to-one weights handled: %+v", result)
-	}
+	result := optimizer.CalculateMarketImpliedReturns(marketWeights, covMatrix, 2.5)
+
+	t.Logf("Non-sum-to-one weights result: %+v", result)
 }

@@ -3,8 +3,6 @@ package optimization
 import (
 	"math"
 	"testing"
-
-	"github.com/shopspring/decimal"
 )
 
 func TestNewMPTOptimizer(t *testing.T) {
@@ -582,9 +580,9 @@ func TestMPTOptimizer_SingularCovariance(t *testing.T) {
 	}
 
 	optimizer := NewMPTOptimizer()
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer.SetRiskFreeRate(0.04)
 
-	_, err := optimizer.Optimize(returns, cov)
+	_, err := optimizer.Optimize(returns, cov, nil)
 	if err != nil {
 		t.Logf("Singular covariance returned error (acceptable): %v", err)
 	}
@@ -598,9 +596,9 @@ func TestMPTOptimizer_ZeroReturns(t *testing.T) {
 	}
 
 	optimizer := NewMPTOptimizer()
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer.SetRiskFreeRate(0.04)
 
-	result, err := optimizer.Optimize(returns, cov)
+	result, err := optimizer.Optimize(returns, cov, nil)
 	if err != nil {
 		t.Fatalf("Zero returns should not crash: %v", err)
 	}

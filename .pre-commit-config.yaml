@@ -1,49 +1,33 @@
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
-  hooks:
-    - id: trailing-whitespace
-    - id: end-of-file-fixer
-    - id: check-yaml
-    - id: check-added-large-files
-    - id: check-json
-    - id: check-merge-conflict
-    - id: check-case-conflict
-    - id: mixed-line-ending
-    - id: detect-private-key
+  # 基础检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+      - id: detect-private-key
 
-- repo: https://github.com/dnephin/pre-commit-golang
-  rev: v0.5.1
-  hooks:
-    - id: go-fmt
-    - id: go-imports
-#    - id: go-cyclo
-#      args: [-over=15]
-#    - id: golangci-lint
-#      args: [--timeout=5m]
-# TODO: golangci-lint v2 requires different config format, needs migration
+  # Go 格式检查
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-imports
 
-- repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-  rev: v9.13.0
-  hooks:
-    - id: commitlint
-      stages: [commit-msg]
-      additional_dependencies: ['@commitlint/config-conventional']
-
-- repo: local
-  hooks:
-    - id: tsc-type-check
-      name: TypeScript Type Check
-      entry: bash -c 'cd frontend && npx tsc --noEmit 2>&1'
-      language: system
-      pass_filenames: false
-      stages: [pre-commit]
-
-#    - id: eslint-check
-#      name: ESLint Check
-#      entry: bash -c 'cd frontend && npx eslint src --max-warnings 0 2>&1'
-#      language: system
-#      pass_filenames: false
-#      stages: [pre-commit]
-# TODO: ESLint 9.x has compatibility issues with Node.js v24 (structuredClone error)
-# Track: https://github.com/eslint/eslint/issues/18881
+  # 统一检查（format + static + build + test + docs）
+  - repo: local
+    hooks:
+      - id: unified-checks
+        name: Unified Checks (format/static/build/test/docs)
+        entry: bash scripts/pre-commit-checks.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true

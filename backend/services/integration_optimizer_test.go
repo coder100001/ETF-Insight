@@ -54,7 +54,7 @@ func TestPortfolioOptimizer_MinVolatility_FourAssets(t *testing.T) {
 
 	assert.NotNil(t, result)
 	assert.Equal(t, OptimizationTypeMinVolatility, result.OptimizationType)
-	assert.True(result.ExpectedVolatility.GreaterThan(decimal.Zero))
+	assert.True(t, result.ExpectedVolatility.GreaterThan(decimal.Zero))
 }
 
 func TestPortfolioOptimizer_EqualWeight_FiveAssets(t *testing.T) {

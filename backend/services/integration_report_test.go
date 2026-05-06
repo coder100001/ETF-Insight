@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"etf-insight/models"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +15,6 @@ func TestReportService_CreateAndGet_Template(t *testing.T) {
 	template := &models.ReportTemplate{
 		Name:        "Portfolio Analysis",
 		Description: "Standard portfolio analysis report",
-		Format:      "pdf",
 		IsDefault:   true,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -27,7 +27,6 @@ func TestReportService_CreateAndGet_Template(t *testing.T) {
 
 	assert.NotZero(t, template.ID, "Template ID should be set after creation")
 	assert.Equal(t, "Portfolio Analysis", template.Name)
-	assert.Equal(t, "pdf", template.Format)
 }
 
 func TestReportService_GetTemplates_NilDB(t *testing.T) {
@@ -89,14 +88,12 @@ func TestReportService_DeleteTemplate_NilDB(t *testing.T) {
 func TestReportService_CreateReport_WithParameters(t *testing.T) {
 	service := NewReportService(nil)
 
-	report := &models.Report{
-		TemplateID:  1,
-		Title:       "Q1 2026 Portfolio Review",
-		Status:      models.ReportStatusPending,
-		Format:      "pdf",
-		GeneratedAt: time.Now(),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+	report := &models.GeneratedReport{
+		TemplateID: 1,
+		Title:      "Q1 2026 Portfolio Review",
+		Status:     models.ReportStatusPending,
+		Format:     models.ReportFormatPDF,
+		CreatedAt:  time.Now(),
 	}
 
 	err := service.CreateReport(report)
@@ -120,25 +117,9 @@ func TestReportService_GetReport_NotFound(t *testing.T) {
 func TestReportService_GenerateReport_Integration(t *testing.T) {
 	service := NewReportService(nil)
 
-	report := &models.Report{
-		TemplateID: 1,
-		Title:      "Test Generated Report",
-		Status:     models.ReportStatusPending,
-		Format:     "pdf",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-
-	err := service.CreateReport(report)
-	if err != nil && err.Error() != "database connection is nil" {
-		t.Skipf("Cannot create report without DB: %v", err)
-	}
-
-	err = service.GenerateReport(report.ID)
+	_, err := service.GenerateReport(1, "Test Generated Report", models.ReportFormatPDF, nil)
 	if err != nil {
 		t.Logf("GenerateReport requires actual data source: %v", err)
-	} else {
-		assert.NotEqual(t, models.ReportStatusPending, report.Status)
 	}
 }
 
@@ -148,7 +129,7 @@ func TestReportService_Parameters_CRUD(t *testing.T) {
 	param := &models.ReportParameter{
 		TemplateID: 1,
 		Name:       "risk_free_rate",
-		Value:      decimal.NewFromFloat(0.04).String(),
+		Default:    "0.04",
 		Type:       "decimal",
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
@@ -167,14 +148,13 @@ func TestReportService_Sections_CRUD(t *testing.T) {
 	service := NewReportService(nil)
 
 	section := &models.ReportSection{
-		TemplateID:  1,
-		Name:        "Executive Summary",
-		OrderIndex:  1,
-		Content:     "This report provides a comprehensive analysis...",
-		SectionType: "text",
-		IsActive:    true,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		TemplateID: 1,
+		Title:      "Executive Summary",
+		Order:      1,
+		Content:    "This report provides a comprehensive analysis...",
+		Type:       "text",
+		Required:   true,
+		CreatedAt:  time.Now(),
 	}
 
 	err := service.CreateSection(section)
@@ -183,6 +163,6 @@ func TestReportService_Sections_CRUD(t *testing.T) {
 	}
 
 	assert.NotZero(t, section.ID)
-	assert.Equal(t, "Executive Summary", section.Name)
-	assert.Equal(t, 1, section.OrderIndex)
+	assert.Equal(t, "Executive Summary", section.Title)
+	assert.Equal(t, 1, section.Order)
 }

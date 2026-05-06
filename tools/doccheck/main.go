@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/coder100001/etf-insight/tools/doccheck/checker"
+	"github.com/coder100001/etf-insight/tools/doccheck/models"
 	"github.com/coder100001/etf-insight/tools/doccheck/reporter"
 )
 
@@ -15,6 +16,8 @@ func main() {
 	output := flag.String("output", "", "报告输出文件路径")
 	format := flag.String("format", "markdown", "报告格式: markdown | json")
 	strict := flag.Bool("strict", false, "严格模式：存在高严重性问题时返回非零退出码")
+	quick := flag.Bool("quick", false, "快速模式：仅检查变更文件关联的元素")
+	changedFiles := flag.String("changed-files", "", "变更文件列表（逗号分隔）")
 	flag.Parse()
 
 	absRoot, err := absPath(*projectRoot)
@@ -23,11 +26,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("🔍 开始文档-代码一致性检查...")
+	if *quick {
+		fmt.Println("🔍 开始文档-代码一致性检查（快速模式）...")
+	} else {
+		fmt.Println("🔍 开始文档-代码一致性检查...")
+	}
 	fmt.Printf("   项目路径: %s\n\n", absRoot)
 
 	c := checker.NewConsistencyChecker(absRoot)
-	result, err := c.Run()
+
+	var result *models.CheckResult
+	if *quick {
+		// 快速模式
+		files := []string{}
+		if *changedFiles != "" {
+			files = strings.Split(*changedFiles, ",")
+		} else if envFiles := os.Getenv("DOCCHECK_CHANGED_FILES"); envFiles != "" {
+			files = strings.Split(envFiles, ",")
+		}
+		qc := checker.NewQuickChecker(c, files)
+		result, err = qc.Run()
+	} else {
+		// 完整模式
+		result, err = c.Run()
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ 检查失败: %v\n", err)
 		os.Exit(1)

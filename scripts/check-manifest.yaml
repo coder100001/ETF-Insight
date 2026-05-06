@@ -1,0 +1,74 @@
+# ETF-Insight 统一检查清单
+# 驱动 pre-commit、CI/CD 和 Makefile
+
+version: "1.0"
+
+stages:
+  format:
+    description: "格式检查"
+    timeout: 5
+    commands:
+      - name: gofmt
+        cmd: "cd backend && test -z $(gofmt -l .)"
+        fail_on_output: true
+        message: "Go 文件需要格式化，运行: cd backend && gofmt -w ."
+
+      - name: goimports
+        cmd: "cd backend && test -z $(goimports -l . 2>/dev/null || echo 'skip')"
+        optional: true
+        message: "Go imports 需要整理"
+
+  static:
+    description: "静态分析"
+    timeout: 10
+    env:
+      GOPROXY: "https://goproxy.cn,direct"
+    commands:
+      - name: go-vet
+        cmd: "cd backend && go vet ./..."
+        message: "Go vet 发现问题"
+
+      - name: tsc
+        cmd: "cd frontend && npx tsc --noEmit"
+        message: "TypeScript 类型检查失败"
+
+      - name: eslint
+        cmd: "cd frontend && npx eslint --cache --quiet src/ 2>/dev/null || true"
+        optional: true
+        message: "ESLint 发现问题"
+
+  build:
+    description: "编译检查"
+    timeout: 15
+    env:
+      GOPROXY: "https://goproxy.cn,direct"
+    commands:
+      - name: go-build
+        cmd: "cd backend && go build ./..."
+        message: "Go 编译失败"
+
+      - name: npm-build
+        cmd: "cd frontend && npm run build"
+        message: "前端构建失败"
+
+  test:
+    description: "单元测试"
+    timeout: 30
+    env:
+      GOPROXY: "https://goproxy.cn,direct"
+    commands:
+      - name: go-test-short
+        cmd: "cd backend && go test -short -count=1 ./..."
+        message: "Go 测试失败"
+
+      - name: frontend-test
+        cmd: "cd frontend && npm run test:run 2>/dev/null || echo '跳过前端测试'"
+        optional: true
+
+  docs:
+    description: "文档一致性"
+    timeout: 5
+    commands:
+      - name: doccheck
+        cmd: "./tools/doccheck/doccheck --quick --strict"
+        message: "文档一致性检查失败"

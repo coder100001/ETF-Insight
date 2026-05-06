@@ -416,7 +416,13 @@ func (o *BlackLittermanOptimizer) optimizeWeights(
 		weights[i] = expReturns[i] / sumExp
 	}
 
-	// 应用约束
+	// 应用约束（nil 约束时创建默认值）
+	if constraint == nil {
+		constraint = &BlackLittermanConstraint{
+			MinWeight: make(map[string]float64),
+			MaxWeight: make(map[string]float64),
+		}
+	}
 	weights = o.applyConstraints(weights, symbols, constraint)
 
 	// 构建结果

@@ -127,6 +127,15 @@ func (o *MPTOptimizer) Optimize(
 		}
 	}
 
+	// 如果未提供约束，使用默认值（不做约束）
+	if constraint == nil {
+		constraint = &Constraint{
+			MinWeight:   make(map[string]float64),
+			MaxWeight:   make(map[string]float64),
+			TotalWeight: 1.0,
+		}
+	}
+
 	// 构建收益率向量和协方差矩阵
 	n := len(symbols)
 	mu := make([]float64, n)

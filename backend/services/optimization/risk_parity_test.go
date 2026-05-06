@@ -550,7 +550,7 @@ func TestRiskParity_ZeroVolatilityAsset(t *testing.T) {
 
 	optimizer := NewRiskParityOptimizer()
 
-	result, err := optimizer.Optimize(returns, cov)
+	result, err := optimizer.Optimize(returns, cov, NewRiskParityConstraint([]string{"A", "B"}))
 	if err != nil {
 		t.Logf("Zero volatility returned error (acceptable): %v", err)
 	} else if result != nil {
