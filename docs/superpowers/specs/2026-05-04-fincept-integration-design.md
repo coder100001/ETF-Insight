@@ -702,32 +702,53 @@ Python FastAPI Service (port 8091)
 
 ### Goal
 
-Extract high-value data sources into a unified data service.
+直接引入 FinceptTerminal 的数据源脚本，构建统一数据服务微服务 (port 8092)。
 
-### Priority Sources (verified from source)
+### License Approach
 
-| Source | Data Type | Script | Category |
-|--------|----------|--------|----------|
-| FRED | Economic indicators | `fred_data.py` | Economic |
-| World Bank | Global economics | `world_bank_data.py` | Economic |
-| IMF | International finance | `imf_data.py` | Economic |
-| Yahoo Finance | Market data | `yfinance_data.py` | Market |
-| AkShare | China markets | `akshare_*.py` (9 modules) | China |
-| SEC EDGAR | Company filings | `edgar_data.py` | US Financial |
-| DBnomics | Statistical data | `dbnomics_data.py` | Economic |
-| CoinGecko | Crypto data | `coingecko_data.py` | Market |
-| Databento | Market data | `databento_data.py` | Market |
+**Decision**: 直接引入 FinceptTerminal 代码（不商业化，AGPL 合规可接受）
+
+数据源脚本直接从 FinceptTerminal 仓库提取并适配，不重写。
+
+### Actual Script Inventory (verified from source)
+
+| Source | Actual Script | API Key | Status |
+|--------|--------------|---------|--------|
+| FRED | `fred_data.py` | `FRED_API_KEY` (required) | ✅ 可直接用 |
+| World Bank | `worldbank_data.py` | None | ✅ 可直接用 |
+| IMF | `imf_data.py` | None | ✅ 可直接用 |
+| Yahoo Finance | `yfinance_data.py` | None | ✅ 可直接用 |
+| AkShare | `akshare_*.py` (~20 modules) | None | ✅ 可直接用 |
+| CoinGecko | `coingecko.py` | `COINGECKO_API_KEY` (optional) | ✅ 可直接用 |
+| SEC EDGAR | ❌ 不存在 | — | 需从零实现 |
+| DBnomics | ❌ 不存在 | — | 需从零实现 |
+| Databento | ❌ 不存在 | — | 需从零实现 |
+
+> 注: `world_bank_data.py` 实际名 `worldbank_data.py`, `coingecko_data.py` 实际名 `coingecko.py`
+
+### Architecture
+
+```
+React Frontend (现有页面增强)
+    │
+Go Backend (/api/data/*)
+    │
+Python FastAPI Service (port 8092)
+├── /api/fred/*           - FRED 经济数据
+├── /api/worldbank/*      - World Bank 全球数据
+├── /api/imf/*            - IMF 国际金融
+├── /api/yfinance/*       - Yahoo Finance 市场数据
+├── /api/akshare/*        - AkShare 中国市场
+├── /api/coingecko/*      - CoinGecko 加密货币
+└── /health               - 健康检查
+```
 
 ### Integration with ETF-Insight
 
-- FRED/IMF/World Bank → Enhance `services/exchange_rate/` with macro indicators
-- Yahoo Finance → Alternative to Finage for market data
-- AkShare → Already partially integrated in `services/ashare/`
-- SEC EDGAR → New: fundamental data for equity analysis
-
-### License Blocker
-
-Same AGPL-3.0 concern as Phase 2. Data source scripts are part of the FinceptTerminal codebase.
+- FRED/IMF/World Bank → 增强 `services/exchange_rate/` 宏观指标
+- Yahoo Finance → Finage 的备用数据源
+- AkShare → 扩展现有 `services/ashare/` 集成
+- CoinGecko → 新增加密货币分析能力
 
 ---
 
