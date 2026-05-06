@@ -1,7 +1,7 @@
 # ETF-Insight 文档索引
 
-**版本**: v2.7
-**更新日期**: 2026-04-25
+**版本**: v2.9
+**更新日期**: 2026-05-06
 **维护者**: ETF-Insight Team
 
 ---
@@ -38,6 +38,9 @@
 |------|------|------|------|
 | **代码审查报告** | [reviews/CODE_REVIEW_REPORT.md](reviews/CODE_REVIEW_REPORT.md) | 代码审查报告 | ✅ 已完成 |
 | **审查总结** | [reviews/REVIEW_SUMMARY.md](reviews/REVIEW_SUMMARY.md) | 审查总结报告 | ✅ 已完成 |
+| **代码文档一致性审查** | [reviews/CODE_DOCUMENTATION_CONSISTENCY_REVIEW.md](reviews/CODE_DOCUMENTATION_CONSISTENCY_REVIEW.md) | QuantLib集成Phase 1审查报告 | ✅ 已完成 |
+| **量化库代码审查修复** | [reviews/QUANTLIB_CODE_REVIEW_FIX_REPORT.md](reviews/QUANTLIB_CODE_REVIEW_FIX_REPORT.md) | QuantLib代码审查修复记录 | ✅ 已完成 |
+| **Phase 3 数据服务测试报告** | [reports/phase3-data-service-test-report.md](../reports/phase3-data-service-test-report.md) | Phase 3 数据服务测试验证 | ✅ 已完成 |
 
 ### 5. 一致性管理
 

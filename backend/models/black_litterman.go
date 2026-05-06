@@ -28,11 +28,11 @@ type BlackLittermanConfig struct {
 	RiskAversion decimal.Decimal `json:"risk_aversion" gorm:"type:decimal(10,6)"`
 	PriorType    PriorType       `json:"prior_type" gorm:"size:20"`
 
-	PriorWeights   string `json:"prior_weights" gorm:"type:json"`
-	ImpliedReturns string `json:"implied_returns" gorm:"type:json"`
+	PriorWeights   JSONMap `json:"prior_weights" gorm:"type:json"`
+	ImpliedReturns JSONMap `json:"implied_returns" gorm:"type:json"`
 
 	OmegaMethod OmegaMethod `json:"omega_method" gorm:"size:20"`
-	OmegaMatrix string      `json:"omega_matrix" gorm:"type:json"`
+	OmegaMatrix JSONMap     `json:"omega_matrix" gorm:"type:json"`
 
 	IsActive       bool      `json:"is_active" gorm:"default:true"`
 	LastCalculated time.Time `json:"last_calculated"`
@@ -52,9 +52,9 @@ type BLPosteriorReturn struct {
 	ConfigID        uint      `json:"config_id" gorm:"index"`
 	CalculationDate time.Time `json:"calculation_date" gorm:"index"`
 
-	PosteriorReturns string `json:"posterior_returns" gorm:"type:json"`
-	PosteriorWeights string `json:"posterior_weights" gorm:"type:json"`
-	PosteriorCov     string `json:"posterior_cov" gorm:"type:json"`
+	PosteriorReturns JSONMap `json:"posterior_returns" gorm:"type:json"`
+	PosteriorWeights JSONMap `json:"posterior_weights" gorm:"type:json"`
+	PosteriorCov     JSONMap `json:"posterior_cov" gorm:"type:json"`
 
 	NumViews   int             `json:"num_views"`
 	ViewImpact decimal.Decimal `json:"view_impact" gorm:"type:decimal(10,6)"`

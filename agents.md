@@ -511,6 +511,11 @@ git push origin feature/your-feature-name
   - `BLPosteriorReturn` - BL后验收益（后验收益、后验权重、后验协方差）
   - 先验类型：equal_weight（等权）、min_variance（最小方差）、market_cap（市值加权）
   - Omega方法：Idzorek、HeLitterman
+- ✅ `models/json_type.go` - JSONMap 自定义类型
+  - 类型安全的 JSON 字段存储，替代 `string` 类型存储 JSON
+  - 实现 `driver.Valuer`、`sql.Scanner` 接口（GORM JSON 序列化）
+  - 自定义 `MarshalJSON`/`UnmarshalJSON`（兼容空值）
+  - 应用：BL配置的 `PriorWeights`、`OmegaMatrix`、`PosteriorReturns` 等字段
 
 ##### 风险预算层模型
 - ✅ `models/risk_budget.go` - 风险预算模型
@@ -573,14 +578,14 @@ git push origin feature/your-feature-name
     - `validateView()` - 观点验证（类型、置信度、有效期）
 
   - `BlackLittermanService` - Black-Litterman服务
-    - `CreateConfig()` - 创建BL配置
+    - `CreateConfig()` - 创建BL配置（原子UPSERT，避免重复创建竞态）
     - `GetConfig()` - 获取BL配置
     - `UpdateConfig()` - 更新BL配置
     - `CalculatePosteriorReturns()` - 计算后验收益
     - `GetPosteriorReturns()` - 获取后验收益
     - `validateConfig()` - 配置验证
-    - `parseMarketWeights()` - 解析市场权重JSON
-    - `parseCovarianceMatrix()` - 解析协方差矩阵JSON
+    - `parseMarketWeights()` - 解析市场权重JSON（支持数组和JSONMap格式）
+    - `parseCovarianceMatrix()` - 解析协方差矩阵JSON（支持数组和JSONMap格式）
     - `calculateEquilibriumReturns()` - 计算均衡收益
     - `buildViewMatrices()` - 构建观点矩阵（P, Q, Omega）
     - `blFormula()` - BL公式计算
@@ -1902,5 +1907,5 @@ POST /api/data-logs/rollback
 
 ---
 
-*本文档最后更新: 2026-05-05 (v2.9 AI Agent 微服务版)*
+*本文档最后更新: 2026-05-06 (v2.9 JSONMap类型安全增强版)*
 *强制上下文绑定版本: v2.0*

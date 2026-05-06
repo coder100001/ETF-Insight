@@ -11,6 +11,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
@@ -145,7 +146,11 @@ func (s *BlackLittermanService) CreateConfig(config *models.BlackLittermanConfig
 		return err
 	}
 
-	return s.db.Create(config).Error
+	// Atomic upsert - handles race condition safely
+	return s.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "portfolio_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"risk_aversion", "prior_type", "prior_weights", "implied_returns", "omega_method", "omega_matrix", "is_active", "last_calculated", "updated_at"}),
+	}).Create(config).Error
 }
 
 func (s *BlackLittermanService) GetConfig(id uint) (*models.BlackLittermanConfig, error) {
@@ -254,29 +259,93 @@ func (s *BlackLittermanService) validateConfig(config *models.BlackLittermanConf
 	return nil
 }
 
-func (s *BlackLittermanService) parseMarketWeights(weightsJSON string) ([]decimal.Decimal, error) {
-	var weights []float64
-	if err := json.Unmarshal([]byte(weightsJSON), &weights); err != nil {
+func (s *BlackLittermanService) parseMarketWeights(weightsJSON models.JSONMap) ([]decimal.Decimal, error) {
+	if weightsJSON == nil {
+		return nil, errors.New("weights JSON is nil")
+	}
+
+	weightsBytes, err := json.Marshal(weightsJSON)
+	if err != nil {
 		return nil, err
 	}
 
-	result := make([]decimal.Decimal, len(weights))
-	for i, w := range weights {
-		result[i] = decimal.NewFromFloat(w)
+	// Try array format first: [0.25, 0.25, 0.25, 0.25]
+	var weights []float64
+	if err := json.Unmarshal(weightsBytes, &weights); err == nil {
+		result := make([]decimal.Decimal, len(weights))
+		for i, w := range weights {
+			result[i] = decimal.NewFromFloat(w)
+		}
+		return result, nil
+	}
+
+	// Fall back to map format: {"0": 0.25, "1": 0.25, ...}
+	var weightsMap map[string]float64
+	if err := json.Unmarshal(weightsBytes, &weightsMap); err != nil {
+		return nil, fmt.Errorf("failed to parse weights: %w", err)
+	}
+
+	// Convert map to ordered slice (keys are "0", "1", "2", ...)
+	result := make([]decimal.Decimal, len(weightsMap))
+	for i := 0; i < len(weightsMap); i++ {
+		key := fmt.Sprintf("%d", i)
+		val, ok := weightsMap[key]
+		if !ok {
+			return nil, fmt.Errorf("missing weight at index %d", i)
+		}
+		result[i] = decimal.NewFromFloat(val)
 	}
 	return result, nil
 }
 
-func (s *BlackLittermanService) parseCovarianceMatrix(covJSON string) ([][]decimal.Decimal, error) {
-	var cov [][]float64
-	if err := json.Unmarshal([]byte(covJSON), &cov); err != nil {
+func (s *BlackLittermanService) parseCovarianceMatrix(covJSON models.JSONMap) ([][]decimal.Decimal, error) {
+	if covJSON == nil {
+		return nil, errors.New("covariance JSON is nil")
+	}
+
+	covBytes, err := json.Marshal(covJSON)
+	if err != nil {
 		return nil, err
 	}
 
-	result := make([][]decimal.Decimal, len(cov))
-	for i, row := range cov {
-		result[i] = make([]decimal.Decimal, len(row))
-		for j, val := range row {
+	// Try array format first: [[0.01, 0], [0, 0.01]]
+	var cov [][]float64
+	if err := json.Unmarshal(covBytes, &cov); err == nil {
+		result := make([][]decimal.Decimal, len(cov))
+		for i, row := range cov {
+			result[i] = make([]decimal.Decimal, len(row))
+			for j, val := range row {
+				result[i][j] = decimal.NewFromFloat(val)
+			}
+		}
+		return result, nil
+	}
+
+	// Fall back to map format: {"0": {"0": 0.01, "1": 0}, "1": {"0": 0, "1": 0.01}}
+	var covMap map[string]map[string]float64
+	if err := json.Unmarshal(covBytes, &covMap); err != nil {
+		return nil, fmt.Errorf("failed to parse covariance matrix: %w", err)
+	}
+
+	// Convert map to ordered 2D slice
+	n := len(covMap)
+	result := make([][]decimal.Decimal, n)
+	for i := 0; i < n; i++ {
+		key := fmt.Sprintf("%d", i)
+		row, ok := covMap[key]
+		if !ok {
+			return nil, fmt.Errorf("missing row %d in covariance matrix", i)
+		}
+		if len(row) != n {
+			return nil, fmt.Errorf("row %d has %d elements, expected %d", i, len(row), n)
+		}
+		result[i] = make([]decimal.Decimal, n)
+		for j := 0; j < n; j++ {
+			colKey := fmt.Sprintf("%d", j)
+			val, ok := row[colKey]
+			if !ok {
+				return nil, fmt.Errorf("missing column %d in row %d of covariance matrix", j, i)
+			}
 			result[i][j] = decimal.NewFromFloat(val)
 		}
 	}
@@ -334,54 +403,43 @@ func (s *BlackLittermanService) buildViewMatrices(views []models.AlphaView, nAss
 	return P, Q, Omega, nil
 }
 
-func (s *BlackLittermanService) blFormula(pi []decimal.Decimal, cov [][]decimal.Decimal, P [][]decimal.Decimal, Q []decimal.Decimal, Omega [][]decimal.Decimal, tau, riskAversion decimal.Decimal) (string, string) {
+func (s *BlackLittermanService) blFormula(pi []decimal.Decimal, cov [][]decimal.Decimal, P [][]decimal.Decimal, Q []decimal.Decimal, Omega [][]decimal.Decimal, tau, riskAversion decimal.Decimal) (models.JSONMap, models.JSONMap) {
 	n := len(pi)
 	if n == 0 {
-		return "[]", "[]"
+		return models.JSONMap{}, models.JSONMap{}
 	}
 
 	tauCov := scaleMatrix(cov, tau)
 	tauCovInv, err := calculateMatrixInverse(tauCov)
 	if err != nil {
-		returnsJSON, _ := json.Marshal(pi)
-		covJSON, _ := json.Marshal(cov)
-		return string(returnsJSON), string(covJSON)
+		return jsonToMap(pi), jsonToMap(cov)
 	}
 
 	k := len(Q)
 	if k == 0 || P == nil || len(P) == 0 || Omega == nil || len(Omega) == 0 {
-		returnsJSON, _ := json.Marshal(pi)
-		covJSON, _ := json.Marshal(cov)
-		return string(returnsJSON), string(covJSON)
+		return jsonToMap(pi), jsonToMap(cov)
 	}
 
 	omegaInv, err := calculateMatrixInverse(Omega)
 	if err != nil {
-		returnsJSON, _ := json.Marshal(pi)
-		covJSON, _ := json.Marshal(cov)
-		return string(returnsJSON), string(covJSON)
+		return jsonToMap(pi), jsonToMap(cov)
 	}
 
 	pT := calculateMatrixTranspose(P)
 	pTOmegaInv, err := calculateMatrixMultiply(pT, omegaInv)
 	if err != nil {
-		returnsJSON, _ := json.Marshal(pi)
-		covJSON, _ := json.Marshal(cov)
-		return string(returnsJSON), string(covJSON)
+		return jsonToMap(pi), jsonToMap(cov)
 	}
+
 	pTOmegaInvP, err := calculateMatrixMultiply(pTOmegaInv, P)
 	if err != nil {
-		returnsJSON, _ := json.Marshal(pi)
-		covJSON, _ := json.Marshal(cov)
-		return string(returnsJSON), string(covJSON)
+		return jsonToMap(pi), jsonToMap(cov)
 	}
 
 	sum := addMatrices(tauCovInv, pTOmegaInvP)
 	sumInv, err := calculateMatrixInverse(sum)
 	if err != nil {
-		returnsJSON, _ := json.Marshal(pi)
-		covJSON, _ := json.Marshal(cov)
-		return string(returnsJSON), string(covJSON)
+		return jsonToMap(pi), jsonToMap(cov)
 	}
 
 	tauCovInvPi := matrixVectorMultiply(tauCovInv, pi)
@@ -392,10 +450,41 @@ func (s *BlackLittermanService) blFormula(pi []decimal.Decimal, cov [][]decimal.
 
 	posteriorCov := addMatrices(cov, sumInv)
 
-	returnsJSON, _ := json.Marshal(posteriorReturns)
-	covJSON, _ := json.Marshal(posteriorCov)
+	return jsonToMap(posteriorReturns), jsonToMap(posteriorCov)
+}
 
-	return string(returnsJSON), string(covJSON)
+func jsonToMap(v interface{}) models.JSONMap {
+	switch val := v.(type) {
+	case []decimal.Decimal:
+		// Convert vector to map: [0.1, 0.2] -> {"0": 0.1, "1": 0.2}
+		result := make(models.JSONMap, len(val))
+		for i, d := range val {
+			result[fmt.Sprintf("%d", i)] = d.InexactFloat64()
+		}
+		return result
+	case [][]decimal.Decimal:
+		// Convert matrix to map: [[0.1, 0.2], [0.3, 0.4]] -> {"0": {"0": 0.1, "1": 0.2}, ...}
+		result := make(models.JSONMap, len(val))
+		for i, row := range val {
+			rowMap := make(map[string]interface{}, len(row))
+			for j, d := range row {
+				rowMap[fmt.Sprintf("%d", j)] = d.InexactFloat64()
+			}
+			result[fmt.Sprintf("%d", i)] = rowMap
+		}
+		return result
+	default:
+		// Fallback: marshal and unmarshal
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return models.JSONMap{}
+		}
+		var result models.JSONMap
+		if err := json.Unmarshal(bytes, &result); err != nil {
+			return models.JSONMap{}
+		}
+		return result
+	}
 }
 
 func scaleMatrix(matrix [][]decimal.Decimal, scalar decimal.Decimal) [][]decimal.Decimal {
