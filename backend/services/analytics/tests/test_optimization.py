@@ -2,6 +2,10 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+
+# Skip if scipy is not installed
+scipy = pytest.importorskip("scipy")
+
 from modules.portfolio_optimization import optimize_portfolio, fetch_returns
 
 

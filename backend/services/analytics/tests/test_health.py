@@ -2,6 +2,10 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+
+# Skip if scipy is not installed
+scipy = pytest.importorskip("scipy")
+
 from httpx import AsyncClient, ASGITransport
 from analytics_server import app
 
