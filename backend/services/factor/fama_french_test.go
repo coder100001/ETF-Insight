@@ -1,7 +1,6 @@
 package factor
 
 import (
-	"fmt"
 	"math"
 	"testing"
 )
@@ -1146,25 +1145,39 @@ abc,not,numbers,here,test
 func TestFamaFrench_FiveFactorEmptyData(t *testing.T) {
 	model := NewFamaFrenchModel()
 
-	result, err := model.LoadFiveFactorData([]string{}, []string{})
-	if err != nil {
-		t.Fatalf("Empty data should not error: %v", err)
-	}
-	if result == nil {
-		t.Error("Result should not be nil for empty data")
+	model.LoadFiveFactorData(
+		[]float64{}, []float64{}, []float64{},
+		[]float64{}, []float64{}, []float64{},
+	)
+
+	if !model.UseFiveFactor {
+		t.Error("UseFiveFactor should be true after LoadFiveFactorData")
 	}
 }
 
-func TestFamaFrench_TikhonovRegularization_EdgeCases(t *testing.T) {
+func TestFamaFrench_FactorModeSwitching(t *testing.T) {
 	model := NewFamaFrenchModel()
 
-	testCases := []float64{0, 0.001, 1, 100, 10000}
-	for _, lambda := range testCases {
-		t.Run(fmt.Sprintf("lambda=%v", lambda), func(t *testing.T) {
-			model.SetLambda(lambda)
-			if model.GetLambda() != lambda {
-				t.Errorf("Lambda mismatch: expected %v, got %v", lambda, model.GetLambda())
-			}
-		})
+	if model.UseFiveFactor {
+		t.Error("New model should default to 3-factor mode")
+	}
+
+	model.LoadFiveFactorData(
+		[]float64{0.01}, []float64{0.02}, []float64{0.03},
+		[]float64{0.04}, []float64{0.05}, []float64{0.01},
+	)
+
+	if !model.UseFiveFactor {
+		t.Error("Should be in 5-factor mode after LoadFiveFactorData")
+	}
+}
+
+func TestFamaFrench_GenerateSampleData(t *testing.T) {
+	m, s, h, rf, err := GenerateSampleFactorData(10)
+	if err != nil {
+		t.Fatalf("GenerateSampleData failed: %v", err)
+	}
+	if len(m) != 10 || len(s) != 10 || len(h) != 10 || len(rf) != 10 {
+		t.Errorf("Expected 10 data points each, got market=%d smb=%d hml=%d rf=%d", len(m), len(s), len(h), len(rf))
 	}
 }

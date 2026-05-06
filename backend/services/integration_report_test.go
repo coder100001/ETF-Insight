@@ -53,7 +53,7 @@ func TestReportService_GetDefaultTemplates_NilDB(t *testing.T) {
 	_ = templates
 }
 
-func TestReportService_GetTemplate_NotFound(t *testing.T) {
+func TestIntegrationReportService_GetTemplate_NotFound(t *testing.T) {
 	service := NewReportService(nil)
 
 	template, err := service.GetTemplate(999999)

@@ -715,8 +715,8 @@ func TestRelativeView_Fields(t *testing.T) {
 
 func TestBlackLitterman_Optimize_EmptySymbols(t *testing.T) {
 	optimizer := NewBlackLittermanOptimizer()
-	optimizer.SetTau(decimal.NewFromFloat(0.025))
-	optimizer.SetRiskFreeRate(decimal.NewFromFloat(0.04))
+	optimizer.SetTau(0.025)
+	optimizer.SetRiskFreeRate(0.04)
 
 	_, err := optimizer.Optimize(map[string]float64{}, map[string]map[string]float64{})
 	if err == nil {
