@@ -1,4 +1,4 @@
-# ETF-Insight (v2.9.0) 🚀
+# ETF-Insight (v2.10.0) 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
@@ -38,6 +38,20 @@ ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的�
 - ✅ **Go 后端集成**: `/api/agents/*` 代理路由
 - ✅ **前端页面**: `AIAgents.tsx` - 单 Agent 分析 + 多 Agent 团队辩论
 - ✅ **测试覆盖**: 19 个 Python 单元测试全部通过
+
+**v2.10 数据源微服务** (2026-05-06):
+- ✅ **直接集成 FinceptTerminal 脚本**: AGPL 非商业使用，16 个数据源脚本
+- ✅ **统一数据 API 服务** (port 8092): FastAPI 封装 6 大数据源
+  - FRED: 美联储经济数据 API
+  - World Bank: 世界银行经济指标
+  - IMF: 国际货币基金组织数据
+  - Yahoo Finance: 股票实时报价和历史数据
+  - AkShare: A股实时行情、宏观经济、债券、加密货币 (11 个模块)
+  - CoinGecko: 加密货币市场数据
+- ✅ **Go 后端代理**: `/api/data/*` 路由代理转发到 Python 服务
+- ✅ **Docker 支持**: `Dockerfile` 容器化部署
+- ✅ **测试覆盖**: 3 个单元测试通过
+- ✅ **AGPL 合规**: `NOTICE` 文件声明
 
 **v2.8 FinceptTerminal QuantLib 集成** (2026-05-04):
 - ✅ **QuantLib 云 API 对接**: 直接调用 `api.fincept.in/quantlib/` 云服务

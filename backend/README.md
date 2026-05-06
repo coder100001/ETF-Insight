@@ -40,6 +40,16 @@ ETF-Insight 后端坚持以下设计理念：
 - **多 LLM 支持**: OpenAI/Ollama/DeepSeek，通过工厂函数切换
 - **FastAPI 服务**: port 8091，19 个单元测试
 
+### 数据源微服务 (v2.10 新增)
+- **统一数据 API**: FastAPI 服务 (port 8092)，封装 6 大数据源
+- **FRED**: 美联储经济数据，支持时间序列和搜索
+- **World Bank**: 世界银行经济指标，国家经济快照
+- **IMF**: 国际货币基金组织数据，经济指标和贸易数据
+- **Yahoo Finance**: 股票实时报价、历史数据、公司信息
+- **AkShare**: A股实时行情、宏观经济、债券、加密货币 (11 个模块)
+- **CoinGecko**: 加密货币价格、市场数据、趋势
+- **AGPL 合规**: 直接使用 FinceptTerminal 代码，NOTICE 文件声明
+
 ### 数据服务 (v2.6 重构)
 - **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
 - **ETF持仓穿透**: 底层持仓明细查询、权重分析
@@ -92,6 +102,7 @@ backend/
 │   ├── middleware.go      # 中间件
 │   └── quantlib_handler.go   # QuantLib API 接口 (v2.8)
 │   └── agent_handler.go      # Agent 服务 Handler (v2.9)
+│   └── data_handler.go       # 数据源服务 Handler (v2.10)
 ├── middleware/            # 中间件
 │   ├── audit.go           # 审计日志中间件
 │   ├── validation.go      # 数据验证中间件
@@ -139,6 +150,14 @@ backend/
 │       └── tests/                   # 19 个单元测试
 │   └── agent/                # Agent 服务 Go 客户端
 │       └── agent_client.go       # HTTP 客户端 (4 方法)
+│   └── data/                 # 数据源微服务 (v2.10)
+│       ├── sources/              # 16 个数据源脚本 (FinceptTerminal)
+│       ├── routers/              # 6 个 FastAPI 路由模块
+│       ├── tests/                # 单元测试
+│       ├── data_server.py        # FastAPI 入口 (port 8092)
+│       ├── data_client.go        # Go HTTP 客户端
+│       ├── Dockerfile            # 容器化部署
+│       └── NOTICE                # AGPL 合规声明
 ├── tasks/                 # 定时任务
 │   ├── scheduler.go       # 主调度器
 │   ├── exchange_rate_task.go
