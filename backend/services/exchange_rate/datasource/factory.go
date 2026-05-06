@@ -19,6 +19,11 @@ type DataSourceConfig struct {
 func InitDataSourceManager(config *DataSourceConfig) (*DataSourceManager, error) {
 	utils.Info("初始化外汇数据源管理器")
 
+	// 处理 nil 配置
+	if config == nil {
+		config = &DataSourceConfig{}
+	}
+
 	// 创建主数据源
 	// 优先级：Open Exchange Rates > Frankfurter > Fallback
 	var primary DataSourceProvider

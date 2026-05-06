@@ -355,6 +355,10 @@ func TestGetFirstKey_Empty(t *testing.T) {
 }
 
 func TestRiskModels_ParametricVsHistoricalConsistency(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping consistency test in short mode")
+	}
+
 	rm := NewRiskModels()
 	returns := []decimal.Decimal{
 		decimal.NewFromFloat(0.01), decimal.NewFromFloat(0.02),

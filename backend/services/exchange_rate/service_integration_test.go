@@ -19,7 +19,7 @@ func TestExchangeRate_SameCurrency(t *testing.T) {
 }
 
 func TestExchangeRate_GetRate_FallbackOnNilManager(t *testing.T) {
-	service := &ExchangeRateService{}
+	service := NewExchangeRateService(nil)
 
 	rate := service.GetRate("USD", "CNY")
 	if rate == 0 {
@@ -59,6 +59,10 @@ func TestExchangeRate_Convert_SmallAmount(t *testing.T) {
 }
 
 func TestExchangeRate_UpdateRates_NilConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test requiring database in short mode")
+	}
+
 	service := NewExchangeRateService(nil)
 
 	err := service.UpdateRates()

@@ -413,10 +413,11 @@ git push origin feature/your-feature-name
   - 风险预算配置
   - 迭代优化算法
 - ✅ **Black-Litterman模型**: `services/optimization/black_litterman.go`
-  - 市场均衡收益
+  - 市场均衡收益（`CalculateMarketImpliedReturns`）
   - 投资者观点融合
   - 绝对观点/相对观点支持
   - 后验收益分布
+  - 模型参数配置（`SetTau` 设置不确定性参数，`SetRiskFreeRate` 设置无风险利率）
 - ✅ **API端点**:
   - `POST /api/portfolio/mpt-optimize` - MPT优化
   - `POST /api/portfolio/efficient-frontier` - 有效前沿

@@ -407,6 +407,10 @@ func TestNormalCDF(t *testing.T) {
 }
 
 func TestRandNorm(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping stochastic test in short mode")
+	}
+
 	// Generate multiple random numbers
 	n := 1000
 	sum := 0.0

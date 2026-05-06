@@ -38,6 +38,10 @@ func TestPortfolioOptimizer_MaxSharpe_ThreeAssets(t *testing.T) {
 }
 
 func TestPortfolioOptimizer_MinVolatility_FourAssets(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test requiring database in short mode")
+	}
+
 	optimizer := NewPortfolioOptimizer(nil)
 
 	request := PortfolioOptimizationRequest{

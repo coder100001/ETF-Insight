@@ -33,18 +33,27 @@ func NewReportService(db *gorm.DB) *ReportService {
 // ===== 模板相关方法 =====
 
 func (s *ReportService) GetTemplates() ([]models.ReportTemplate, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var templates []models.ReportTemplate
 	err := s.db.Preload("Sections").Find(&templates).Error
 	return templates, err
 }
 
 func (s *ReportService) GetDefaultTemplates() ([]models.ReportTemplate, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var templates []models.ReportTemplate
 	err := s.db.Preload("Sections").Preload("Parameters").Where("is_default = ?", true).Find(&templates).Error
 	return templates, err
 }
 
 func (s *ReportService) GetTemplate(id uint) (*models.ReportTemplate, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var template models.ReportTemplate
 	err := s.db.Preload("Sections").Preload("Parameters").First(&template, id).Error
 	if err != nil {
@@ -54,17 +63,26 @@ func (s *ReportService) GetTemplate(id uint) (*models.ReportTemplate, error) {
 }
 
 func (s *ReportService) CreateTemplate(template *models.ReportTemplate) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	template.CreatedAt = time.Now()
 	template.UpdatedAt = time.Now()
 	return s.db.Create(template).Error
 }
 
 func (s *ReportService) UpdateTemplate(template *models.ReportTemplate) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	template.UpdatedAt = time.Now()
 	return s.db.Save(template).Error
 }
 
 func (s *ReportService) DeleteTemplate(id uint) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("template_id = ?", id).Delete(&models.ReportSection{}).Error; err != nil {
 			return err
@@ -79,12 +97,18 @@ func (s *ReportService) DeleteTemplate(id uint) error {
 // ===== 报告生成相关方法 =====
 
 func (s *ReportService) CreateReport(report *models.GeneratedReport) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	report.Status = models.ReportStatusPending
 	report.CreatedAt = time.Now()
 	return s.db.Create(report).Error
 }
 
 func (s *ReportService) GetReport(id uint) (*models.GeneratedReport, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var report models.GeneratedReport
 	err := s.db.Preload("Template").Preload("Template.Sections").First(&report, id).Error
 	if err != nil {
@@ -94,6 +118,9 @@ func (s *ReportService) GetReport(id uint) (*models.GeneratedReport, error) {
 }
 
 func (s *ReportService) GetReports(page, pageSize int) ([]models.GeneratedReport, int64, error) {
+	if s.db == nil {
+		return nil, 0, ErrDatabaseNotInitialized
+	}
 	var reports []models.GeneratedReport
 	var total int64
 
@@ -114,6 +141,9 @@ func (s *ReportService) GetReports(page, pageSize int) ([]models.GeneratedReport
 }
 
 func (s *ReportService) UpdateReportStatus(id uint, status models.ReportStatus, errorMsg string) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	updates := map[string]interface{}{
 		"status": status,
 	}
@@ -131,6 +161,9 @@ func (s *ReportService) UpdateReportStatus(id uint, status models.ReportStatus, 
 }
 
 func (s *ReportService) UpdateReportFile(id uint, filePath string, fileSize int64) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Model(&models.GeneratedReport{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"file_path": filePath,
 		"file_size": fileSize,
@@ -138,6 +171,9 @@ func (s *ReportService) UpdateReportFile(id uint, filePath string, fileSize int6
 }
 
 func (s *ReportService) DeleteReport(id uint) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Delete(&models.GeneratedReport{}, id).Error
 }
 
@@ -205,44 +241,68 @@ func (s *ReportService) asyncGenerateReport(reportID uint, template *models.Repo
 // ===== 参数相关方法 =====
 
 func (s *ReportService) GetParameters(templateID uint) ([]models.ReportParameter, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var params []models.ReportParameter
 	err := s.db.Where("template_id = ?", templateID).Order("order ASC").Find(&params).Error
 	return params, err
 }
 
 func (s *ReportService) CreateParameter(param *models.ReportParameter) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	param.CreatedAt = time.Now()
 	param.UpdatedAt = time.Now()
 	return s.db.Create(param).Error
 }
 
 func (s *ReportService) UpdateParameter(param *models.ReportParameter) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	param.UpdatedAt = time.Now()
 	return s.db.Save(param).Error
 }
 
 func (s *ReportService) DeleteParameter(id uint) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Delete(&models.ReportParameter{}, id).Error
 }
 
 // ===== 章节相关方法 =====
 
 func (s *ReportService) GetSections(templateID uint) ([]models.ReportSection, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var sections []models.ReportSection
 	err := s.db.Where("template_id = ?", templateID).Order("order ASC").Find(&sections).Error
 	return sections, err
 }
 
 func (s *ReportService) CreateSection(section *models.ReportSection) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	section.CreatedAt = time.Now()
 	return s.db.Create(section).Error
 }
 
 func (s *ReportService) UpdateSection(section *models.ReportSection) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Save(section).Error
 }
 
 func (s *ReportService) DeleteSection(id uint) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Delete(&models.ReportSection{}, id).Error
 }
 

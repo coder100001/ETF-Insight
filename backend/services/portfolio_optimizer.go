@@ -120,6 +120,10 @@ func (o *PortfolioOptimizer) validateRequest(request PortfolioOptimizationReques
 func (o *PortfolioOptimizer) getHistoricalReturns(symbols []string) (map[string][]decimal.Decimal, error) {
 	returns := make(map[string][]decimal.Decimal)
 
+	if models.DB == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
+
 	for _, symbol := range symbols {
 		var prices []models.ETFData
 		if err := models.DB.Where("symbol = ?", symbol).Order("date DESC").Limit(252).Find(&prices).Error; err != nil {

@@ -15,11 +15,12 @@ import (
 )
 
 var (
-	ErrInvalidViewType    = errors.New("invalid view type")
-	ErrInvalidConfidence  = errors.New("confidence must be between 0 and 100")
-	ErrViewExpired        = errors.New("view has expired")
-	ErrInvalidPriorType   = errors.New("invalid prior type")
-	ErrInvalidOmegaMethod = errors.New("invalid omega method")
+	ErrInvalidViewType        = errors.New("invalid view type")
+	ErrInvalidConfidence      = errors.New("confidence must be between 0 and 100")
+	ErrViewExpired            = errors.New("view has expired")
+	ErrInvalidPriorType       = errors.New("invalid prior type")
+	ErrInvalidOmegaMethod     = errors.New("invalid omega method")
+	ErrDatabaseNotInitialized = errors.New("database connection is nil")
 )
 
 type AlphaViewService struct {
@@ -38,11 +39,17 @@ func (s *AlphaViewService) CreateAlphaView(view *models.AlphaView) error {
 	if err := s.validateView(view); err != nil {
 		return err
 	}
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 
 	return s.db.Create(view).Error
 }
 
 func (s *AlphaViewService) GetAlphaView(id uint) (*models.AlphaView, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var view models.AlphaView
 	err := s.db.First(&view, id).Error
 	if err != nil {
@@ -52,6 +59,9 @@ func (s *AlphaViewService) GetAlphaView(id uint) (*models.AlphaView, error) {
 }
 
 func (s *AlphaViewService) GetActiveAlphaViews(assetSymbol string) ([]models.AlphaView, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var views []models.AlphaView
 	query := s.db.Where("status = ?", models.ViewStatusActive)
 
@@ -64,10 +74,16 @@ func (s *AlphaViewService) GetActiveAlphaViews(assetSymbol string) ([]models.Alp
 }
 
 func (s *AlphaViewService) UpdateAlphaView(view *models.AlphaView) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Save(view).Error
 }
 
 func (s *AlphaViewService) DeactivateView(id uint) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Model(&models.AlphaView{}).
 		Where("id = ?", id).
 		Update("status", models.ViewStatusExpired).Error
@@ -101,10 +117,16 @@ func (s *AlphaViewService) GenerateViewFromFactorTiming(factorName, assetSymbol 
 }
 
 func (s *AlphaViewService) RecordViewPerformance(performance *models.AlphaViewPerformance) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Create(performance).Error
 }
 
 func (s *AlphaViewService) GetViewPerformance(viewID uint) (*models.AlphaViewPerformance, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var performance models.AlphaViewPerformance
 	err := s.db.Where("view_id = ?", viewID).First(&performance).Error
 	if err != nil {
@@ -145,6 +167,9 @@ func (s *BlackLittermanService) CreateConfig(config *models.BlackLittermanConfig
 	if err := s.validateConfig(config); err != nil {
 		return err
 	}
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 
 	// Atomic upsert - handles race condition safely
 	return s.db.Clauses(clause.OnConflict{
@@ -154,6 +179,9 @@ func (s *BlackLittermanService) CreateConfig(config *models.BlackLittermanConfig
 }
 
 func (s *BlackLittermanService) GetConfig(id uint) (*models.BlackLittermanConfig, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
 	var config models.BlackLittermanConfig
 	err := s.db.First(&config, id).Error
 	if err != nil {
@@ -163,10 +191,17 @@ func (s *BlackLittermanService) GetConfig(id uint) (*models.BlackLittermanConfig
 }
 
 func (s *BlackLittermanService) UpdateConfig(config *models.BlackLittermanConfig) error {
+	if s.db == nil {
+		return ErrDatabaseNotInitialized
+	}
 	return s.db.Save(config).Error
 }
 
 func (s *BlackLittermanService) CalculatePosteriorReturns(configID uint, views []models.AlphaView) (*models.BLPosteriorReturn, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
+
 	config, err := s.GetConfig(configID)
 	if err != nil {
 		return nil, err
@@ -220,6 +255,10 @@ func (s *BlackLittermanService) CalculatePosteriorReturns(configID uint, views [
 }
 
 func (s *BlackLittermanService) CalculatePosteriorReturnsByIDs(configID uint, viewIDs []uint) (*models.BLPosteriorReturn, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
+
 	var views []models.AlphaView
 	if err := s.db.Where("id IN ?", viewIDs).Find(&views).Error; err != nil {
 		return nil, fmt.Errorf("failed to load alpha views: %w", err)
@@ -233,6 +272,10 @@ func (s *BlackLittermanService) CalculatePosteriorReturnsByIDs(configID uint, vi
 }
 
 func (s *BlackLittermanService) GetPosteriorReturns(configID uint) (*models.BLPosteriorReturn, error) {
+	if s.db == nil {
+		return nil, ErrDatabaseNotInitialized
+	}
+
 	var posterior models.BLPosteriorReturn
 	err := s.db.Where("config_id = ?", configID).
 		Order("calculation_date DESC").
