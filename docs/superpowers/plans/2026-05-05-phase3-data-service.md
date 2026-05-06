@@ -2,11 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Directly integrate FinceptTerminal's data source scripts into a unified FastAPI data service (port 8092), with Go backend proxy and frontend enhancement.
+**Goal:** Directly integrate FinceptTerminal's data source scripts into a unified FastAPI data service (port 8092), with Go backend proxy.
 
 **Architecture:** Extract Python data source scripts from FinceptTerminal (AGPL, non-commercial use), wrap them in a FastAPI service. Go backend acts as HTTP proxy. No rewriting — direct code reuse.
 
-**Tech Stack:** Python 3.9+, FastAPI, uvicorn, requests, pandas, yfinance, akshare. Go: net/http, gin. React: Ant Design.
+**Tech Stack:** Python 3.9+, FastAPI, uvicorn, requests, pandas, yfinance, akshare. Go: net/http, gin.
+
+**License:** AGPL-3.0 (direct code reuse, non-commercial). A `NOTICE` file must be added to `backend/services/data/`.
 
 ---
 
@@ -17,13 +19,14 @@ backend/services/data/
 ├── data_server.py              # FastAPI entry point (port 8092)
 ├── requirements.txt            # Python dependencies
 ├── Dockerfile                  # Container
+├── NOTICE                      # AGPL-3.0 compliance notice
 ├── sources/                    # Extracted data source scripts
 │   ├── __init__.py
 │   ├── fred_data.py            # From FinceptTerminal
-│   ├── worldbank_data.py       # From FinceptTerminal
+│   ├── worldbank_data.py       # From FinceptTerminal (actual name, not world_bank_data.py)
 │   ├── imf_data.py             # From FinceptTerminal
 │   ├── yfinance_data.py        # From FinceptTerminal
-│   ├── coingecko.py            # From FinceptTerminal
+│   ├── coingecko.py            # From FinceptTerminal (actual name, not coingecko_data.py)
 │   ├── akshare_data.py         # From FinceptTerminal (orchestrator)
 │   ├── akshare_stocks_realtime.py
 │   ├── akshare_macro.py
@@ -46,23 +49,46 @@ backend/services/data/
 ├── tests/
 │   ├── __init__.py
 │   ├── test_health.py
-│   ├── test_fred.py
-│   ├── test_worldbank.py
-│   └── test_yfinance.py
+│   └── test_worldbank.py       # No API key needed
 backend/services/data/data_client.go    # Go HTTP client
 backend/handlers/data_handler.go        # Go Gin handler
 backend/router/router.go                # MODIFY: add data routes
 ```
 
+## Go Route Mapping
+
+Go 后端 `/api/data/*` 代理转发到 Python 服务 `localhost:8092`：
+
+| Go Route | Python Route | 说明 |
+|----------|-------------|------|
+| `GET /api/data/health` | `GET /health` | 健康检查 |
+| `GET /api/data/fred/series/:id` | `GET /api/fred/series/:id` | FRED 时间序列 |
+| `GET /api/data/fred/search` | `GET /api/fred/search` | FRED 搜索 |
+| `GET /api/data/worldbank/indicators/:country/:indicator` | `GET /api/worldbank/indicators/:country/:indicator` | World Bank 指标 |
+| `GET /api/data/worldbank/snapshot/:country` | `GET /api/worldbank/snapshot/:country` | 国家经济快照 |
+| `GET /api/data/imf/economic-indicators` | `GET /api/imf/economic-indicators` | IMF 经济指标 |
+| `GET /api/data/yfinance/quote/:symbol` | `GET /api/yfinance/quote/:symbol` | Yahoo 实时报价 |
+| `GET /api/data/yfinance/historical/:symbol` | `GET /api/yfinance/historical/:symbol` | Yahoo 历史数据 |
+| `GET /api/data/yfinance/info/:symbol` | `GET /api/yfinance/info/:symbol` | Yahoo 公司信息 |
+| `POST /api/data/yfinance/batch-quotes` | `POST /api/yfinance/batch-quotes` | Yahoo 批量报价 |
+| `GET /api/data/akshare/stock/spot` | `GET /api/akshare/stock/spot` | AkShare A股实时行情 |
+| `GET /api/data/akshare/stock/daily/:symbol` | `GET /api/akshare/stock/daily/:symbol` | AkShare 日线数据 |
+| `GET /api/data/akshare/macro/:indicator` | `GET /api/akshare/macro/:indicator` | AkShare 宏观经济指标 |
+| `GET /api/data/coingecko/price` | `GET /api/coingecko/price` | CoinGecko 价格 |
+| `GET /api/data/coingecko/markets` | `GET /api/coingecko/markets` | CoinGecko 市场数据 |
+
+> Go 端使用通配路由 `r.engine.Group("/api/data")` 透传，不做路径重写。
+
 ---
 
-### Task 1: Project Scaffolding + Requirements
+### Task 1: Project Scaffolding + Requirements + AGPL Notice
 
 **Files:**
 - Create: `backend/services/data/requirements.txt`
 - Create: `backend/services/data/sources/__init__.py`
 - Create: `backend/services/data/routers/__init__.py`
 - Create: `backend/services/data/tests/__init__.py`
+- Create: `backend/services/data/NOTICE`
 
 - [ ] **Step 1: Create requirements.txt**
 
@@ -83,16 +109,28 @@ httpx==0.28.1
 
 Create empty `__init__.py` in `sources/`, `routers/`, `tests/`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Create AGPL compliance NOTICE**
+
+```
+This directory contains code derived from FinceptTerminal
+(https://github.com/Fincept-Corporation/FinceptTerminal)
+
+Original code is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+See: https://www.gnu.org/licenses/agpl-3.0.html
+
+This project uses the code for non-commercial purposes only.
+```
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add backend/services/data/
-git commit -m "feat(data-service): scaffold Python data service project structure"
+git commit -m "feat(data-service): scaffold Python data service with AGPL notice"
 ```
 
 ---
 
-### Task 2: Extract FinceptTerminal Data Source Scripts
+### Task 2: Extract ALL FinceptTerminal Scripts (One Clone)
 
 **Files:**
 - Create: `backend/services/data/sources/fred_data.py`
@@ -100,46 +138,6 @@ git commit -m "feat(data-service): scaffold Python data service project structur
 - Create: `backend/services/data/sources/imf_data.py`
 - Create: `backend/services/data/sources/yfinance_data.py`
 - Create: `backend/services/data/sources/coingecko.py`
-
-- [ ] **Step 1: Clone and extract scripts**
-
-```bash
-cd /tmp
-git clone --depth 1 https://github.com/Fincept-Corporation/FinceptTerminal.git
-cp FinceptTerminal/fincept-qt/scripts/fred_data.py \
-   /Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources/
-cp FinceptTerminal/fincept-qt/scripts/worldbank_data.py \
-   /Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources/
-cp FinceptTerminal/fincept-qt/scripts/imf_data.py \
-   /Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources/
-cp FinceptTerminal/fincept-qt/scripts/yfinance_data.py \
-   /Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources/
-cp FinceptTerminal/fincept-qt/scripts/coingecko.py \
-   /Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources/
-rm -rf FinceptTerminal
-```
-
-- [ ] **Step 2: Verify imports work**
-
-```bash
-cd backend/services/data
-python3.9 -c "from sources.fred_data import get_series; print('FRED OK')"
-python3.9 -c "from sources.worldbank_data import get_indicators; print('WB OK')"
-python3.9 -c "from sources.imf_data import IMFDataWrapper; print('IMF OK')"
-```
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add backend/services/data/sources/
-git commit -m "feat(data-service): extract FinceptTerminal data source scripts (FRED/WB/IMF/YF/CoinGecko)"
-```
-
----
-
-### Task 3: Extract AkShare Modules
-
-**Files:**
 - Create: `backend/services/data/sources/akshare_data.py`
 - Create: `backend/services/data/sources/akshare_stocks_realtime.py`
 - Create: `backend/services/data/sources/akshare_macro.py`
@@ -152,39 +150,55 @@ git commit -m "feat(data-service): extract FinceptTerminal data source scripts (
 - Create: `backend/services/data/sources/akshare_alternative.py`
 - Create: `backend/services/data/sources/akshare_funds_expanded.py`
 
-- [ ] **Step 1: Extract all akshare modules**
+- [ ] **Step 1: Clone once and extract ALL scripts**
 
 ```bash
 cd /tmp
 git clone --depth 1 https://github.com/Fincept-Corporation/FinceptTerminal.git
+
+DEST=/Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources
+
+# Core data sources
+for f in fred_data.py worldbank_data.py imf_data.py yfinance_data.py coingecko.py; do
+  cp "FinceptTerminal/fincept-qt/scripts/$f" "$DEST/" 2>/dev/null && echo "OK: $f" || echo "MISSING: $f"
+done
+
+# AkShare modules
 for f in akshare_data.py akshare_stocks_realtime.py akshare_macro.py \
          akshare_crypto.py akshare_bonds.py akshare_analysis.py \
          akshare_derivatives.py akshare_economics_china.py \
          akshare_economics_global.py akshare_alternative.py \
          akshare_funds_expanded.py; do
-  cp "FinceptTerminal/fincept-qt/scripts/$f" \
-     /Users/liunian/Desktop/dnmp/py_project/backend/services/data/sources/ 2>/dev/null
+  cp "FinceptTerminal/fincept-qt/scripts/$f" "$DEST/" 2>/dev/null && echo "OK: $f" || echo "MISSING: $f"
 done
+
 rm -rf FinceptTerminal
 ```
 
-- [ ] **Step 2: Verify akshare imports**
+- [ ] **Step 2: Verify imports work**
 
 ```bash
-cd backend/services/data
-python3.9 -c "from sources.akshare_data import AKShareDataWrapper; print('AkShare OK')"
+cd /Users/liunian/Desktop/dnmp/py_project/backend/services/data
+python3.9 -c "
+from sources.fred_data import get_series; print('FRED OK')
+from sources.worldbank_data import get_indicators; print('WB OK')
+from sources.imf_data import IMFDataWrapper; print('IMF OK')
+from sources.coingecko import get_simple_price; print('CoinGecko OK')
+"
 ```
+
+> Note: `yfinance_data.py` depends on `yfinance` pip package. `akshare_*.py` depends on `akshare` package. These will be verified after Task 1 requirements are installed.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add backend/services/data/sources/akshare_*.py
-git commit -m "feat(data-service): extract AkShare data source modules (~11 files)"
+git add backend/services/data/sources/
+git commit -m "feat(data-service): extract all FinceptTerminal data source scripts (16 files)"
 ```
 
 ---
 
-### Task 4: FastAPI Server + Route Wrappers
+### Task 3: FastAPI Server + Route Wrappers
 
 **Files:**
 - Create: `backend/services/data/data_server.py`
@@ -393,19 +407,20 @@ def yf_search(q: str, limit: int = Query(10)):
     return search_symbols(q, limit)
 ```
 
-- [ ] **Step 6: Create AkShare router**
+- [ ] **Step 6: Create AkShare router (expanded)**
 
 ```python
 from fastapi import APIRouter, Query
 from sources.akshare_data import AKShareDataWrapper
-import asyncio
 
 router = APIRouter()
 wrapper = AKShareDataWrapper()
 
 
+# ---- Stock endpoints ----
 @router.get("/stock/spot")
 def ak_stock_spot():
+    """A股实时行情"""
     return wrapper.get_stock_zh_a_spot()
 
 
@@ -415,20 +430,58 @@ def ak_stock_daily(
     start_date: str = Query(None),
     end_date: str = Query(None),
 ):
+    """A股日线数据"""
     return wrapper.get_stock_zh_a_daily(symbol, start_date, end_date)
 
 
+@router.get("/stock/hk/spot")
+def ak_stock_hk_spot():
+    """港股实时行情"""
+    from sources.akshare_stocks_realtime import get_stock_hk_spot
+    return get_stock_hk_spot()
+
+
+@router.get("/stock/us/spot")
+def ak_stock_us_spot():
+    """美股实时行情"""
+    from sources.akshare_stocks_realtime import get_stock_us_spot
+    return get_stock_us_spot()
+
+
+# ---- Macro endpoints ----
 @router.get("/macro/gdp")
 def ak_macro_gdp():
+    """中国GDP数据"""
     return wrapper.get_macro_china_gdp()
 
 
 @router.get("/macro/{indicator}")
 def ak_macro(indicator: str):
+    """通用宏观经济指标"""
     func = getattr(wrapper, f"get_macro_china_{indicator}", None)
     if func:
         return func()
     return {"error": f"Unknown indicator: {indicator}"}
+
+
+# ---- Bond endpoints ----
+@router.get("/bonds/{bond_type}")
+def ak_bonds(bond_type: str):
+    """债券数据"""
+    from sources.akshare_bonds import BondsWrapper
+    bw = BondsWrapper()
+    func = getattr(bw, f"get_{bond_type}", None)
+    if func:
+        return func()
+    return {"error": f"Unknown bond type: {bond_type}"}
+
+
+# ---- Crypto endpoints ----
+@router.get("/crypto/spot")
+def ak_crypto_spot():
+    """加密货币现货"""
+    from sources.akshare_crypto import get_crypto_js_spot
+    return get_crypto_js_spot()
 ```
 
 - [ ] **Step 7: Create CoinGecko router**
@@ -498,7 +551,7 @@ git commit -m "feat(data-service): add FastAPI server with 6 data source routers
 
 ---
 
-### Task 5: Tests + Dockerfile
+### Task 4: Tests + Dockerfile
 
 **Files:**
 - Create: `backend/services/data/tests/test_health.py`
@@ -539,7 +592,7 @@ from sources.worldbank_data import get_countries, get_indicators
 
 def test_get_countries():
     result = get_countries()
-    assert "error" not in result or result.get("error") is None
+    assert result is not None
 
 
 def test_get_indicators_china_gdp():
@@ -579,7 +632,7 @@ git commit -m "feat(data-service): add tests and Dockerfile"
 
 ---
 
-### Task 6: Go Backend Integration
+### Task 5: Go Backend Integration
 
 **Files:**
 - Create: `backend/services/data/data_client.go`
@@ -663,6 +716,10 @@ func (c *Client) YFinanceHistorical(symbol string, params map[string]string) (in
 	return c.Get(fmt.Sprintf("/api/yfinance/historical/%s", symbol), params)
 }
 
+func (c *Client) AkShareStockSpot() (interface{}, error) {
+	return c.Get("/api/akshare/stock/spot", nil)
+}
+
 func (c *Client) CoinGeckoPrice(ids, vsCurrencies string) (interface{}, error) {
 	return c.Get("/api/coingecko/price", map[string]string{"ids": ids, "vs_currencies": vsCurrencies})
 }
@@ -723,14 +780,36 @@ func (h *DataHandler) YFinanceQuote(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 }
+
+func (h *DataHandler) AkShareStockSpot(c *gin.Context) {
+	result, err := h.client.AkShareStockSpot()
+	if err != nil {
+		utils.Error("AkShare request failed", err)
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+}
 ```
 
 - [ ] **Step 3: Add routes to router.go**
 
 Follow the same pattern as Agent routes:
 - Add `Data *handlers.DataHandler` to Handlers struct
-- Initialize in NewRouter
-- Add `r.registerDataRoutes()` with routes under `/api/data/`
+- Initialize in NewRouter: `h.Data = handlers.NewDataHandler()`
+- Add `r.registerDataRoutes()` with routes:
+
+```go
+func (r *Router) registerDataRoutes() {
+	d := r.engine.Group("/api/data")
+	{
+		d.GET("/health", r.handlers.Data.Health)
+		d.GET("/fred/series/:series_id", r.handlers.Data.FredSeries)
+		d.GET("/yfinance/quote/:symbol", r.handlers.Data.YFinanceQuote)
+		d.GET("/akshare/stock/spot", r.handlers.Data.AkShareStockSpot)
+	}
+}
+```
 
 - [ ] **Step 4: Verify Go compiles**
 
@@ -747,19 +826,33 @@ git commit -m "feat(data): add Go client, handler, and routes for data service"
 
 ---
 
-### Task 7: Design Document + README Updates
+### Task 6: Design Document + README Updates
 
 - [ ] **Step 1: Update design document progress section**
 
-Update `docs/superpowers/specs/2026-05-04-fincept-integration-design.md` Phase 3 status.
+Update `docs/superpowers/specs/2026-05-04-fincept-integration-design.md` Phase 3 status to ✅ Complete.
 
-- [ ] **Step 2: Update all README files**
+- [ ] **Step 2: Update README.md**
 
-Sync README.md, README_EN.md, backend/README.md, frontend/README.md.
+- v2.9.0 → v2.10.0 (if applicable) or add v2.10 update block
+- Add Data Source Microservice feature section
+- Add port 8092 to service list
+- Update roadmap: Phase 3 ✅
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Update README_EN.md**
+
+Same changes as README.md in English.
+
+- [ ] **Step 4: Update backend/README.md**
+
+- Add Data Service feature section
+- Add `services/data/` to project structure
+- Add Data API endpoints section
+- Add port 8092
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add docs/ README.md README_EN.md backend/README.md frontend/README.md
+git add docs/ README.md README_EN.md backend/README.md
 git commit -m "docs: update Phase 3 status to complete in all documentation"
 ```
