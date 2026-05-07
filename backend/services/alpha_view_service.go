@@ -15,12 +15,11 @@ import (
 )
 
 var (
-	ErrInvalidViewType        = errors.New("invalid view type")
-	ErrInvalidConfidence      = errors.New("confidence must be between 0 and 100")
-	ErrViewExpired            = errors.New("view has expired")
-	ErrInvalidPriorType       = errors.New("invalid prior type")
-	ErrInvalidOmegaMethod     = errors.New("invalid omega method")
-	ErrDatabaseNotInitialized = errors.New("database connection is nil")
+	ErrInvalidViewType    = errors.New("invalid view type")
+	ErrInvalidConfidence  = errors.New("confidence must be between 0 and 100")
+	ErrViewExpired        = errors.New("view has expired")
+	ErrInvalidPriorType   = errors.New("invalid prior type")
+	ErrInvalidOmegaMethod = errors.New("invalid omega method")
 )
 
 type AlphaViewService struct {
