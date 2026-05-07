@@ -6,28 +6,7 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# macOS 兼容: timeout 命令在 macOS 不存在，优先使用 gtimeout (coreutils)
-if ! command -v timeout &>/dev/null; then
-  if command -v gtimeout &>/dev/null; then
-    timeout() { gtimeout "$@"; }
-  else
-    # 简易 timeout 回退: 后台运行 + sleep + kill
-    timeout() {
-      local sec="$1"; shift
-      "$@" &
-      local pid=$!
-      ( sleep "$sec" && kill $pid 2>/dev/null ) &
-      local watchdog=$!
-      wait $pid 2>/dev/null
-      local ret=$?
-      kill $watchdog 2>/dev/null 2>/dev/null
-      return $ret
-    }
-  fi
-fi
-
 # 补全 PATH: pre-commit 环境可能缺少开发工具路径
-# 优先使用 nvm Node.js 和 Go 1.26
 NVM_NODE_BIN="$HOME/.nvm/versions/node/v24.11.0/bin"
 export PATH="$HOME/go1.26/go/bin:$NVM_NODE_BIN:/usr/local/go/bin:/usr/local/bin:/opt/homebrew/bin:$HOME/go/bin:$PATH"
 
@@ -60,23 +39,22 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# 运行单个命令
+# 运行单个命令（直接执行，不使用 timeout）
 run_command() {
   local name="$1"
   local cmd="$2"
-  local timeout_sec="${3:-30}"
-  local optional="${4:-false}"
-  local message="${5:-"Check failed: $name"}"
+  local optional="${3:-false}"
+  local message="${4:-"Check failed: $name"}"
 
   echo "  🔍 $name..."
 
   if [[ "$optional" == "true" ]]; then
-    if ! timeout "$timeout_sec" bash -c "$cmd" 2>/dev/null; then
+    if ! bash -c "$cmd" 2>/dev/null; then
       echo -e "  ${YELLOW}⚠️  $name (optional, skipped)${NC}"
       return 0
     fi
   else
-    if ! timeout "$timeout_sec" bash -c "$cmd"; then
+    if ! bash -c "$cmd"; then
       echo -e "  ${RED}❌ $name failed${NC}"
       echo "     $message"
       return 1
@@ -104,27 +82,27 @@ for stage in "${STAGE_LIST[@]}"; do
 
   case "$stage" in
     format)
-      run_command "gofmt" "cd $PROJECT_ROOT/backend && test -z \$(gofmt -l .)" 10 false "Go files need formatting: cd backend && gofmt -w ." || STAGE_FAILED=1
-      run_command "goimports" "cd $PROJECT_ROOT/backend && test -z \$(goimports -l . 2>/dev/null || echo 'skip')" 10 true || true
+      run_command "gofmt" "cd $PROJECT_ROOT/backend && test -z \$(gofmt -l .)" false "Go files need formatting: cd backend && gofmt -w ." || STAGE_FAILED=1
+      run_command "goimports" "cd $PROJECT_ROOT/backend && test -z \$(goimports -l . 2>/dev/null || echo 'skip')" true || true
       ;;
     static)
       export GOPROXY="https://goproxy.cn,direct"
-      run_command "go-vet" "cd $PROJECT_ROOT/backend && go vet ./..." 10 false "Go vet found issues" || STAGE_FAILED=1
-      run_command "tsc" "cd $PROJECT_ROOT/frontend && npx tsc --noEmit" 10 false "TypeScript check failed" || STAGE_FAILED=1
-      run_command "eslint" "cd $PROJECT_ROOT/frontend && npx eslint --cache --quiet src/" 10 false "ESLint check failed" || STAGE_FAILED=1
+      run_command "go-vet" "cd $PROJECT_ROOT/backend && go vet ./..." false "Go vet found issues" || STAGE_FAILED=1
+      run_command "tsc" "cd $PROJECT_ROOT/frontend && npx tsc --noEmit" false "TypeScript check failed" || STAGE_FAILED=1
+      run_command "eslint" "cd $PROJECT_ROOT/frontend && npx eslint --cache --quiet src/" false "ESLint check failed" || STAGE_FAILED=1
       ;;
     build)
       export GOPROXY="https://goproxy.cn,direct"
-      run_command "go-build" "cd $PROJECT_ROOT/backend && go build ./..." 120 false "Go build failed" || STAGE_FAILED=1
-      run_command "npm-build" "cd $PROJECT_ROOT/frontend && npm run build" 15 false "Frontend build failed" || STAGE_FAILED=1
+      run_command "go-build" "cd $PROJECT_ROOT/backend && go build ./..." false "Go build failed" || STAGE_FAILED=1
+      run_command "npm-build" "cd $PROJECT_ROOT/frontend && npm run build" false "Frontend build failed" || STAGE_FAILED=1
       ;;
     test)
       export GOPROXY="https://goproxy.cn,direct"
-      run_command "go-test-short" "cd $PROJECT_ROOT/backend && go test -short -count=1 ./..." 180 false "Go tests failed" || STAGE_FAILED=1
-      run_command "frontend-test" "cd $PROJECT_ROOT/frontend && npx vitest run" 60 false "Frontend tests failed" || STAGE_FAILED=1
+      run_command "go-test-short" "cd $PROJECT_ROOT/backend && go test -short -count=1 ./..." false "Go tests failed" || STAGE_FAILED=1
+      run_command "frontend-test" "cd $PROJECT_ROOT/frontend && npx vitest run" false "Frontend tests failed" || STAGE_FAILED=1
       ;;
     docs)
-      run_command "doccheck" "cd $PROJECT_ROOT/tools/doccheck && go run . --quick --strict" 30 false "Documentation consistency check failed" || STAGE_FAILED=1
+      run_command "doccheck" "cd $PROJECT_ROOT/tools/doccheck && go run . --quick --strict" false "Documentation consistency check failed" || STAGE_FAILED=1
       ;;
     *)
       echo -e "  ${YELLOW}⚠️  Unknown stage: $stage${NC}"
