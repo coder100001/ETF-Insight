@@ -556,6 +556,11 @@ func (s *Synchronizer) parallelFetchOldRates(results []*calcResult) map[string]d
 
 // batchUpsert 批量Upsert汇率数据
 func (s *Synchronizer) batchUpsert(results []*calcResult) error {
+	if models.DB == nil {
+		utils.Warn("数据库连接未初始化，跳过批量保存")
+		return nil
+	}
+
 	if len(results) == 0 {
 		return nil
 	}
@@ -718,6 +723,10 @@ type ConsistencyItem struct {
 
 // getExistingRate 获取数据库中已有的汇率
 func (s *Synchronizer) getExistingRate(fromCurrency, toCurrency string) decimal.Decimal {
+	if models.DB == nil {
+		return decimal.Zero
+	}
+
 	var rate models.ExchangeRate
 	result := models.DB.Where(
 		"from_currency = ? AND to_currency = ?",
@@ -732,6 +741,11 @@ func (s *Synchronizer) getExistingRate(fromCurrency, toCurrency string) decimal.
 
 // saveRate 保存汇率到数据库
 func (s *Synchronizer) saveRate(fromCurrency, toCurrency string, rate decimal.Decimal, dataSource string) error {
+	if models.DB == nil {
+		utils.Warn("数据库连接未初始化，跳过保存汇率")
+		return nil
+	}
+
 	exchangeRate := models.ExchangeRate{
 		FromCurrency: fromCurrency,
 		ToCurrency:   toCurrency,
@@ -752,13 +766,17 @@ func (s *Synchronizer) saveRate(fromCurrency, toCurrency string, rate decimal.De
 // getActiveCurrencyPairs 获取所有活跃的货币对
 // 如果数据库中没有配置，返回默认货币对列表
 func (s *Synchronizer) getActiveCurrencyPairs() ([]models.CurrencyPair, error) {
+	if models.DB == nil {
+		utils.Warn("数据库连接未初始化，使用默认货币对列表")
+		return defaultCurrencyPairs, nil
+	}
+
 	var pairs []models.CurrencyPair
 	result := models.DB.Where("is_active = ?", 1).Find(&pairs)
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, fmt.Errorf("failed to query active currency pairs: %w", result.Error)
 	}
 
-	// 如果数据库为空，返回默认货币对列表
 	if len(pairs) == 0 {
 		utils.Info("数据库中没有配置的货币对，使用默认货币对列表")
 		return defaultCurrencyPairs, nil
@@ -769,6 +787,11 @@ func (s *Synchronizer) getActiveCurrencyPairs() ([]models.CurrencyPair, error) {
 
 // saveSyncLog 保存同步日志
 func (s *Synchronizer) saveSyncLog(result *SyncResult) {
+	if models.DB == nil {
+		utils.Warn("数据库连接未初始化，跳过保存同步日志")
+		return
+	}
+
 	syncLog := models.ExchangeRateSyncLog{
 		BatchID:      result.BatchID,
 		SyncType:     result.SyncType,
