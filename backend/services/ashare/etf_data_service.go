@@ -1,6 +1,7 @@
 package ashare
 
 import (
+	"etf-insight/constants"
 	"fmt"
 	"time"
 
@@ -41,7 +42,7 @@ func (s *ETFDataService) EnableTuShare(apiKey string) {
 	s.useTuShare = true
 }
 
-// SyncETFList 同步ETF列表
+// SyncETFList 同步ETF列表（只同步核心组合ETF）
 func (s *ETFDataService) SyncETFList() error {
 	if !s.useAKShare && !s.useTuShare {
 		return fmt.Errorf("未启用任何数据源")
@@ -57,8 +58,16 @@ func (s *ETFDataService) SyncETFList() error {
 		}
 	}
 
-	// 转换并保存到数据库
+	coreSet := make(map[string]bool, len(CoreETFSymbols))
+	for _, sym := range CoreETFSymbols {
+		coreSet[sym] = true
+	}
+
 	for _, info := range etfInfos {
+		if !coreSet[info.Symbol] {
+			continue
+		}
+
 		etf := &models.AShareDividendETF{
 			Symbol:        info.Symbol,
 			Name:          info.Name,
@@ -68,17 +77,14 @@ func (s *ETFDataService) SyncETFList() error {
 			Status:        1,
 		}
 
-		// 检查是否已存在
 		var existing models.AShareDividendETF
 		result := s.db.Where("symbol = ?", info.Symbol).First(&existing)
 
 		if result.Error == gorm.ErrRecordNotFound {
-			// 创建新记录
 			if err := s.db.Create(etf).Error; err != nil {
 				fmt.Printf("创建ETF记录失败 %s: %v\n", info.Symbol, err)
 			}
 		} else if result.Error == nil {
-			// 更新现有记录
 			if err := s.db.Model(&existing).Updates(etf).Error; err != nil {
 				fmt.Printf("更新ETF记录失败 %s: %v\n", info.Symbol, err)
 			}
@@ -187,6 +193,25 @@ func (s *ETFDataService) GetAllETFPrices() ([]models.AShareDividendETF, error) {
 
 		// 重新查询
 		s.db.Where("status = ?", 1).Find(&etfs)
+	}
+
+	return etfs, nil
+}
+
+// CoreETFSymbols 核心ETF白名单（组合内ETF）
+var CoreETFSymbols = constants.CoreETFSymbols
+
+// GetCoreETFPrices 获取核心ETF价格（白名单过滤）
+func (s *ETFDataService) GetCoreETFPrices() ([]models.AShareDividendETF, error) {
+	var etfs []models.AShareDividendETF
+	result := s.db.Where("symbol IN ? AND status = ?", CoreETFSymbols, 1).Find(&etfs)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	if s.useAKShare && len(etfs) > 0 {
+		s.SyncETFPrices(CoreETFSymbols)
+		s.db.Where("symbol IN ? AND status = ?", CoreETFSymbols, 1).Find(&etfs)
 	}
 
 	return etfs, nil

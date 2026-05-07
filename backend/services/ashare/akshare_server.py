@@ -4,6 +4,8 @@ AKShare数据服务
 提供HTTP API接口供Go后端调用
 """
 
+import math
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import akshare as ak
@@ -39,17 +41,33 @@ def get_etf_list():
 
         etf_list = []
         for _, row in etf_df.iterrows():
+            def safe_float(val, default=0):
+                try:
+                    v = float(val)
+                    return default if math.isnan(v) else v
+                except (ValueError, TypeError):
+                    return default
+
+            def safe_int(val, default=0):
+                try:
+                    fv = float(val)
+                    if math.isnan(fv):
+                        return default
+                    return int(fv)
+                except (ValueError, TypeError):
+                    return default
+
             etf_list.append({
-                "symbol": row.get("代码", ""),
-                "name": row.get("名称", ""),
-                "full_name": row.get("名称", ""),
-                "exchange": "SSE" if row.get("代码", "").startswith("51") else "SZSE",
-                "current_price": float(row.get("最新价", 0) or 0),
-                "previous_close": float(row.get("昨收", 0) or 0),
-                "price_change": float(row.get("涨跌额", 0) or 0),
-                "price_change_pct": float(row.get("涨跌幅", 0) or 0),
-                "volume": int(row.get("成交量", 0) or 0),
-                "turnover": float(row.get("成交额", 0) or 0),
+                "symbol": str(row.get("代码", "")).strip(),
+                "name": str(row.get("名称", "")).strip(),
+                "full_name": str(row.get("名称", "")).strip(),
+                "exchange": "SSE" if str(row.get("代码", "")).startswith("51") else "SZSE",
+                "current_price": safe_float(row.get("最新价")),
+                "previous_close": safe_float(row.get("昨收")),
+                "price_change": safe_float(row.get("涨跌额")),
+                "price_change_pct": safe_float(row.get("涨跌幅")),
+                "volume": safe_int(row.get("成交量")),
+                "turnover": safe_float(row.get("成交额")),
             })
 
         return {

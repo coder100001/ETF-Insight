@@ -587,6 +587,12 @@ export const aShareAPI = {
       holdings: Array<{
         symbol: string;
         name: string;
+        current_price: number;
+        previous_close: number;
+        price_change: number;
+        price_change_pct: number;
+        volume: number;
+        turnover: number;
         investment: number;
         weight: number;
         dividend_yield: number;
@@ -609,7 +615,19 @@ export const aShareAPI = {
   },
 
   getPrices: () => {
-    return request<ApiResponse<Record<string, number>>>(`/a-share/prices`);
+    return request<ApiResponse<Array<{
+      symbol: string;
+      name: string;
+      current_price: number;
+      previous_close: number;
+      price_change: number;
+      price_change_pct: number;
+      volume: number;
+      turnover: number;
+      nav: number;
+      premium_rate: number;
+      price_updated_at: string;
+    }>>>(`/a-share/prices`);
   },
 
   refreshPrices: () => {

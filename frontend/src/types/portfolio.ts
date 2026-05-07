@@ -68,15 +68,18 @@ export interface PortfolioConfig {
 export interface AShareHoldingDetail {
   symbol: string;
   name: string;
+  current_price?: number;
+  previous_close?: number;
+  price_change?: number;
+  price_change_pct?: number;
+  volume?: number;
+  turnover?: number;
   investment: number;
   weight: number;
   dividend_yield: number;
   dividend_frequency: string;
   expected_dividend: number;
   dividend_contribution: number;
-  current_price?: number;
-  price_change_pct?: number;
-  volume?: number;
 }
 
 export interface AShareDividendCalculation {

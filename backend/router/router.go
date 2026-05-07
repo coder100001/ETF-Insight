@@ -252,7 +252,7 @@ func (r *Router) registerAShareRoutes() {
 		aShare.POST("/sync-prices", r.handlers.AShareData.SyncETFPrices)
 		aShare.POST("/refresh-all", r.handlers.AShareData.RefreshAllData)
 		aShare.GET("/price/:symbol", r.handlers.AShareData.GetETFPrice)
-		aShare.GET("/all-prices", r.handlers.AShareData.GetAllETFPrices)
+		aShare.GET("/all-prices", r.handlers.AShareData.GetPortfolioETFPrices)
 		aShare.POST("/historical/:symbol", r.handlers.AShareData.GetHistoricalData)
 		aShare.GET("/search", r.handlers.AShareData.SearchETFs)
 		aShare.GET("/by-frequency/:frequency", r.handlers.AShareData.GetETFsByFrequency)

@@ -175,24 +175,31 @@ type GetAllETFPricesResponse struct {
 	Error   string                     `json:"error,omitempty"`
 }
 
-// GetAllETFPrices 获取所有ETF价格
-// @Summary 获取所有ETF价格
-// @Description 获取所有A股ETF的实时价格
+// GetPortfolioETFPricesResponse 核心ETF价格响应
+type GetPortfolioETFPricesResponse struct {
+	Success bool                       `json:"success"`
+	Data    []models.AShareDividendETF `json:"data,omitempty"`
+	Error   string                     `json:"error,omitempty"`
+}
+
+// GetPortfolioETFPrices 获取投资组合核心ETF价格
+// @Summary 获取核心ETF价格
+// @Description 获取A股投资组合内8个核心ETF的实时价格（白名单过滤，只返回组合内ETF）
 // @Tags a-share-data
 // @Produce json
-// @Success 200 {object} GetAllETFPricesResponse
+// @Success 200 {object} GetPortfolioETFPricesResponse
 // @Router /api/a-share/prices [get]
-func (h *AShareDataHandler) GetAllETFPrices(c *gin.Context) {
-	etfs, err := h.etfService.GetAllETFPrices()
+func (h *AShareDataHandler) GetPortfolioETFPrices(c *gin.Context) {
+	etfs, err := h.etfService.GetCoreETFPrices()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, GetAllETFPricesResponse{
+		c.JSON(http.StatusInternalServerError, GetPortfolioETFPricesResponse{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, GetAllETFPricesResponse{
+	c.JSON(http.StatusOK, GetPortfolioETFPricesResponse{
 		Success: true,
 		Data:    etfs,
 	})

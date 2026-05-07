@@ -1,27 +1,39 @@
 package handlers
 
 import (
+	"etf-insight/constants"
 	"net/http"
 
 	"etf-insight/models"
 	"etf-insight/services"
+	"etf-insight/services/ashare"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 )
 
 // ASharePortfolioHandler A股ETF组合处理器
-type ASharePortfolioHandler struct{}
+type ASharePortfolioHandler struct {
+	etfService *ashare.ETFDataService
+}
 
 // NewASharePortfolioHandler 创建新的处理器
 func NewASharePortfolioHandler() *ASharePortfolioHandler {
-	return &ASharePortfolioHandler{}
+	return &ASharePortfolioHandler{
+		etfService: ashare.NewETFDataService(models.DB),
+	}
 }
 
 // AShareHoldingDetailResponse 持仓明细响应（使用float64）
 type AShareHoldingDetailResponse struct {
 	Symbol               string  `json:"symbol"`                // ETF代码
 	Name                 string  `json:"name"`                  // ETF名称
+	CurrentPrice         float64 `json:"current_price"`         // 当前价格
+	PreviousClose        float64 `json:"previous_close"`        // 昨日收盘价
+	PriceChange          float64 `json:"price_change"`          // 价格变动
+	PriceChangePct       float64 `json:"price_change_pct"`      // 涨跌幅(%)
+	Volume               int64   `json:"volume"`                // 成交量
+	Turnover             float64 `json:"turnover"`              // 成交额
 	Investment           float64 `json:"investment"`            // 投资金额
 	Weight               float64 `json:"weight"`                // 占比
 	DividendYield        float64 `json:"dividend_yield"`        // 股息率(取中间值)
@@ -41,17 +53,14 @@ type AShareDividendCalculationResponse struct {
 	Holdings               []AShareHoldingDetailResponse `json:"holdings"`                 // 持仓明细
 }
 
-// getOrCreateDefaultETFs 从数据库获取ETF列表，如果没有则创建默认数据
+// getOrCreateDefaultETFs 从数据库获取核心ETF列表（只返回组合内8个ETF）
 func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividendETF {
 	var etfs []models.AShareDividendETF
-
-	// 从数据库查询
-	result := models.DB.Find(&etfs)
-	if result.Error == nil && len(etfs) > 0 {
+	result := models.DB.Where("symbol IN ?", constants.CoreETFSymbols).Find(&etfs)
+	if result.Error == nil && len(etfs) == len(constants.CoreETFSymbols) {
 		return etfs
 	}
 
-	// 数据库没有数据，创建默认数据
 	defaultETFs := []models.AShareDividendETF{
 		{
 			Symbol:            "515080",
@@ -245,6 +254,12 @@ func (h *ASharePortfolioHandler) GetDefaultPortfolio(c *gin.Context) {
 		holdings = append(holdings, AShareHoldingDetailResponse{
 			Symbol:            etf.Symbol,
 			Name:              etf.Name,
+			CurrentPrice:      etf.CurrentPrice.InexactFloat64(),
+			PreviousClose:     etf.PreviousClose.InexactFloat64(),
+			PriceChange:       etf.PriceChange.InexactFloat64(),
+			PriceChangePct:    etf.PriceChangePct.InexactFloat64(),
+			Volume:            etf.Volume,
+			Turnover:          etf.Turnover.InexactFloat64(),
 			Investment:        investment.InexactFloat64(),
 			Weight:            weight.InexactFloat64(),
 			DividendYield:     dividendYield.InexactFloat64(),
@@ -397,11 +412,10 @@ type ETFPriceResponse struct {
 	PriceUpdatedAt string  `json:"price_updated_at"` // 价格更新时间
 }
 
-// GetETFPrices 获取所有ETF价格
+// GetETFPrices 获取核心ETF价格（通过Service层）
 func (h *ASharePortfolioHandler) GetETFPrices(c *gin.Context) {
-	var etfs []models.AShareDividendETF
-	result := models.DB.Where("status = ?", 1).Find(&etfs)
-	if result.Error != nil {
+	etfs, err := h.etfService.GetCoreETFPrices()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "获取ETF数据失败",

@@ -183,20 +183,8 @@ export default function ASharePortfolioPage() {
     const response = await aShareAPI.getPrices();
     if (response.success && response.data) {
       const priceMap: Record<string, AShareETFPrice> = {};
-      Object.entries(response.data).forEach(([symbol, price]) => {
-        priceMap[symbol] = {
-          symbol,
-          name: symbol,
-          current_price: price,
-          previous_close: price,
-          price_change: 0,
-          price_change_pct: 0,
-          volume: 0,
-          turnover: 0,
-          nav: price,
-          premium_rate: 0,
-          price_updated_at: new Date().toISOString(),
-        };
+      response.data.forEach((price) => {
+        priceMap[price.symbol] = price;
       });
       return priceMap;
     }
@@ -238,6 +226,12 @@ export default function ASharePortfolioPage() {
           holdings: apiData.holdings.map(h => ({
             symbol: h.symbol,
             name: h.name,
+            current_price: h.current_price,
+            previous_close: h.previous_close,
+            price_change: h.price_change,
+            price_change_pct: h.price_change_pct,
+            volume: h.volume,
+            turnover: h.turnover,
             investment: h.investment,
             weight: h.weight,
             dividend_yield: h.dividend_yield,
