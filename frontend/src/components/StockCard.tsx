@@ -133,7 +133,7 @@ interface StockCardProps {
 
 const StockCard: React.FC<StockCardProps> = ({ etf, onClick, onDetailClick }) => {
   const isUp = etf.change_percent >= 0;
-  
+
   const handleClick = () => {
     onClick?.(etf);
   };

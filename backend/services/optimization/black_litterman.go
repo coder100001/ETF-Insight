@@ -3,6 +3,8 @@ package optimization
 import (
 	"fmt"
 	"math"
+
+	"github.com/shopspring/decimal"
 )
 
 // BlackLittermanOptimizer Black-Litterman模型优化器
@@ -299,57 +301,69 @@ func (o *BlackLittermanOptimizer) calculatePosteriorReturns(
 
 	k := len(P)
 
-	// 构建先验收益向量
-	Pi := make([]float64, n)
+	// 构建先验收益向量 (使用 decimal.Decimal 保证精度)
+	Pi := make([]decimal.Decimal, n)
 	for i, symbol := range symbols {
-		Pi[i] = priorReturns[symbol]
+		Pi[i] = decimal.NewFromFloat(priorReturns[symbol])
 	}
 
-	// 计算 τΣ
-	tauSigma := make([][]float64, n)
+	// 计算 τΣ (使用 decimal.Decimal)
+	tauDecimal := decimal.NewFromFloat(o.Tau)
+	tauSigma := make([][]decimal.Decimal, n)
 	for i := range tauSigma {
-		tauSigma[i] = make([]float64, n)
+		tauSigma[i] = make([]decimal.Decimal, n)
 		for j := range tauSigma[i] {
-			tauSigma[i][j] = o.Tau * Sigma[i][j]
+			tauSigma[i][j] = tauDecimal.Mul(decimal.NewFromFloat(Sigma[i][j]))
 		}
 	}
 
 	// 简化计算：使用后验收益的解析解
 	// E[R] = Π + τΣ * P^T * (P * τΣ * P^T + Ω)^-1 * (Q - P * Π)
 
-	// 1. 计算 P * Π
-	P_Pi := make([]float64, k)
+	// 1. 计算 P * Π (使用 decimal.Decimal)
+	P_Pi := make([]decimal.Decimal, k)
 	for i := range k {
+		sum := decimal.Zero
 		for j := range n {
-			P_Pi[i] += P[i][j] * Pi[j]
+			sum = sum.Add(decimal.NewFromFloat(P[i][j]).Mul(Pi[j]))
 		}
+		P_Pi[i] = sum
 	}
 
-	// 2. 计算 Q - P * Π
-	residual := make([]float64, k)
+	// 2. 计算 Q - P * Π (使用 decimal.Decimal)
+	residual := make([]decimal.Decimal, k)
 	for i := range k {
-		residual[i] = Q[i] - P_Pi[i]
+		residual[i] = decimal.NewFromFloat(Q[i]).Sub(P_Pi[i])
 	}
 
-	// 3. 计算 P * τΣ * P^T + Ω (简化为对角矩阵)
-	// 这里使用简化计算，实际应该使用矩阵求逆
+	// 3. 应用观点调整 (使用 decimal.Decimal)
 	posteriorReturns := make(map[string]float64)
 
-	// 简化：直接根据观点调整先验收益
+	// 初始化为先验收益
 	for _, symbol := range symbols {
 		posteriorReturns[symbol] = priorReturns[symbol]
 	}
 
-	// 应用观点调整
+	// 应用观点调整 (使用 decimal.Decimal 进行精确计算)
 	for _, view := range viewsFromMatrices(P, Q, symbols) {
 		if view.Type == "absolute" && len(view.Assets) > 0 {
 			asset := view.Assets[0]
-			// 向观点收益靠拢
-			confidence := 0.5
+			// 向观点收益靠拢 (使用 decimal.Decimal)
+			confidence := decimal.NewFromFloat(0.5)
 			if len(view.Weights) > 0 {
-				confidence = view.Weights[0]
+				confidence = decimal.NewFromFloat(view.Weights[0])
 			}
-			posteriorReturns[asset] = priorReturns[asset]*(1-confidence) + view.Return*confidence
+
+			priorReturn := decimal.NewFromFloat(priorReturns[asset])
+			viewReturn := decimal.NewFromFloat(view.Return)
+
+			// posterior = prior * (1 - confidence) + view * confidence
+			oneMinusConfidence := decimal.NewFromInt(1).Sub(confidence)
+			weightedPrior := priorReturn.Mul(oneMinusConfidence)
+			weightedView := viewReturn.Mul(confidence)
+			posterior := weightedPrior.Add(weightedView)
+
+			posteriorReturns[asset] = posterior.InexactFloat64()
 		}
 	}
 

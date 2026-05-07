@@ -196,8 +196,16 @@ func (o *PortfolioOptimizer) calculateCovariance(returns1, returns2 []decimal.De
 }
 
 func (o *PortfolioOptimizer) maximizeSharpeRatio(request PortfolioOptimizationRequest, meanReturns map[string]decimal.Decimal, covMatrix map[string]map[string]decimal.Decimal) (*PortfolioOptimizationResult, error) {
+	if len(request.Symbols) == 0 {
+		return nil, fmt.Errorf("cannot optimize empty portfolio: no symbols provided")
+	}
+
 	riskFreeRate := request.RiskFreeRate
 	weights := o.gradientDescentOptimization(meanReturns, covMatrix, riskFreeRate, request.Constraints)
+
+	if len(weights) == 0 {
+		return nil, fmt.Errorf("optimization failed: no weights returned")
+	}
 
 	weightsDecimal := make(map[string]decimal.Decimal)
 	for i, symbol := range request.Symbols {
@@ -399,6 +407,10 @@ func (o *PortfolioOptimizer) calculateVolatilityGradients(weights []decimal.Deci
 }
 
 func (o *PortfolioOptimizer) calculatePortfolioReturn(weights map[string]decimal.Decimal, meanReturns map[string]decimal.Decimal) decimal.Decimal {
+	if len(weights) == 0 {
+		return decimal.Zero
+	}
+
 	totalReturn := decimal.Zero
 	for symbol, weight := range weights {
 		if ret, ok := meanReturns[symbol]; ok {
@@ -409,6 +421,9 @@ func (o *PortfolioOptimizer) calculatePortfolioReturn(weights map[string]decimal
 }
 
 func (o *PortfolioOptimizer) calculatePortfolioVolatility(weights map[string]decimal.Decimal, covMatrix map[string]map[string]decimal.Decimal) decimal.Decimal {
+	if len(weights) == 0 {
+		return decimal.Zero
+	}
 	symbols := make([]string, 0, len(weights))
 	for symbol := range weights {
 		symbols = append(symbols, symbol)
@@ -451,7 +466,7 @@ func (o *PortfolioOptimizer) calculatePortfolioVolatilityFromArray(weights []dec
 }
 
 func (o *PortfolioOptimizer) calculateSharpeRatio(expectedReturn, volatility, riskFreeRate decimal.Decimal) decimal.Decimal {
-	if volatility.IsZero() {
+	if volatility.IsZero() || volatility.IsNegative() {
 		return decimal.Zero
 	}
 	excessReturn := expectedReturn.Sub(riskFreeRate)

@@ -61,7 +61,7 @@ log() {
     local level=$1
     local message=$2
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
+
     case $level in
         INFO)
             echo -e "${BLUE}[$timestamp INFO]${NC} $message"
@@ -79,7 +79,7 @@ log() {
             echo -e "${CYAN}[$timestamp SEMAPHORE]${NC} $message"
             ;;
     esac
-    
+
     # 写入日志文件
     if [ -d "$LOG_DIR" ]; then
         echo "[$timestamp $level] $message" >> "$LOG_DIR/startup.log"
@@ -161,9 +161,9 @@ check_environment() {
     log INFO "=========================================="
     log INFO "阶段 1/3: 环境检查"
     log INFO "=========================================="
-    
+
     local errors=0
-    
+
     # 检查 Go
     if ! command -v go &> /dev/null; then
         log ERROR "Go 未安装，请先安装 Go (>= 1.21)"
@@ -172,7 +172,7 @@ check_environment() {
         local go_version=$(go version | awk '{print $3}')
         log SUCCESS "Go 已安装: $go_version"
     fi
-    
+
     # 检查 Node.js
     if ! command -v node &> /dev/null; then
         log ERROR "Node.js 未安装，请先安装 Node.js (>= 18)"
@@ -181,7 +181,7 @@ check_environment() {
         local node_version=$(node --version)
         log SUCCESS "Node.js 已安装: $node_version"
     fi
-    
+
     # 检查 npm
     if ! command -v npm &> /dev/null; then
         log ERROR "npm 未安装"
@@ -190,14 +190,14 @@ check_environment() {
         local npm_version=$(npm --version)
         log SUCCESS "npm 已安装: $npm_version"
     fi
-    
+
     # 检查 curl（用于健康检查）
     if ! command -v curl &> /dev/null; then
         log WARN "curl 未安装，将使用 nc 进行健康检查"
     else
         log SUCCESS "curl 已安装"
     fi
-    
+
     # 检查目录
     if [ ! -d "$BACKEND_DIR" ]; then
         log ERROR "后端目录不存在: $BACKEND_DIR"
@@ -205,19 +205,19 @@ check_environment() {
     else
         log SUCCESS "后端目录: $BACKEND_DIR"
     fi
-    
+
     if [ ! -d "$FRONTEND_DIR" ]; then
         log ERROR "前端目录不存在: $FRONTEND_DIR"
         ((errors++))
     else
         log SUCCESS "前端目录: $FRONTEND_DIR"
     fi
-    
+
     if [ $errors -gt 0 ]; then
         log ERROR "环境检查失败，发现 $errors 个错误"
         exit 1
     fi
-    
+
     log SUCCESS "环境检查通过"
 }
 
@@ -241,17 +241,17 @@ wait_for_backend_ready() {
     log SEMAPHORE "阶段 2/3: 后端就绪信号量检测"
     log SEMAPHORE "=========================================="
     log SEMAPHORE "等待后端服务就绪（超时: ${BACKEND_TIMEOUT}秒）..."
-    
+
     local elapsed=0
     local check_count=0
-    
+
     while [ $elapsed -lt $BACKEND_TIMEOUT ]; do
         ((check_count++))
-        
+
         if [ "$VERBOSE" = true ]; then
             log SEMAPHORE "检查 #$check_count: 等待后端就绪信号..."
         fi
-        
+
         # 使用 curl 或 nc 检查健康接口
         local ready=false
         if command -v curl &> /dev/null; then
@@ -263,12 +263,12 @@ wait_for_backend_ready() {
                 ready=true
             fi
         fi
-        
+
         if [ "$ready" = true ]; then
             log SEMAPHORE "✓ 收到后端就绪信号！"
             log SEMAPHORE "  检查次数: $check_count"
             log SEMAPHORE "  等待时间: ${elapsed}秒"
-            
+
             # 获取详细状态
             if command -v curl &> /dev/null; then
                 local status=$(curl -s http://localhost:$BACKEND_PORT/ready 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
@@ -276,18 +276,18 @@ wait_for_backend_ready() {
                     log SEMAPHORE "  服务状态: $status"
                 fi
             fi
-            
+
             return 0
         fi
-        
+
         sleep $HEALTH_CHECK_INTERVAL
         ((elapsed+=HEALTH_CHECK_INTERVAL))
-        
+
         if [ "$VERBOSE" = true ] && [ $((elapsed % 10)) -eq 0 ]; then
             log SEMAPHORE "已等待 ${elapsed}秒..."
         fi
     done
-    
+
     log ERROR "=========================================="
     log ERROR "后端服务启动超时！"
     log ERROR "=========================================="
@@ -300,7 +300,7 @@ wait_for_backend_ready() {
     log ERROR "3. 检查端口占用: lsof -i :$BACKEND_PORT"
     log ERROR "4. 检查数据库连接是否正常"
     log ERROR "5. 尝试重启后端服务"
-    
+
     return 1
 }
 
@@ -309,17 +309,17 @@ start_backend() {
     log INFO "=========================================="
     log INFO "启动后端服务"
     log INFO "=========================================="
-    
+
     cd "$BACKEND_DIR"
-    
+
     # 释放端口
     release_port $BACKEND_PORT
-    
+
     # 设置环境变量
     unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
     export GOPROXY=https://goproxy.cn,direct
     export GOSUMDB=sum.golang.google.cn
-    
+
     # 安装依赖
     log INFO "安装后端依赖..."
     go mod download >> "$LOG_DIR/backend.log" 2>&1 || {
@@ -327,7 +327,7 @@ start_backend() {
         return 1
     }
     log SUCCESS "后端依赖安装完成"
-    
+
     # 编译
     log INFO "编译后端项目..."
     go build -o etf-insight . >> "$LOG_DIR/backend.log" 2>&1 || {
@@ -335,17 +335,17 @@ start_backend() {
         return 1
     }
     log SUCCESS "后端编译成功"
-    
+
     # 启动服务
     log INFO "启动后端服务..."
     log SEMAPHORE "发送后端启动信号..."
-    
+
     ./etf-insight >> "$LOG_DIR/backend.log" 2>&1 &
     BACKEND_PID=$!
-    
+
     log SEMAPHORE "后端进程已启动 (PID: $BACKEND_PID)"
     log SEMAPHORE "等待后端就绪信号..."
-    
+
     # 等待就绪
     if [ "$SKIP_HEALTH_CHECK" = false ]; then
         if ! wait_for_backend_ready; then
@@ -355,12 +355,12 @@ start_backend() {
         log WARN "跳过健康检查，等待 5 秒..."
         sleep 5
     fi
-    
+
     log SUCCESS "后端服务启动完成"
     log INFO "后端地址: http://localhost:$BACKEND_PORT"
     log INFO "健康检查: http://localhost:$BACKEND_PORT/health"
     log INFO "就绪检查: http://localhost:$BACKEND_PORT/ready"
-    
+
     return 0
 }
 
@@ -369,12 +369,12 @@ start_frontend() {
     log SEMAPHORE "=========================================="
     log SEMAPHORE "阶段 3/3: 前端服务启动（收到后端就绪信号）"
     log SEMAPHORE "=========================================="
-    
+
     cd "$FRONTEND_DIR"
-    
+
     # 释放端口
     release_port $FRONTEND_PORT
-    
+
     # 安装依赖
     if [ ! -d "node_modules" ]; then
         log INFO "安装前端依赖..."
@@ -386,16 +386,16 @@ start_frontend() {
     else
         log INFO "前端依赖已存在"
     fi
-    
+
     # 启动服务
     log INFO "启动前端开发服务器..."
     log SEMAPHORE "前端服务正在启动..."
-    
+
     npx vite --host >> "$LOG_DIR/frontend.log" 2>&1 &
     FRONTEND_PID=$!
-    
+
     log SEMAPHORE "前端进程已启动 (PID: $FRONTEND_PID)"
-    
+
     # 等待前端就绪
     local elapsed=0
     while [ $elapsed -lt $FRONTEND_TIMEOUT ]; do
@@ -407,15 +407,15 @@ start_frontend() {
         sleep 1
         ((elapsed++))
     done
-    
+
     if [ $elapsed -ge $FRONTEND_TIMEOUT ]; then
         log ERROR "前端服务启动超时"
         return 1
     fi
-    
+
     log SUCCESS "前端服务启动完成"
     log INFO "前端地址: http://localhost:$FRONTEND_PORT"
-    
+
     return 0
 }
 
@@ -424,19 +424,19 @@ cleanup() {
     log INFO "=========================================="
     log INFO "清理进程..."
     log INFO "=========================================="
-    
+
     if [ -n "$FRONTEND_PID" ]; then
         log INFO "停止前端服务 (PID: $FRONTEND_PID)..."
         kill $FRONTEND_PID 2>/dev/null || true
         wait $FRONTEND_PID 2>/dev/null || true
     fi
-    
+
     if [ -n "$BACKEND_PID" ]; then
         log INFO "停止后端服务 (PID: $BACKEND_PID)..."
         kill $BACKEND_PID 2>/dev/null || true
         wait $BACKEND_PID 2>/dev/null || true
     fi
-    
+
     log SUCCESS "清理完成"
 }
 
@@ -446,7 +446,7 @@ trap cleanup EXIT INT TERM
 main() {
     # 环境检查
     check_environment
-    
+
     # 仅检查模式
     if [ "$DRY_RUN" = true ]; then
         log INFO "=========================================="
@@ -454,42 +454,42 @@ main() {
         log INFO "=========================================="
         exit 0
     fi
-    
+
     # 仅前端模式
     if [ "$FRONTEND_ONLY" = true ]; then
         log INFO "=========================================="
         log INFO "仅启动前端模式"
         log INFO "=========================================="
-        
+
         # 检查后端是否已运行
         if ! curl -s http://localhost:$BACKEND_PORT/ready > /dev/null 2>&1; then
             log ERROR "后端服务未运行，无法启动前端"
             log ERROR "请先启动后端服务，或使用完整启动模式"
             exit 1
         fi
-        
+
         log SUCCESS "检测到后端服务已就绪"
         start_frontend || exit 1
-        
+
         log SUCCESS "=========================================="
         log SUCCESS "前端服务启动成功！"
         log SUCCESS "=========================================="
         log INFO "访问地址: http://localhost:$FRONTEND_PORT"
-        
+
         wait
         exit 0
     fi
-    
+
     # 启动后端
     if [ "$BACKEND_ONLY" = true ] || [ "$FRONTEND_ONLY" = false ]; then
         start_backend || exit 1
     fi
-    
+
     # 启动前端（非仅后端模式）
     if [ "$BACKEND_ONLY" = false ]; then
         start_frontend || exit 1
     fi
-    
+
     # 启动完成
     log SUCCESS "=========================================="
     log SUCCESS "🎉 ETF-Insight 启动成功！"
@@ -510,7 +510,7 @@ main() {
     log INFO "  前端日志: $LOG_DIR/frontend.log"
     log INFO ""
     log INFO "按 Ctrl+C 停止所有服务"
-    
+
     wait
 }
 

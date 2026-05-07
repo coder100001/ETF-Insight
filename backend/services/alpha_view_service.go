@@ -203,17 +203,17 @@ func (s *BlackLittermanService) CalculatePosteriorReturns(configID uint, views [
 
 	config, err := s.GetConfig(configID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get BL config %d: %w", configID, err)
 	}
 
 	marketWeights, err := s.parseMarketWeights(config.PriorWeights)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse market weights for config %d: %w", configID, err)
 	}
 
 	covMatrix, err := s.parseCovarianceMatrix(config.OmegaMatrix)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse covariance matrix for config %d: %w", configID, err)
 	}
 
 	pi := s.calculateEquilibriumReturns(marketWeights, covMatrix, config.RiskAversion)
@@ -231,7 +231,7 @@ func (s *BlackLittermanService) CalculatePosteriorReturns(configID uint, views [
 
 	P, Q, Omega, err := s.buildViewMatrices(views, len(marketWeights), assetSymbols)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to build view matrices: %w", err)
 	}
 
 	tau := decimal.NewFromFloat(0.05)

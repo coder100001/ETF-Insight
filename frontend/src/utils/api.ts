@@ -1,8 +1,8 @@
 import axios from 'axios';
-import type { 
-  ETFData, 
-  PortfolioResult, 
-  UserConfig, 
+import type {
+  ETFData,
+  PortfolioResult,
+  UserConfig,
   RealtimeUpdateResponse,
   ExchangeRate,
   ApiResponse,
@@ -84,7 +84,7 @@ export const portfolioApi = {
 
   // 预测投资组合收益
   forecastPortfolio: async (
-    config: UserConfig, 
+    config: UserConfig,
     years: number[] = [3, 5, 10]
   ): Promise<Record<string, unknown>> => {
     const response = await apiClient.post('/portfolio/forecast/', {

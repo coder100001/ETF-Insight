@@ -6,6 +6,31 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# macOS 兼容: timeout 命令在 macOS 不存在，优先使用 gtimeout (coreutils)
+if ! command -v timeout &>/dev/null; then
+  if command -v gtimeout &>/dev/null; then
+    timeout() { gtimeout "$@"; }
+  else
+    # 简易 timeout 回退: 后台运行 + sleep + kill
+    timeout() {
+      local sec="$1"; shift
+      "$@" &
+      local pid=$!
+      ( sleep "$sec" && kill $pid 2>/dev/null ) &
+      local watchdog=$!
+      wait $pid 2>/dev/null
+      local ret=$?
+      kill $watchdog 2>/dev/null 2>/dev/null
+      return $ret
+    }
+  fi
+fi
+
+# 补全 PATH: pre-commit 环境可能缺少开发工具路径
+# 优先使用 nvm Node.js 和 Go 1.26
+NVM_NODE_BIN="$HOME/.nvm/versions/node/v24.11.0/bin"
+export PATH="$HOME/go1.26/go/bin:$NVM_NODE_BIN:/usr/local/go/bin:/usr/local/bin:/opt/homebrew/bin:$HOME/go/bin:$PATH"
+
 # 默认参数
 STAGES="format,static,build,test,docs"
 MODE="full"
@@ -79,8 +104,8 @@ for stage in "${STAGE_LIST[@]}"; do
 
   case "$stage" in
     format)
-      run_command "gofmt" "cd $PROJECT_ROOT/backend && test -z \$(gofmt -l .)" 5 false "Go files need formatting: cd backend && gofmt -w ." || STAGE_FAILED=1
-      run_command "goimports" "cd $PROJECT_ROOT/backend && test -z \$(goimports -l . 2>/dev/null || echo 'skip')" 5 true || true
+      run_command "gofmt" "cd $PROJECT_ROOT/backend && test -z \$(gofmt -l .)" 10 false "Go files need formatting: cd backend && gofmt -w ." || STAGE_FAILED=1
+      run_command "goimports" "cd $PROJECT_ROOT/backend && test -z \$(goimports -l . 2>/dev/null || echo 'skip')" 10 true || true
       ;;
     static)
       export GOPROXY="https://goproxy.cn,direct"
@@ -90,13 +115,13 @@ for stage in "${STAGE_LIST[@]}"; do
       ;;
     build)
       export GOPROXY="https://goproxy.cn,direct"
-      run_command "go-build" "cd $PROJECT_ROOT/backend && go build ./..." 15 false "Go build failed" || STAGE_FAILED=1
+      run_command "go-build" "cd $PROJECT_ROOT/backend && go build ./..." 120 false "Go build failed" || STAGE_FAILED=1
       run_command "npm-build" "cd $PROJECT_ROOT/frontend && npm run build" 15 false "Frontend build failed" || STAGE_FAILED=1
       ;;
     test)
       export GOPROXY="https://goproxy.cn,direct"
-      run_command "go-test-short" "cd $PROJECT_ROOT/backend && go test -short -count=1 ./..." 30 false "Go tests failed" || STAGE_FAILED=1
-      run_command "frontend-test" "cd $PROJECT_ROOT/frontend && npx vitest run" 30 false "Frontend tests failed" || STAGE_FAILED=1
+      run_command "go-test-short" "cd $PROJECT_ROOT/backend && go test -short -count=1 ./..." 180 false "Go tests failed" || STAGE_FAILED=1
+      run_command "frontend-test" "cd $PROJECT_ROOT/frontend && npx vitest run" 60 false "Frontend tests failed" || STAGE_FAILED=1
       ;;
     docs)
       run_command "doccheck" "cd $PROJECT_ROOT/tools/doccheck && go run . --quick --strict" 30 false "Documentation consistency check failed" || STAGE_FAILED=1

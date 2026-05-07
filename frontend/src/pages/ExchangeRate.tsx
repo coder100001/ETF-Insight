@@ -272,7 +272,7 @@ const ExchangeRatePage: React.FC = () => {
         </StatCard>
       </StatsRow>
 
-      <Card 
+      <Card
         style={{ boxShadow: theme.shadows.card }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
