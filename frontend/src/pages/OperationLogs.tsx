@@ -32,7 +32,13 @@ import {
   type ActionTypesResponse,
   type UsersResponse,
 } from '../services/operationLogsService';
-import debounce from 'lodash/debounce';
+const debounce = <T extends (...args: any[]) => void>(fn: T, ms: number): T => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return ((...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  }) as unknown as T;
+};
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
