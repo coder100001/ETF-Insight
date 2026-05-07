@@ -131,7 +131,7 @@ interface StockCardProps {
   onDetailClick?: (etf: ETFData) => void;
 }
 
-const StockCard: React.FC<StockCardProps> = ({ etf, onClick, onDetailClick }) => {
+const StockCard = React.memo<StockCardProps>(({ etf, onClick, onDetailClick }) => {
   const isUp = etf.change_percent >= 0;
 
   const handleClick = () => {
@@ -191,6 +191,10 @@ const StockCard: React.FC<StockCardProps> = ({ etf, onClick, onDetailClick }) =>
       </ActionButton>
     </Card>
   );
-};
+}, (prevProps, nextProps) => {
+	return prevProps.etf === nextProps.etf &&
+	       prevProps.onClick === nextProps.onClick &&
+	       prevProps.onDetailClick === nextProps.onDetailClick;
+});
 
 export default StockCard;

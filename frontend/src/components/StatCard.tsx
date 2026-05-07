@@ -59,7 +59,7 @@ interface StatCardProps {
   valueColor?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({
+const StatCard = React.memo<StatCardProps>(({
   label,
   value,
   change,
@@ -77,6 +77,11 @@ const StatCard: React.FC<StatCardProps> = ({
       {change && <Change $isUp={isUp}>{change}</Change>}
     </Card>
   );
-};
+}, (prevProps, nextProps) => {
+	return prevProps.label === nextProps.label &&
+	       prevProps.value === nextProps.value &&
+	       prevProps.change === nextProps.change &&
+	       prevProps.isUp === nextProps.isUp;
+});
 
 export default StatCard;

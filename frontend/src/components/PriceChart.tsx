@@ -20,7 +20,7 @@ interface PriceChartProps {
   symbol: string;
 }
 
-const PriceChart: React.FC<PriceChartProps> = ({ data, symbol }) => {
+const PriceChart = React.memo<PriceChartProps>(({ data, symbol }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
   const hasEnoughData = data.dates && data.dates.length >= 2;
@@ -201,6 +201,8 @@ const PriceChart: React.FC<PriceChartProps> = ({ data, symbol }) => {
   }
 
   return <ChartContainer ref={chartRef} />;
-};
+}, (prevProps, nextProps) => {
+	return prevProps.data === nextProps.data && prevProps.symbol === nextProps.symbol;
+});
 
 export default PriceChart;
