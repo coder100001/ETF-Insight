@@ -14,14 +14,8 @@ repos:
       - id: mixed-line-ending
       - id: detect-private-key
 
-  # Go 格式检查
-  - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.1
-    hooks:
-      - id: go-fmt
-      - id: go-imports
-
   # 统一检查（format + static + build + test + docs）
+  # Go 格式检查已包含在 run-check.sh 的 format 阶段，无需重复
   - repo: local
     hooks:
       - id: unified-checks

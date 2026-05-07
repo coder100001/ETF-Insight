@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26'
           cache-dependency-path: backend/go.sum
 
       - name: Run unified checks (backend)
@@ -61,3 +61,20 @@ jobs:
           name: frontend-build
           path: frontend/dist
           retention-days: 7
+
+  docs:
+    name: Documentation Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+
+      - name: Run documentation consistency check
+        run: |
+          ./scripts/run-check.sh --stage=docs

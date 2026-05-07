@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -16,6 +17,22 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm/clause"
 )
+
+type dividendYieldConfig struct {
+	symbols []string
+	yield   float64
+}
+
+var defaultDividendYields = []dividendYieldConfig{
+	{[]string{"SCHD", "VYM", "SPYD", "HDV", "DGRO"}, 3.5},
+	{[]string{"JEPI", "JEPQ", "QYLD", "XYLD"}, 7.0},
+	{[]string{"BND", "AGG", "TLT", "VNQ"}, 4.0},
+	{[]string{"GLD"}, 0.0},
+	{[]string{"QQQ", "VOO", "VTI", "SPY"}, 0.5},
+	{[]string{"VEA", "VWO", "VXUS"}, 3.0},
+}
+
+const defaultDividendYieldFallback = 1.0
 
 // SimpleRealtimeData 简单的实时数据占位符类型（缓存移除后使用）
 type SimpleRealtimeData struct {
@@ -83,7 +100,7 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 		Find(&etfConfigs).Error; err != nil || len(etfConfigs) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"data":    []interface{}{},
+			"data":    []any{},
 			"pagination": gin.H{
 				"page":       page,
 				"pageSize":   pageSize,
@@ -96,7 +113,7 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 
 	type ETFResult struct {
 		Symbol string
-		Data   map[string]interface{}
+		Data   map[string]any
 		Error  error
 	}
 
@@ -110,7 +127,7 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 		}(cfg)
 	}
 
-	etfList := make([]map[string]interface{}, 0, len(etfConfigs))
+	etfList := make([]map[string]any, 0, len(etfConfigs))
 	for i := 0; i < len(etfConfigs); i++ {
 		result := <-results
 		if result.Error == nil && result.Data != nil {
@@ -133,7 +150,7 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 }
 
 // getETFDetailData 获取单个 ETF 的详细数据
-func (h *ETFHandler) getETFDetailData(cfg models.ETFConfig) (map[string]interface{}, error) {
+func (h *ETFHandler) getETFDetailData(cfg models.ETFConfig) (map[string]any, error) {
 	// 从数据库获取最新的行情数据
 	var etfData models.ETFData
 	err := models.DB.Where("symbol = ?", cfg.Symbol).
@@ -164,15 +181,19 @@ func (h *ETFHandler) getETFDetailData(cfg models.ETFConfig) (map[string]interfac
 	// }
 
 	// 从数据库获取历史价格数据计算指标
+	// 注意：此查询用于计算辅助指标，失败时返回空切片，不影响主流程
 	var prices []models.ETFData
-	models.DB.Where("symbol = ?", cfg.Symbol).Order("date DESC").Limit(252).Find(&prices)
+	if err := models.DB.Where("symbol = ?", cfg.Symbol).Order("date DESC").Limit(252).Find(&prices).Error; err != nil {
+		utils.Warn("Failed to fetch price history", "symbol", cfg.Symbol, "error", err)
+		prices = []models.ETFData{}
+	}
 	metrics := calculateMetricsFromPrices(prices, "1y")
 
 	return h.buildETFResult(cfg, etfData, realtimeData, metrics, err == nil && etfData.ID > 0), nil
 }
 
 // buildETFResult 构建 ETF 结果数据
-func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData, realtimeData *SimpleRealtimeData, metrics *HandlerMetrics, hasData bool) map[string]interface{} {
+func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData, realtimeData *SimpleRealtimeData, metrics *HandlerMetrics, hasData bool) map[string]any {
 	if hasData {
 		// 涨跌计算：基于前一日收盘价
 		// 优先从 realtimeData 获取 previousClose
@@ -202,7 +223,7 @@ func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData
 		// 根据 ETF 类型设置合理的默认股息率
 		defaultDividendYield := getDefaultDividendYield(cfg.Symbol)
 
-		result := map[string]interface{}{
+		result := map[string]any{
 			"symbol":              cfg.Symbol,
 			"name":                cfg.Name,
 			"market":              "US",
@@ -242,7 +263,7 @@ func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData
 	}
 
 	// 没有数据库数据，返回基本信息
-	return map[string]interface{}{
+	return map[string]any{
 		"symbol":         cfg.Symbol,
 		"name":           cfg.Name,
 		"market":         "US",
@@ -286,7 +307,7 @@ func (h *ETFHandler) GetETFRealtime(c *gin.Context) {
 
 	// 获取 ETF 配置信息
 	var etfConfig models.ETFConfig
-	models.DB.Where("symbol = ?", symbol).First(&etfConfig)
+	_ = models.DB.Where("symbol = ?", symbol).First(&etfConfig)
 
 	// 计算涨跌幅 - 基于前一日收盘价
 	var prevData models.ETFData
@@ -305,7 +326,7 @@ func (h *ETFHandler) GetETFRealtime(c *gin.Context) {
 	// 根据 ETF 类型设置合理的默认股息率
 	defaultDividendYield := getDefaultDividendYield(symbol)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"symbol":         symbol,
 		"name":           etfConfig.Name,
 		"current_price":  etfData.ClosePrice.InexactFloat64(),
@@ -342,7 +363,7 @@ func (h *ETFHandler) GetETFComparison(c *gin.Context) {
 
 	// 从数据库获取所有启用的ETF列表，不硬编码
 	var etfConfigs []models.ETFConfig
-	models.DB.Where("status = ?", 1).Find(&etfConfigs)
+	_ = models.DB.Where("status = ?", 1).Find(&etfConfigs)
 
 	symbols := make([]string, 0, len(etfConfigs))
 	for _, cfg := range etfConfigs {
@@ -352,7 +373,7 @@ func (h *ETFHandler) GetETFComparison(c *gin.Context) {
 	if len(symbols) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"data":    []interface{}{},
+			"data":    []any{},
 		})
 		return
 	}
@@ -406,9 +427,9 @@ func (h *ETFHandler) GetETFHistory(c *gin.Context) {
 		return
 	}
 
-	var data []map[string]interface{}
+	var data []map[string]any
 	for _, price := range prices {
-		data = append(data, map[string]interface{}{
+		data = append(data, map[string]any{
 			"date":        price.Date.Format("2006-01-02"),
 			"open_price":  price.OpenPrice.InexactFloat64(),
 			"close_price": price.ClosePrice.InexactFloat64(),
@@ -458,7 +479,7 @@ func (h *ETFHandler) GetETFMetrics(c *gin.Context) {
 
 	metrics := calculateMetricsFromPrices(prices, period)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"symbol":         symbol,
 		"name":           etfConfig.Name,
 		"expense_ratio":  etfConfig.ExpenseRatio.InexactFloat64() * 100,
@@ -620,7 +641,7 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 
 	// 获取ETF配置
 	var etfConfig models.ETFConfig
-	models.DB.Where("symbol = ?", symbol).First(&etfConfig)
+	_ = models.DB.Where("symbol = ?", symbol).First(&etfConfig)
 
 	// 从数据库获取历史数据计算预期收益率
 	dividendYield := 0.0
@@ -657,7 +678,7 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 	// }
 
 	// 计算预测
-	forecast := make([]map[string]interface{}, 10)
+	forecast := make([]map[string]any, 10)
 	currentValue := initialInvestment
 	cumulativeDividend := 0.0
 
@@ -670,7 +691,7 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 		currentValue = currentValue + capitalGrowth + afterTaxDividend - fees
 		cumulativeDividend += afterTaxDividend
 
-		forecast[year-1] = map[string]interface{}{
+		forecast[year-1] = map[string]any{
 			"year":                 year,
 			"value":                math.Round(currentValue*100) / 100,
 			"capital_growth":       math.Round(capitalGrowth*100) / 100,
@@ -693,7 +714,7 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"symbol":                 symbol,
 			"name":                   name,
 			"initial_investment":     initialInvestment,
@@ -702,7 +723,7 @@ func (h *ETFHandler) GetETFForecast(c *gin.Context) {
 			"expense_ratio":          expenseRatio * 100,
 			"expected_annual_return": expectedAnnualReturn * 100,
 			"forecast":               forecast,
-			"summary": map[string]interface{}{
+			"summary": map[string]any{
 				"final_value":           math.Round(currentValue*100) / 100,
 				"total_return":          math.Round(totalReturn*100) / 100,
 				"total_return_percent":  math.Round(totalReturnPercent*100) / 100,
@@ -797,10 +818,13 @@ func (h *ETFHandler) UpdateRealtimeData(c *gin.Context) {
 				DataSource: quote.DataSource,
 			}
 
-			models.DB.Clauses(clause.OnConflict{
+			if err := models.DB.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "symbol"}, {Name: "date"}},
 				DoUpdates: clause.AssignmentColumns([]string{"open_price", "close_price", "high_price", "low_price", "volume", "data_source"}),
-			}).Create(&etfData)
+			}).Create(&etfData).Error; err != nil {
+				utils.Error("Failed to save ETF data", err, "symbol", quote.Symbol)
+				continue
+			}
 		}
 
 		successCount++
@@ -916,7 +940,7 @@ func (h *ETFHandler) GetETFRisk(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"symbol":            symbol,
 			"period":            period,
 			"current_price":     currentPrice.InexactFloat64(),
@@ -939,26 +963,10 @@ func (h *ETFHandler) GetETFRisk(c *gin.Context) {
 }
 
 func getDefaultDividendYield(symbol string) float64 {
-	type dividendYield struct {
-		symbols []string
-		yield   float64
-	}
-
-	yieldTable := []dividendYield{
-		{[]string{"SCHD", "VYM", "SPYD", "HDV", "DGRO"}, 3.5},
-		{[]string{"JEPI", "JEPQ", "QYLD", "XYLD"}, 7.0},
-		{[]string{"BND", "AGG", "TLT", "VNQ"}, 4.0},
-		{[]string{"GLD"}, 0.0},
-		{[]string{"QQQ", "VOO", "VTI", "SPY"}, 0.5},
-		{[]string{"VEA", "VWO", "VXUS"}, 3.0},
-	}
-
-	for _, y := range yieldTable {
-		for _, s := range y.symbols {
-			if symbol == s {
-				return y.yield
-			}
+	for _, config := range defaultDividendYields {
+		if slices.Contains(config.symbols, symbol) {
+			return config.yield
 		}
 	}
-	return 1.0
+	return defaultDividendYieldFallback
 }

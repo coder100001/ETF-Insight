@@ -126,7 +126,7 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 	}
 
 	// 计算各资产的风险贡献
-	portfolioRisks := make([]map[string]interface{}, 0, len(req.Portfolio))
+	portfolioRisks := make([]map[string]any, 0, len(req.Portfolio))
 	for symbol, weight := range req.Portfolio {
 		if assetReturns, ok := returns[symbol]; ok && len(assetReturns) > 0 {
 			assetVarData, _ := riskModels.CalculateHistoricalVaR(assetReturns, confidence)
@@ -136,7 +136,7 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 				marginalVar = assetVarData.VaR.Div(varData.VaR)
 			}
 
-			portfolioRisks = append(portfolioRisks, map[string]interface{}{
+			portfolioRisks = append(portfolioRisks, map[string]any{
 				"symbol":       symbol,
 				"weight":       weight,
 				"componentVar": componentVar.Mul(decimal.NewFromInt(100)).InexactFloat64(),
@@ -150,7 +150,7 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"portfolio":       req.Portfolio,
 			"period":          period,
 			"confidence":      confidence,
