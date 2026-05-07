@@ -86,7 +86,7 @@ for stage in "${STAGE_LIST[@]}"; do
       export GOPROXY="https://goproxy.cn,direct"
       run_command "go-vet" "cd $PROJECT_ROOT/backend && go vet ./..." 10 false "Go vet found issues" || STAGE_FAILED=1
       run_command "tsc" "cd $PROJECT_ROOT/frontend && npx tsc --noEmit" 10 false "TypeScript check failed" || STAGE_FAILED=1
-      run_command "eslint" "cd $PROJECT_ROOT/frontend && npx eslint --cache --quiet src/ 2>/dev/null || true" 10 true || true
+      run_command "eslint" "cd $PROJECT_ROOT/frontend && npx eslint --cache --quiet src/" 10 false "ESLint check failed" || STAGE_FAILED=1
       ;;
     build)
       export GOPROXY="https://goproxy.cn,direct"
@@ -96,10 +96,10 @@ for stage in "${STAGE_LIST[@]}"; do
     test)
       export GOPROXY="https://goproxy.cn,direct"
       run_command "go-test-short" "cd $PROJECT_ROOT/backend && go test -short -count=1 ./..." 30 false "Go tests failed" || STAGE_FAILED=1
-      run_command "frontend-test" "cd $PROJECT_ROOT/frontend && npm run test:run 2>/dev/null || echo 'skipped'" 30 true || true
+      run_command "frontend-test" "cd $PROJECT_ROOT/frontend && npx vitest run" 30 false "Frontend tests failed" || STAGE_FAILED=1
       ;;
     docs)
-      run_command "doccheck" "cd $PROJECT_ROOT && ./tools/doccheck/doccheck --quick --strict 2>/dev/null || ./tools/doccheck/doccheck --quick --strict" 5 false "Documentation consistency check failed" || STAGE_FAILED=1
+      run_command "doccheck" "cd $PROJECT_ROOT/tools/doccheck && go run . --quick --strict" 30 false "Documentation consistency check failed" || STAGE_FAILED=1
       ;;
     *)
       echo -e "  ${YELLOW}⚠️  Unknown stage: $stage${NC}"
