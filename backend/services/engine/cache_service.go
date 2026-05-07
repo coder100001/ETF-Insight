@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 type CacheKey string
 
 // CacheValue 缓存值类型
-type CacheValue interface{}
+type CacheValue any
 
 // CacheService 缓存服务接口
 type CacheService interface {
@@ -85,7 +86,7 @@ type MaterializedViewManager interface {
 
 	// 视图状态
 	GetViewStats(ctx context.Context, name string) (*ViewStats, error)
-	GetViewData(ctx context.Context, name string, query string) (interface{}, error)
+	GetViewData(ctx context.Context, name string, query string) (any, error)
 }
 
 // ViewStats 视图统计
@@ -318,7 +319,7 @@ func (c *InMemoryCacheService) Stats(ctx context.Context) (*CacheStats, error) {
 
 	// 计算缓存项数
 	var count int64
-	c.cache.Range(func(key, value interface{}) bool {
+	c.cache.Range(func(key, value any) bool {
 		count++
 		return true
 	})
@@ -376,11 +377,12 @@ func NewCacheKeyGenerator(prefix string) *CacheKeyGenerator {
 
 // GenerateKey 生成缓存键
 func (g *CacheKeyGenerator) GenerateKey(parts ...string) CacheKey {
-	key := g.prefix
+	var key strings.Builder
+	key.WriteString(g.prefix)
 	for _, part := range parts {
-		key += ":" + part
+		key.WriteString(":" + part)
 	}
-	return CacheKey(key)
+	return CacheKey(key.String())
 }
 
 // 常用缓存键模式

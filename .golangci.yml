@@ -1,28 +1,66 @@
 # .golangci.yml
-# Go 代码检查配置文件
+# Go 代码检查配置文件（项目级默认配置）
+# 与 backend/.golangci.yml 保持一致
+
+run:
+  timeout: 5m
+  go: "1.26"
+  skip-dirs:
+    - vendor
+    - testdata
+    - node_modules
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - gocyclo
+    - dupl
+    - goconst
+    - gocritic
+    - revive
+    - misspell
+    - unconvert
+    - prealloc
+    - copyloopvar
+    - bodyclose
+    - noctx
+    - sqlclosecheck
+    - rowserrcheck
 
 linters-settings:
-  gofmt:
-    simplify: true
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
   goimports:
     local-prefixes: etf-insight
+
   govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0.8
+    enable-all: true
+
   gocyclo:
     min-complexity: 15
-  maligned:
-    suggest-new: true
+
   dupl:
     threshold: 100
+
   goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
+    min-len: 3
+    min-occurrences: 3
+
   gocritic:
     enabled-tags:
       - diagnostic
@@ -31,110 +69,66 @@ linters-settings:
       - performance
       - style
     disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - dupImport
       - ifElseChain
       - octalLiteral
       - whyNoLint
       - wrapperFunc
-  funlen:
-    lines: 100
-    statements: 50
 
-linters:
-  disable-all: true
-  enable:
-    - gofmt
-    - goimports
-    - govet
-    - ineffassign
-    - typecheck
-    - unused
-    - deadcode
-    - varcheck
-    - structcheck
-    - errcheck
-    - gosimple
-    - staticcheck
-    - gosec
-    - bodyclose
-    - noctx
-    - contextcheck
-    - durationcheck
-    - errname
-    - errorlint
-    - forbidigo
-    - gocognit
-    - goconst
-    - gocyclo
-    - godot
-    - goerr113
-    - gofmt
-    - goheader
-    - goimports
-    - golint
-    - gomodguard
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - importas
-    - ineffassign
-    - interfacer
-    - lll
-    - misspell
-    - nakedret
-    - nestif
-    - nilerr
-    - nlreturn
-    - noctx
-    - nolintlint
-    - prealloc
-    - predeclared
-    - promlinter
-    - revive
-    - rowserrcheck
-    - sqlclosecheck
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - tagliatelle
-    - testpackage
-    - thelper
-    - tparallel
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    - whitespace
-    - wrapcheck
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  misspell:
+    locale: US
 
 issues:
-  exclude-use-default: false
-  exclude:
-    - '^could not import'
   exclude-rules:
     - path: _test\.go
       linters:
-        - gosec
-        - funlen
+        - dupl
         - gocyclo
-    - text: "G104: Errors unhandled."
-      linters:
         - gosec
-    - text: "G307: Deferring unsafe method"
+
+    - path: main\.go
       linters:
-        - gosec
+        - gocyclo
+
+    - linters:
+        - revive
+      text: "exported:"
+
+    - linters:
+        - typecheck
+      text: "undefined:"
 
   max-issues-per-linter: 0
   max-same-issues: 0
+  new: false
 
-run:
-  timeout: 5m
-  go: "1.24"
-  skip-dirs:
-    - vendor$
-    - testdata$
-  skip-files:
-    - "\\.min\\.go$"
-    - "^zz_"
+severity:
+  default-severity: error
+  case-sensitive: false

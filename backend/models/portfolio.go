@@ -59,11 +59,11 @@ type Portfolio struct {
 	CashBalance    decimal.Decimal `json:"cash_balance" gorm:"type:decimal(15,2)"`    // 现金余额
 
 	// 再平衡配置
-	RebalanceStrategy  RebalanceStrategy `json:"rebalance_strategy" gorm:"size:20"`                    // 再平衡策略
-	RebalanceFrequency string            `json:"rebalance_frequency,omitempty" gorm:"size:20"`         // 再平衡频率：monthly/quarterly/yearly
-	ThresholdPercent   decimal.Decimal   `json:"threshold_percent,omitempty" gorm:"type:decimal(5,2)"` // 再平衡阈值百分比
-	LastRebalance      time.Time         `json:"last_rebalance,omitempty"`                             // 上次再平衡时间
-	NextRebalance      time.Time         `json:"next_rebalance,omitempty"`                             // 下次再平衡时间
+	RebalanceStrategy  RebalanceStrategy `json:"rebalance_strategy" gorm:"size:20"`            // 再平衡策略
+	RebalanceFrequency string            `json:"rebalance_frequency,omitempty" gorm:"size:20"` // 再平衡频率：monthly/quarterly/yearly
+	ThresholdPercent   decimal.Decimal   `json:"threshold_percent" gorm:"type:decimal(5,2)"`   // 再平衡阈值百分比
+	LastRebalance      time.Time         `json:"last_rebalance"`                               // 上次再平衡时间
+	NextRebalance      time.Time         `json:"next_rebalance"`                               // 下次再平衡时间
 
 	// 目标配置
 	TargetAllocation string `json:"target_allocation,omitempty" gorm:"type:json"` // 目标配置（JSON格式）
@@ -71,13 +71,13 @@ type Portfolio struct {
 	TimeHorizon      string `json:"time_horizon,omitempty" gorm:"size:20"`        // 投资期限：short/medium/long
 
 	// 表现指标（缓存）
-	TotalReturn  decimal.Decimal `json:"total_return,omitempty" gorm:"type:decimal(10,6)"`  // 总收益率
-	AnnualReturn decimal.Decimal `json:"annual_return,omitempty" gorm:"type:decimal(10,6)"` // 年化收益率
-	Volatility   decimal.Decimal `json:"volatility,omitempty" gorm:"type:decimal(10,6)"`    // 波动率
-	SharpeRatio  decimal.Decimal `json:"sharpe_ratio,omitempty" gorm:"type:decimal(10,6)"`  // 夏普比率
-	MaxDrawdown  decimal.Decimal `json:"max_drawdown,omitempty" gorm:"type:decimal(10,6)"`  // 最大回撤
-	Alpha        decimal.Decimal `json:"alpha,omitempty" gorm:"type:decimal(10,6)"`         // Alpha值
-	Beta         decimal.Decimal `json:"beta,omitempty" gorm:"type:decimal(10,6)"`          // Beta值
+	TotalReturn  decimal.Decimal `json:"total_return" gorm:"type:decimal(10,6)"`  // 总收益率
+	AnnualReturn decimal.Decimal `json:"annual_return" gorm:"type:decimal(10,6)"` // 年化收益率
+	Volatility   decimal.Decimal `json:"volatility" gorm:"type:decimal(10,6)"`    // 波动率
+	SharpeRatio  decimal.Decimal `json:"sharpe_ratio" gorm:"type:decimal(10,6)"`  // 夏普比率
+	MaxDrawdown  decimal.Decimal `json:"max_drawdown" gorm:"type:decimal(10,6)"`  // 最大回撤
+	Alpha        decimal.Decimal `json:"alpha" gorm:"type:decimal(10,6)"`         // Alpha值
+	Beta         decimal.Decimal `json:"beta" gorm:"type:decimal(10,6)"`          // Beta值
 
 	// 更新时间
 	LastCalculated time.Time `json:"last_calculated"` // 最后计算时间
@@ -111,14 +111,14 @@ type PortfolioPosition struct {
 	Weight      decimal.Decimal `json:"weight" gorm:"type:decimal(5,2)"`        // 权重百分比
 
 	// 目标配置
-	TargetWeight decimal.Decimal `json:"target_weight,omitempty" gorm:"type:decimal(5,2)"` // 目标权重
-	MinWeight    decimal.Decimal `json:"min_weight,omitempty" gorm:"type:decimal(5,2)"`    // 最小权重
-	MaxWeight    decimal.Decimal `json:"max_weight,omitempty" gorm:"type:decimal(5,2)"`    // 最大权重
+	TargetWeight decimal.Decimal `json:"target_weight" gorm:"type:decimal(5,2)"` // 目标权重
+	MinWeight    decimal.Decimal `json:"min_weight" gorm:"type:decimal(5,2)"`    // 最小权重
+	MaxWeight    decimal.Decimal `json:"max_weight" gorm:"type:decimal(5,2)"`    // 最大权重
 
 	// 交易信息
-	FirstPurchase time.Time `json:"first_purchase"`      // 首次购买日期
-	LastPurchase  time.Time `json:"last_purchase"`       // 最后购买日期
-	LastSale      time.Time `json:"last_sale,omitempty"` // 最后卖出日期
+	FirstPurchase time.Time `json:"first_purchase"` // 首次购买日期
+	LastPurchase  time.Time `json:"last_purchase"`  // 最后购买日期
+	LastSale      time.Time `json:"last_sale"`      // 最后卖出日期
 
 	// 表现指标
 	UnrealizedGain decimal.Decimal `json:"unrealized_gain" gorm:"type:decimal(15,2)"` // 未实现收益
@@ -134,8 +134,8 @@ type PortfolioPosition struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// 关联
-	Portfolio Portfolio `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
-	Asset     Asset     `json:"asset,omitempty" gorm:"foreignKey:AssetID"`
+	Portfolio Portfolio `json:"portfolio" gorm:"foreignKey:PortfolioID"`
+	Asset     Asset     `json:"asset" gorm:"foreignKey:AssetID"`
 }
 
 // TableName 指定表名
@@ -187,13 +187,13 @@ func (PortfolioPerformance) TableName() string {
 // PortfolioRebalance 再平衡记录
 type PortfolioRebalance struct {
 	ID            uint            `json:"id" gorm:"primaryKey"`
-	PortfolioID   uint            `json:"portfolio_id" gorm:"index"`                      // 组合ID
-	RebalanceDate time.Time       `json:"rebalance_date" gorm:"index"`                    // 再平衡日期
-	Reason        string          `json:"reason" gorm:"size:100"`                         // 再平衡原因：scheduled/threshold/manual
-	PreValue      decimal.Decimal `json:"pre_value" gorm:"type:decimal(15,2)"`            // 再平衡前市值
-	PostValue     decimal.Decimal `json:"post_value" gorm:"type:decimal(15,2)"`           // 再平衡后市值
-	Cost          decimal.Decimal `json:"cost" gorm:"type:decimal(15,2)"`                 // 再平衡成本（交易费用）
-	TaxImpact     decimal.Decimal `json:"tax_impact,omitempty" gorm:"type:decimal(15,2)"` // 税务影响
+	PortfolioID   uint            `json:"portfolio_id" gorm:"index"`            // 组合ID
+	RebalanceDate time.Time       `json:"rebalance_date" gorm:"index"`          // 再平衡日期
+	Reason        string          `json:"reason" gorm:"size:100"`               // 再平衡原因：scheduled/threshold/manual
+	PreValue      decimal.Decimal `json:"pre_value" gorm:"type:decimal(15,2)"`  // 再平衡前市值
+	PostValue     decimal.Decimal `json:"post_value" gorm:"type:decimal(15,2)"` // 再平衡后市值
+	Cost          decimal.Decimal `json:"cost" gorm:"type:decimal(15,2)"`       // 再平衡成本（交易费用）
+	TaxImpact     decimal.Decimal `json:"tax_impact" gorm:"type:decimal(15,2)"` // 税务影响
 
 	// 变更明细（JSON存储）
 	Changes string `json:"changes" gorm:"type:json"` // 持仓变更明细

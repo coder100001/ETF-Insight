@@ -1,391 +1,100 @@
-# ETF-Insight (v2.9.0) 🚀
+# ETF-Insight
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.26-blue)](https://golang.org/)
 [![React Version](https://img.shields.io/badge/React-19.2.4-61DAFB)](https://reactjs.org/)
-[![Test Coverage](https://img.shields.io/badge/coverage-55%25-yellowgreen)](https://github.com/coder100001/ETF-Insight)
 
-**Open-Source Professional ETF Quantitative Analysis Platform**
+**Open-source professional ETF quantitative analysis platform** — for professional investors, quantitative researchers, and financial institutions. Institutional-grade ETF data insights, multi-dimensional quantitative analysis, and portfolio optimization.
 
-ETF-Insight is an open-source ETF analysis platform for professional investors, quantitative researchers, and financial institutions. Built with Go + React stack, providing institutional-grade ETF data insights, multi-dimensional quantitative analysis, and portfolio optimization.
+> Vision: Become the most professional open-source ETF quantitative analysis tool, providing transparent and verifiable analysis capabilities
 
-> 🎯 **Vision**: Become the most professional open-source ETF quantitative analysis tool, providing transparent and verifiable analysis capabilities
+## Core Features
 
-## 📢 Latest Updates
+| Module | Capabilities |
+|--------|-------------|
+| **Portfolio Analysis** | Monte Carlo simulation, scenario analysis, VaR/CVaR, Sharpe/Sortino/Calmar ratios |
+| **Portfolio Optimization** | Markowitz MPT, Risk Parity, Black-Litterman, efficient frontier |
+| **Factor Analysis** | Fama-French 3/5 factor models, attribution analysis |
+| **Backtest Engine** | Event-driven architecture, order system, slippage/commission models, dividend reinvestment |
+| **Technical Indicators** | RSI, MACD, Bollinger Bands, moving averages |
+| **ETF Comparison** | Side-by-side multi-dimensional comparison, holdings overlap analysis |
+| **Holdings Penetration** | Underlying asset details, sector/region/market cap distribution, concentration metrics |
+| **QuantLib Integration** | Options pricing, yield curves, bond pricing, VaR calculation |
+| **AI Agents** | 4 financial agents (Buffett/Graham/Bridgewater/Macro), team debate mode |
+| **Data Sources** | Finage (ETF), AKShare/TuShare (A-Share), multi-source exchange rate failover |
 
-**v2.6 Data Layer Refactoring & Penetration Analysis**:
-- ✅ **Unified Asset Model**: Asset base table supports stock/ETF/index and other asset types
-- ✅ **ETF Holdings Penetration**: Underlying holdings details query, weight analysis
-- ✅ **Overlap Calculation**: Two ETF holdings overlap analysis (minimum weight method)
-- ✅ **Portfolio Penetration Analysis**: Portfolio underlying asset sector/geographic distribution
-- ✅ **Concentration Metrics**: Top10/Top20 weight, Herfindahl Index, effective holdings count
-- ✅ **Smart Caching**: Overlap calculation result caching (7-day TTL), auto-invalidation
-- ✅ **Event-Driven**: Holdings update auto-triggers cache invalidation
-- ✅ **Test Coverage**: portfolio 84.9%, event 73.2%
+## Tech Stack
 
-**v2.6.1 Frontend-Backend API Consistency Fix** (2026-04-25):
-- ✅ **API Parameter Optimization**: MPT/Efficient Frontier Returns/CovMatrix now optional, auto-calculated from historical data
-- ✅ **Field Name Alignment**: Frontend/backend response fields fully consistent (weights/volatility/target_return etc.)
-- ✅ **Efficient Frontier Chart Fix**: Dynamic axis, formatted display, margin optimization
-- ✅ **Documentation Cleanup**: Removed all JWT/login-related residual descriptions
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Go 1.26, Gin, GORM (SQLite/PostgreSQL) |
+| **Frontend** | React 19, TypeScript, Vite, Ant Design, ECharts |
+| **Microservices** | Python FastAPI (AI Agent port 8091, Data port 8092, Analytics port 8093) |
+| **Data Sources** | Finage API, Open Exchange Rates, AKShare |
 
-**v2.8 FinceptTerminal QuantLib Integration** (2026-05-04):
-- ✅ **QuantLib Cloud API**: Direct integration with `api.fincept.in/quantlib/` cloud service
-  - Options pricing: European/American Black-Scholes, full Greeks (Delta/Gamma/Theta/Vega/Rho)
-  - Yield curves: Construction and visualization, multi-currency (USD/EUR/CNY/GBP/JPY)
-  - Bond pricing: Fixed income analysis, duration, modified duration, convexity
-  - VaR calculation: QuantLib engine-driven historical simulation/parametric methods
-  - Reference data: 1-hour TTL cache (currencies/frequencies/calendars/daycount)
-- ✅ **Frontend QuantLib Analysis Page**: `QuantLibAnalysis.tsx` - 4 Tabs (Options/Bonds/Yield Curve/VaR)
-- ✅ **Code Review**: 2 rounds, 10 issues fixed (P0×3, P1×4, P2×3)
-
-**v2.9 AI Agent Microservice** (2026-05-05):
-- ✅ **Agent Framework from Scratch**: Zero AGPL risk, fully independent implementation
-  - Multi-LLM support: OpenAI/Ollama/DeepSeek via `get_provider()` factory
-  - Abstract base agent + tool registry + agent manager
-- ✅ **4 Financial Agents**: Warren Buffett, Benjamin Graham, Bridgewater, Macroeconomic Analyst
-- ✅ **FastAPI Service** (port 8091): discover/run/stream/team endpoints
-- ✅ **Go Backend Integration**: `/api/agents/*` proxy routes
-- ✅ **Frontend Page**: `AIAgents.tsx` - Single agent analysis + multi-agent team debate
-- ✅ **Test Coverage**: 19 Python unit tests all passing
-
-**v2.5 Real-time Data & Quantitative Analysis Upgrade**:
-- ✅ **Real-time Data Acquisition**: Finage API integration, 3-year historical data sync (~388 days)
-- ✅ **Portfolio Scenario Analysis**: Monte Carlo simulation (1000 runs), three market scenarios (optimistic/neutral/pessimistic), VaR/CVaR risk metrics
-- ✅ **Dynamic ETF Selection**: Portfolio Analysis page supports fetching ETF list from API, displaying real-time prices
-- ✅ **Flexible Weight Configuration**: Support adding/removing ETFs, real-time weight validation
-- ✅ **Financial Calculation Formulas**: Standard financial formulas for portfolio metrics using real historical data
-  - Portfolio Variance: $\sigma_p^2 = \sum_i w_i^2 \sigma_i^2 + 2 \sum_{i<j} w_i w_j \sigma_i \sigma_j \rho_{ij}$
-  - Portfolio Maximum Drawdown: Calculated based on NAV series, not simple weighted
-- ✅ **New Risk-Adjusted Metrics**: Sortino Ratio (downside risk), Calmar Ratio (return/drawdown)
-- ✅ **Rolling Window Metrics**: 30/60/90/180/252-day dynamic windows, including win rate, profit/loss ratio
-- ✅ **Statistical Metrics**: Skewness, kurtosis analysis of return distribution characteristics
-- ✅ **Improved Dividend Reinvestment**: Quarterly/monthly reinvestment models, more accurate compound interest calculation
-- ✅ **Default Portfolio Templates**: 6 preset portfolios (conservative/balanced/aggressive/income/dividend growth/tech focused)
-- ✅ **Technical Indicators Library**: RSI, MACD, Bollinger Bands, Moving Averages
-- ✅ **Risk Models**: VaR/CVaR (historical/parametric methods), portfolio risk analysis
-- ✅ **Risk Metrics**: Sharpe Ratio, Sortino Ratio, Maximum Drawdown, Beta/Alpha
-- ✅ **Frontend Analysis Pages**: Portfolio scenario analysis, technical analysis (radar chart), risk analysis (VaR visualization)
-- ✅ **Test Coverage**: middleware 68.8%, utils 81.2%
-- ✅ **CI/CD**: Coverage detection, Codecov integration
-
-**v2.5 Quantitative Engine Enhancement**:
-- ✅ **Backtest Engine**: Event-driven architecture, complete order system, slippage/commission models
-- ✅ **Portfolio Optimization Enhancement**: Markowitz MPT, Risk Parity, Black-Litterman three models
-- ✅ **Factor Analysis Module**: Fama-French 3-factor/5-factor models, attribution analysis
-- ✅ **A-Share Data Source**: AKShare/TuShare integration, real-time market data sync
-- ✅ **Cross-Asset Coverage**: Equity/Bond/Commodity/REIT/Currency/Multi-Asset full coverage
-
-**v2.4 API Documentation & Infrastructure Upgrade**:
-- ✅ **Audit Logging**: Asynchronous writing, automatic sensitive information masking, Request ID tracking
-- ✅ **Data Validation**: Generic validation middleware, supporting string/number/email types
-- ✅ **API Pagination**: Generic pagination response structure, supporting page/pageSize parameters
-- ✅ **Rate Limiting**: IP-level request frequency limiting
-- ✅ **Stock Symbol Validation**: Preventing illegal character injection
-- ✅ **Swagger API Documentation**: OpenAPI 3.0 specification, interactive API testing
-
-> **📚 For Developers**: This project uses **AGENTS.md** as the core context document, containing architecture design, data models, coding rules, and other critical information.
->
-> 👉 [View AGENTS.md](./AGENTS.md) | 👉 [中文 README](./README.md)
-
----
-
-## 🎯 Product Positioning
-
-ETF-Insight aims to become a powerful ETF analysis tool for professional investors and institutional users:
-
-- **ETF Comparison Analysis** - Side-by-side multi-dimensional comparison to discover optimal investment targets
-- **Holdings Deep Decomposition** - Penetrate underlying assets to understand real risk exposure
-- **Risk Indicator Assessment** - Professional metrics including volatility, Sharpe ratio, maximum drawdown, Beta
-- **Portfolio Optimization** - Build optimal asset allocation based on Modern Portfolio Theory
-
----
-
-## ✨ Core Features
-
-### 📊 ETF Comparison Analysis
-- **Side-by-Side Comparison** - Support up to 5 ETFs simultaneously
-- **Multi-Dimensional Metrics** - Expense ratio, AUM, dividend yield, performance, risk indicators
-- **Smart Dividend Yield** - Automatically set reasonable dividend yields based on ETF type (High Dividend 3.5%, Covered Call 7%, Bonds 4%)
-- **Holdings Overlap Analysis** - Identify holdings overlap between ETFs to avoid over-concentration
-- **Performance Backtest Comparison** - Compare returns across different time periods
-
-### 🔍 Holdings Deep Decomposition
-- **Top 10 Holdings** - Penetrate underlying assets to understand core holdings
-- **Sector Distribution** - Sector weight distribution and trend analysis
-- **Regional Distribution** - Country/region allocation ratios
-- **Market Cap Distribution** - Large/mid/small-cap allocation ratios
-- **Style Analysis** - Value/growth style exposure
-
-### 💼 A-Share Dividend ETF Portfolio
-- **A-Share ETF Management** - Support mainstream dividend ETFs like CSI Dividend, Dividend Low Volatility
-- **Investment Allocation Distribution** - Pie chart visualization of portfolio allocation
-- **Dividend Data Tracking** - Key indicators including dividend yield and dividend frequency
-
-### 💱 Exchange Rate Data Management
-- **Real-Time Exchange Rates** - Major currency pairs like USD/CNY, USD/HKD
-- **Multi-Data Source Support** - Open Exchange Rates, CurrencyAPI, Frankfurter three data sources
-- **Automatic Failover** - Automatic switch to backup data sources when primary is unavailable
-- **Health Monitoring** - Real-time monitoring of data source availability
-- **Automatic Synchronization** - Scheduled tasks automatically update exchange rate data (every 5 minutes)
-- **Currency Conversion** - Support for conversion between multiple currencies
-- **Sync Logging** - Complete exchange rate synchronization batch records and detailed tracking
-
-### 🔄 Backtest Engine (v2.5 New)
-- **Event-Driven Architecture** - High-performance backtest engine based on event bus
-- **Order System** - Full support for market/limit/stop-loss/take-profit orders
-- **Slippage Models** - Fixed slippage/percentage slippage/volatility slippage
-- **Commission Models** - Fixed rate/tiered rate
-- **Dividend Reinvestment** - Support automatic dividend reinvestment
-- **Rebalancing Strategy** - Periodic rebalancing and threshold rebalancing
-- **Backtest Analysis** - Return metrics, risk metrics, trade statistics
-
-### 🎯 Portfolio Optimization (v2.5 Enhanced)
-- **Markowitz MPT** - Mean-variance optimization, efficient frontier calculation
-- **Risk Parity** - Equal Risk Contribution (ERC), inverse volatility weighting
-- **Black-Litterman** - Bayesian view blending, posterior return distribution
-- **Weight Constraints** - Support single asset upper/lower bound constraints
-- **Optimization Objectives** - Max Sharpe/Min Volatility/Target Return
-
-### 📈 Factor Analysis (v2.5 New)
-- **Fama-French Models** - 3-factor/5-factor model support
-- **Factor Exposure** - Portfolio exposure analysis on each factor
-- **Attribution Analysis** - Return attribution, risk attribution decomposition
-- **Active Return Analysis** - Alpha decomposition, excess return sources
-
-### 🌏 A-Share ETF Data Source (v2.5 New)
-- **AKShare Integration** - Python AKShare service, real-time A-share ETF data
-- **TuShare Support** - Alternative data source, fund NAV data
-- **Data Synchronization** - ETF list, prices, historical K-line automatic sync
-- **Dividend Tracking** - Dividend yield calculation, dividend frequency statistics
-
-### 🌍 Cross-Asset ETF (v2.5 New)
-- **Full Asset Class Coverage** - Equity/Bond/Commodity/REIT/Currency/Multi-Asset/Alternative
-- **Global Region Coverage** - US/China/Europe/Japan/Emerging/Asia-Pacific/Latin America
-- **Rich ETF Types** - Index/Sector/Factor/Thematic/Active/Leveraged/Inverse
-- **Multi-Dimensional Filtering** - Asset class/region/type/sector/expense ratio
-- **Portfolio Allocation Suggestions** - Conservative/Balanced/Aggressive/Dividend strategy templates
-
-### 🔬 QuantLib Quantitative Analysis (v2.8)
-- **Options Pricing** - European/American Black-Scholes with full Greeks
-- **Yield Curves** - Construction and visualization, multi-currency support
-- **Bond Pricing** - Fixed income analysis with duration/convexity
-- **VaR Calculation** - QuantLib engine-driven historical/parametric VaR
-- **Interactive Analysis** - 4-tab professional analysis interface
-
-### 🤖 AI Agent Microservice (v2.9)
-- **Legendary Investors** - Warren Buffett (value investing), Benjamin Graham (defensive investing)
-- **Hedge Fund Perspective** - Bridgewater Associates (macro risk parity)
-- **Macro Economic Analysis** - Top-down macroeconomic analysis
-- **Multi-Agent Team Debate** - 2-5 agents analyze simultaneously, synthesize views
-- **Multi-LLM Models** - Supports OpenAI/Ollama/DeepSeek
-- **Go Backend Proxy** - `/api/agents/*` route forwarding
-
-### ⚙️ ETF Configuration Management
-- **CRUD Operations** - Create, read, update, delete ETF configuration information
-- **Status Management** - Enable/disable automatic ETF data updates
-- **Data Source Configuration** - **Finage as the only real data source** (v2.0 architecture)
-
-### 📈 Portfolio Configuration
-- **Portfolio Construction** - Custom investment portfolios and weight allocation
-- **Return Analysis** - Portfolio return simulation based on historical data
-- **Capital Gain Calculation** - Calculate capital gains and returns based on real historical data
-- **Preset Portfolios** - Built-in various investment strategy portfolio templates
-
----
-
-## 🛠️ Technology Stack
-
-### Backend (Go)
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Go | >= 1.21 | Core language |
-| Gin | v1.9.1 | Web framework |
-| GORM | v1.30.0 | ORM framework (SQLite/PostgreSQL) |
-| go-cache | v2.1.0 | In-memory caching |
-| cron/v3 | v3.0.1 | Scheduled task scheduling |
-
-### Frontend (React)
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | ^19.2.4 | UI framework |
-| TypeScript | ^5.x | Type safety |
-| Vite | latest | Build tool |
-| Ant Design | ^6.3.4 | UI component library |
-| ECharts | ^6.0.0 | Data visualization |
-| Recharts | ^3.8.1 | Chart components |
-| React Router | ^7.13.2 | Routing management |
-
-### Data Storage
-- **SQLite** - Default local database (development environment)
-- **PostgreSQL** - Production database support
-
----
-
-## 🚀 Quick Start
-
-### Method 1: One-Click Startup (Recommended)
+## Quick Start
 
 ```bash
-# Clone the project
 git clone <repository-url>
 cd py_project
 
-# One-click startup (macOS/Linux)
-./start.sh
-
-# One-click startup (Windows)
-start.bat
+# One-click startup
+./start.sh        # macOS/Linux
+start.bat         # Windows
 ```
 
-### Method 2: Manual Startup
+**Manual startup:**
 
-#### 1. Backend Service Startup
 ```bash
-cd backend
+# Backend
+cd backend && go mod tidy && go run main.go
 
-# Install dependencies
-go mod tidy
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env file, configure Finage API Key
-
-# Start backend service
-go run main.go
+# Frontend
+cd frontend && npm install && npm run dev
 ```
 
-#### 2. Frontend Service Startup
-```bash
-cd frontend
+**Requirements:** Go >= 1.26, Node.js >= 18, SQLite 3.35+
 
-# Install dependencies
-npm install
+**Data source config:** Set `FINAGE_API_KEY` environment variable (see [.env.example](./backend/.env.example))
 
-# Start frontend service
-npm run dev
+## Project Structure
+
+```
+py_project/
+├── backend/              # Go backend service
+├── frontend/             # React frontend application
+├── services/
+│   ├── agent/            # AI Agent microservice (port 8091)
+│   ├── data/             # Data source microservice (port 8092)
+│   └── analytics/        # Analytics microservice (port 8093)
+├── tools/doccheck/       # Documentation consistency checker
+├── AGENTS.md             # Project core context document
+└── CHANGELOG.md          # Version changelog
 ```
 
-### Environment Requirements
-- **Go**: >= 1.21
-- **Node.js**: >= 18.0.0
-- **npm**: >= 9.0.0
-- **SQLite**: 3.35.0+
+## Documentation Index
 
----
+| Document | Description |
+|----------|-------------|
+| [AGENTS.md](./AGENTS.md) | Architecture, data models, coding standards, financial algorithms (**required reading**) |
+| [CHANGELOG.md](./CHANGELOG.md) | Version change history |
+| [README.md](./README.md) | 中文文档 |
+| [docs/roadmap/](./docs/roadmap/) | Evolution roadmap |
+| [docs/security/](./docs/security/) | Security audit and improvements |
+| [docs/reviews/](./docs/reviews/) | Code review reports |
+| [docs/development/](./docs/development/) | Development implementation docs |
+| [design-docs/](./design-docs/) | Design documents |
+| API Docs | `http://localhost:8080/swagger` (interactive) |
 
-## 📊 Data Source Configuration
+## Contributing
 
-### ETF Data Source
-- **Primary Data Source**: Finage API (must be configured)
-- **Environment Variable**: `FINAGE_API_KEY=your_api_key_here`
-
-### Exchange Rate Data Sources
-- **Primary Data Source**: Open Exchange Rates
-- **Backup Data Sources**: CurrencyAPI, Frankfurter
-- **Failover**: Automatic switching, no manual configuration required
-
----
-
-## 🔧 Development Guide
-
-### Code Standards
-- **Go**: Follow official code standards, use `gofmt` for formatting
-- **TypeScript**: Strict type checking, disable `any` type
-- **React**: Functional components, proper Hooks usage
-
-### Project Structure
-```
-ETF-Insight/
-├── backend/          # Go backend service
-├── frontend/         # React frontend application
-├── services/agent/   # Python AI Agent Microservice (port 8091)
-├── AGENTS.md         # Project core context document
-├── README.md         # Chinese documentation
-└── README_EN.md      # English documentation
-```
-
-### Core Documentation
-- **[AGENTS.md](./AGENTS.md)** - Project architecture, data models, development standards
-- **[docs/openapi.yaml](./docs/openapi.yaml)** - API interface documentation
-
----
-
-## 🎯 Evolution Roadmap
-
-### v2.4 ✅
-- ✅ Audit logging and data validation
-- ✅ Swagger/OpenAPI 3.0 API documentation
-- ✅ Code quality optimization
-
-### v2.5 ✅
-- ✅ Test coverage improvement to 80%
-- ✅ Technical indicators library (RSI/MACD/Bollinger Bands)
-- ✅ Risk models (VaR/CVaR)
-- ✅ Financial calculation optimization (portfolio variance, max drawdown fix)
-- ✅ New risk-adjusted metrics (Sortino Ratio, Calmar Ratio)
-- ✅ Rolling window metrics (30/60/90/180/252-day)
-- ✅ Statistical metrics (skewness, kurtosis)
-- ✅ Improved dividend reinvestment model (quarterly/monthly)
-
-### v2.6 (Completed) ✅
-- ✅ Unified Asset Model (Asset base table supports multiple asset types)
-- ✅ ETF Holdings Penetration (underlying holdings details, weight analysis)
-- ✅ Overlap Calculation (minimum weight method)
-- ✅ Portfolio Penetration Analysis (sector/geographic distribution)
-- ✅ Concentration Metrics (Top10/Top20, Herfindahl Index)
-- ✅ Smart Caching & event-driven invalidation
-
-### v2.7-2.8 ✅
-- ✅ QuantLib Cloud API Integration (Options/Bonds/Yield Curve/VaR)
-- ✅ QuantLib Frontend Analysis Page (4-tab interactive interface)
-- ✅ Code Review & Quality Assurance (2 rounds of review)
-- ✅ AI Agent Microservice (Python FastAPI, port 8091)
-- ✅ Multi-LLM Support (OpenAI/Ollama/DeepSeek)
-- ✅ 4 Financial Agents (Buffett/Graham/Bridgewater/Macro)
-- 📋 More Agents (Geopolitics/Technical Analysis/Hedge Funds)
-- 📋 Data Source Microservice (60+ data sources)
-
-### v3.0 (6-12 months) 🚀
-- 🚀 Plugin system architecture
-- 🚀 Open-source ecosystem
-- 🚀 Academic collaboration support
-
----
-
-## 📞 Technical Support
-
-### Common Issues
-1. **Data source connection failure**: Check network connection and API Key configuration
-2. **Exchange rate data inconsistency**: System automatically fails over, check logs to confirm current data source
-3. **Performance issues**: Enable Redis cache to improve performance
-
-### Log Viewing
-```bash
-# View backend logs
-tail -f backend/logs/app.log
-
-# View exchange rate sync logs
-tail -f backend/logs/exchange_rate.log
-```
-
----
-
-## 🤝 Contribution Guidelines
-
-Welcome to submit Issues and Pull Requests! Please ensure:
-1. Follow project code standards
-2. New features include unit tests
+Welcome to Issues and Pull Requests. Please ensure:
+1. Follow code standards (Go: `gofmt`, TypeScript: strict types)
+2. New features include unit tests (coverage >= 80%)
 3. Update relevant documentation
-4. Pass code review
 
----
+See [AGENTS.md Contributing Guide](./AGENTS.md#-贡献指南).
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License.
-
----
-
-**Experience Now**: [http://localhost:8080](http://localhost:8080)
-**API Documentation**: [http://localhost:8080/docs](http://localhost:8080/docs)
+[MIT](./LICENSE)

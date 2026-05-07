@@ -207,7 +207,7 @@ const PortfolioConfigPage: React.FC = () => {
       const allocation: Record<string, number> = {};
       if (values.etfs && values.etfs.length > 0) {
         const weight = 100 / values.etfs.length;
-        values.etfs.forEach(etf => {
+        values.etfs.forEach((etf: string) => {
           allocation[etf] = weight;
         });
       }

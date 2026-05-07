@@ -461,7 +461,7 @@ func calculateBeta(assetReturns []decimal.Decimal, marketReturns []decimal.Decim
 	covariance := decimal.Zero
 	marketVariance := decimal.Zero
 
-	for i := 0; i < len(assetReturns); i++ {
+	for i := range assetReturns {
 		assetDiff := assetReturns[i].Sub(assetMean)
 		marketDiff := marketReturns[i].Sub(marketMean)
 

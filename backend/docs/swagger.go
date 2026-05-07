@@ -1,39 +1,39 @@
 package docs
 
 // SwaggerSpec 返回 Swagger JSON 规范
-func SwaggerSpec() map[string]interface{} {
-	return map[string]interface{}{
+func SwaggerSpec() map[string]any {
+	return map[string]any{
 		"openapi": "3.0.0",
-		"info": map[string]interface{}{
+		"info": map[string]any{
 			"title":       "ETF-Insight API",
 			"description": "开源专业的 ETF 量化分析平台 API 文档。提供ETF数据查询、投资组合分析、量化指标计算等功能。",
 			"version":     "2.6.0",
-			"contact": map[string]interface{}{
+			"contact": map[string]any{
 				"name":  "ETF-Insight Team",
 				"url":   "https://github.com/coder100001/ETF-Insight",
 				"email": "support@etf-insight.com",
 			},
-			"license": map[string]interface{}{
+			"license": map[string]any{
 				"name": "MIT",
 				"url":  "https://opensource.org/licenses/MIT",
 			},
 		},
-		"servers": []map[string]interface{}{
+		"servers": []map[string]any{
 			{
 				"url":         "http://localhost:8080",
 				"description": "本地开发服务器",
 			},
 		},
 		"paths": getPaths(),
-		"components": map[string]interface{}{
+		"components": map[string]any{
 			"schemas": getSchemas(),
 		},
 	}
 }
 
 // getPaths 返回所有 API 路径定义
-func getPaths() map[string]interface{} {
-	return map[string]interface{}{
+func getPaths() map[string]any {
+	return map[string]any{
 		"/api/etf/list":                     getETFListPath(),
 		"/api/etf/detail/{symbol}":          getETFDetailPath(),
 		"/api/etf/history/{symbol}":         getETFHistoryPath(),
@@ -54,32 +54,32 @@ func getPaths() map[string]interface{} {
 }
 
 // getETFListPath 获取 ETF 列表
-func getETFListPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getETFListPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"ETF"},
 			"summary":     "获取ETF列表",
 			"description": "获取ETF列表，支持分页",
-			"parameters": []map[string]interface{}{
+			"parameters": []map[string]any{
 				{
 					"name":        "page",
 					"in":          "query",
 					"description": "页码",
-					"schema":      map[string]interface{}{"type": "integer", "default": 1},
+					"schema":      map[string]any{"type": "integer", "default": 1},
 				},
 				{
 					"name":        "pageSize",
 					"in":          "query",
 					"description": "每页数量",
-					"schema":      map[string]interface{}{"type": "integer", "default": 10, "maximum": 100},
+					"schema":      map[string]any{"type": "integer", "default": 10, "maximum": 100},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/PaginatedETFListResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/PaginatedETFListResponse"},
 						},
 					},
 				},
@@ -90,27 +90,27 @@ func getETFListPath() map[string]interface{} {
 }
 
 // getETFDetailPath 获取 ETF 详情
-func getETFDetailPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getETFDetailPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"ETF"},
 			"summary":     "获取ETF详情",
 			"description": "获取指定ETF的详细信息",
-			"parameters": []map[string]interface{}{
+			"parameters": []map[string]any{
 				{
 					"name":        "symbol",
 					"in":          "path",
 					"required":    true,
 					"description": "ETF代码",
-					"schema":      map[string]interface{}{"type": "string"},
+					"schema":      map[string]any{"type": "string"},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ETFDetailResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ETFDetailResponse"},
 						},
 					},
 				},
@@ -123,39 +123,39 @@ func getETFDetailPath() map[string]interface{} {
 }
 
 // getETFHistoryPath 获取 ETF 历史数据
-func getETFHistoryPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getETFHistoryPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"ETF"},
 			"summary":     "获取ETF历史数据",
 			"description": "获取ETF历史价格数据",
-			"parameters": []map[string]interface{}{
+			"parameters": []map[string]any{
 				{
 					"name":        "symbol",
 					"in":          "path",
 					"required":    true,
 					"description": "ETF代码",
-					"schema":      map[string]interface{}{"type": "string"},
+					"schema":      map[string]any{"type": "string"},
 				},
 				{
 					"name":        "start",
 					"in":          "query",
 					"description": "开始日期 (YYYY-MM-DD)",
-					"schema":      map[string]interface{}{"type": "string"},
+					"schema":      map[string]any{"type": "string"},
 				},
 				{
 					"name":        "end",
 					"in":          "query",
 					"description": "结束日期 (YYYY-MM-DD)",
-					"schema":      map[string]interface{}{"type": "string"},
+					"schema":      map[string]any{"type": "string"},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ETFHistoryResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ETFHistoryResponse"},
 						},
 					},
 				},
@@ -167,26 +167,26 @@ func getETFHistoryPath() map[string]interface{} {
 }
 
 // getETFComparePath ETF 对比分析
-func getETFComparePath() map[string]interface{} {
-	return map[string]interface{}{
-		"post": map[string]interface{}{
+func getETFComparePath() map[string]any {
+	return map[string]any{
+		"post": map[string]any{
 			"tags":        []string{"ETF"},
 			"summary":     "ETF对比分析",
 			"description": "对比多个ETF的关键指标",
-			"requestBody": map[string]interface{}{
+			"requestBody": map[string]any{
 				"required": true,
-				"content": map[string]interface{}{
-					"application/json": map[string]interface{}{
-						"schema": map[string]interface{}{"$ref": "#/components/schemas/ETFCompareRequest"},
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/ETFCompareRequest"},
 					},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ETFCompareResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ETFCompareResponse"},
 						},
 					},
 				},
@@ -198,26 +198,26 @@ func getETFComparePath() map[string]interface{} {
 }
 
 // getPortfolioAnalysisPath 投资组合分析
-func getPortfolioAnalysisPath() map[string]interface{} {
-	return map[string]interface{}{
-		"post": map[string]interface{}{
+func getPortfolioAnalysisPath() map[string]any {
+	return map[string]any{
+		"post": map[string]any{
 			"tags":        []string{"Portfolio"},
 			"summary":     "投资组合分析",
 			"description": "分析投资组合的收益、风险、分红等指标",
-			"requestBody": map[string]interface{}{
+			"requestBody": map[string]any{
 				"required": true,
-				"content": map[string]interface{}{
-					"application/json": map[string]interface{}{
-						"schema": map[string]interface{}{"$ref": "#/components/schemas/PortfolioRequest"},
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/PortfolioRequest"},
 					},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/PortfolioAnalysisResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/PortfolioAnalysisResponse"},
 						},
 					},
 				},
@@ -229,26 +229,26 @@ func getPortfolioAnalysisPath() map[string]interface{} {
 }
 
 // getPortfolioOptimizePath 投资组合优化
-func getPortfolioOptimizePath() map[string]interface{} {
-	return map[string]interface{}{
-		"post": map[string]interface{}{
+func getPortfolioOptimizePath() map[string]any {
+	return map[string]any{
+		"post": map[string]any{
 			"tags":        []string{"Portfolio"},
 			"summary":     "投资组合优化",
 			"description": "使用马科维茨模型优化投资组合权重",
-			"requestBody": map[string]interface{}{
+			"requestBody": map[string]any{
 				"required": true,
-				"content": map[string]interface{}{
-					"application/json": map[string]interface{}{
-						"schema": map[string]interface{}{"$ref": "#/components/schemas/PortfolioOptimizeRequest"},
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/PortfolioOptimizeRequest"},
 					},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/PortfolioOptimizeResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/PortfolioOptimizeResponse"},
 						},
 					},
 				},
@@ -260,26 +260,26 @@ func getPortfolioOptimizePath() map[string]interface{} {
 }
 
 // getEfficientFrontierPath 有效前沿计算
-func getEfficientFrontierPath() map[string]interface{} {
-	return map[string]interface{}{
-		"post": map[string]interface{}{
+func getEfficientFrontierPath() map[string]any {
+	return map[string]any{
+		"post": map[string]any{
 			"tags":        []string{"Portfolio"},
 			"summary":     "有效前沿计算",
 			"description": "生成投资组合的有效前沿数据",
-			"requestBody": map[string]interface{}{
+			"requestBody": map[string]any{
 				"required": true,
-				"content": map[string]interface{}{
-					"application/json": map[string]interface{}{
-						"schema": map[string]interface{}{"$ref": "#/components/schemas/EfficientFrontierRequest"},
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/EfficientFrontierRequest"},
 					},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/EfficientFrontierResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/EfficientFrontierResponse"},
 						},
 					},
 				},
@@ -291,18 +291,18 @@ func getEfficientFrontierPath() map[string]interface{} {
 }
 
 // getAShareETFsPath A股ETF列表
-func getAShareETFsPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getAShareETFsPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"A-Share"},
 			"summary":     "获取A股ETF列表",
 			"description": "获取A股红利ETF列表",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/AShareETFListResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/AShareETFListResponse"},
 						},
 					},
 				},
@@ -313,18 +313,18 @@ func getAShareETFsPath() map[string]interface{} {
 }
 
 // getASharePricesPath A股ETF价格
-func getASharePricesPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getASharePricesPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"A-Share"},
 			"summary":     "获取A股ETF价格",
 			"description": "获取A股ETF实时价格",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ASharePriceResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ASharePriceResponse"},
 						},
 					},
 				},
@@ -335,18 +335,18 @@ func getASharePricesPath() map[string]interface{} {
 }
 
 // getASharePricesRefreshPath 刷新A股ETF价格
-func getASharePricesRefreshPath() map[string]interface{} {
-	return map[string]interface{}{
-		"post": map[string]interface{}{
+func getASharePricesRefreshPath() map[string]any {
+	return map[string]any{
+		"post": map[string]any{
 			"tags":        []string{"A-Share"},
 			"summary":     "刷新A股ETF价格",
 			"description": "手动刷新A股ETF价格数据",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ASharePriceRefreshResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ASharePriceRefreshResponse"},
 						},
 					},
 				},
@@ -357,26 +357,26 @@ func getASharePricesRefreshPath() map[string]interface{} {
 }
 
 // getAShareDividendPath A股分红计算
-func getAShareDividendPath() map[string]interface{} {
-	return map[string]interface{}{
-		"post": map[string]interface{}{
+func getAShareDividendPath() map[string]any {
+	return map[string]any{
+		"post": map[string]any{
 			"tags":        []string{"A-Share"},
 			"summary":     "计算分红收益",
 			"description": "计算A股ETF组合的分红收益",
-			"requestBody": map[string]interface{}{
+			"requestBody": map[string]any{
 				"required": true,
-				"content": map[string]interface{}{
-					"application/json": map[string]interface{}{
-						"schema": map[string]interface{}{"$ref": "#/components/schemas/ASharePortfolioRequest"},
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/ASharePortfolioRequest"},
 					},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/AShareDividendCalculationResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/AShareDividendCalculationResponse"},
 						},
 					},
 				},
@@ -388,18 +388,18 @@ func getAShareDividendPath() map[string]interface{} {
 }
 
 // getExchangeRatesPath 汇率列表
-func getExchangeRatesPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getExchangeRatesPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"Exchange Rate"},
 			"summary":     "获取汇率列表",
 			"description": "获取所有汇率数据",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ExchangeRateListResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ExchangeRateListResponse"},
 						},
 					},
 				},
@@ -410,27 +410,27 @@ func getExchangeRatesPath() map[string]interface{} {
 }
 
 // getExchangeRatePath 单币种汇率
-func getExchangeRatePath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getExchangeRatePath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"Exchange Rate"},
 			"summary":     "获取单币种汇率",
 			"description": "获取指定货币的汇率",
-			"parameters": []map[string]interface{}{
+			"parameters": []map[string]any{
 				{
 					"name":        "currency",
 					"in":          "path",
 					"required":    true,
 					"description": "货币代码 (如: USD, EUR)",
-					"schema":      map[string]interface{}{"type": "string"},
+					"schema":      map[string]any{"type": "string"},
 				},
 			},
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "成功",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ExchangeRateResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ExchangeRateResponse"},
 						},
 					},
 				},
@@ -442,18 +442,18 @@ func getExchangeRatePath() map[string]interface{} {
 }
 
 // getHealthPath 健康检查
-func getHealthPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getHealthPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"Health"},
 			"summary":     "健康检查",
 			"description": "检查服务健康状态",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "服务正常",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/HealthResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/HealthResponse"},
 						},
 					},
 				},
@@ -463,26 +463,26 @@ func getHealthPath() map[string]interface{} {
 }
 
 // getReadyPath 就绪检查
-func getReadyPath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getReadyPath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"Health"},
 			"summary":     "就绪检查",
 			"description": "检查服务是否就绪",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "服务就绪",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ReadyResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ReadyResponse"},
 						},
 					},
 				},
-				"503": map[string]interface{}{
+				"503": map[string]any{
 					"description": "服务未就绪",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/ErrorResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/ErrorResponse"},
 						},
 					},
 				},
@@ -492,18 +492,18 @@ func getReadyPath() map[string]interface{} {
 }
 
 // getLivePath 存活检查
-func getLivePath() map[string]interface{} {
-	return map[string]interface{}{
-		"get": map[string]interface{}{
+func getLivePath() map[string]any {
+	return map[string]any{
+		"get": map[string]any{
 			"tags":        []string{"Health"},
 			"summary":     "存活检查",
 			"description": "检查服务是否存活",
-			"responses": map[string]interface{}{
-				"200": map[string]interface{}{
+			"responses": map[string]any{
+				"200": map[string]any{
 					"description": "服务存活",
-					"content": map[string]interface{}{
-						"application/json": map[string]interface{}{
-							"schema": map[string]interface{}{"$ref": "#/components/schemas/LiveResponse"},
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": map[string]any{"$ref": "#/components/schemas/LiveResponse"},
 						},
 					},
 				},
@@ -513,34 +513,34 @@ func getLivePath() map[string]interface{} {
 }
 
 // Helper functions for responses
-func getBadRequestResponse() map[string]interface{} {
-	return map[string]interface{}{
+func getBadRequestResponse() map[string]any {
+	return map[string]any{
 		"description": "无效的请求",
-		"content": map[string]interface{}{
-			"application/json": map[string]interface{}{
-				"schema": map[string]interface{}{"$ref": "#/components/schemas/ErrorResponse"},
+		"content": map[string]any{
+			"application/json": map[string]any{
+				"schema": map[string]any{"$ref": "#/components/schemas/ErrorResponse"},
 			},
 		},
 	}
 }
 
-func getNotFoundResponse() map[string]interface{} {
-	return map[string]interface{}{
+func getNotFoundResponse() map[string]any {
+	return map[string]any{
 		"description": "资源未找到",
-		"content": map[string]interface{}{
-			"application/json": map[string]interface{}{
-				"schema": map[string]interface{}{"$ref": "#/components/schemas/ErrorResponse"},
+		"content": map[string]any{
+			"application/json": map[string]any{
+				"schema": map[string]any{"$ref": "#/components/schemas/ErrorResponse"},
 			},
 		},
 	}
 }
 
-func getInternalErrorResponse() map[string]interface{} {
-	return map[string]interface{}{
+func getInternalErrorResponse() map[string]any {
+	return map[string]any{
 		"description": "服务器错误",
-		"content": map[string]interface{}{
-			"application/json": map[string]interface{}{
-				"schema": map[string]interface{}{"$ref": "#/components/schemas/ErrorResponse"},
+		"content": map[string]any{
+			"application/json": map[string]any{
+				"schema": map[string]any{"$ref": "#/components/schemas/ErrorResponse"},
 			},
 		},
 	}

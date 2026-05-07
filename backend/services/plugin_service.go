@@ -111,14 +111,14 @@ func (s *PluginService) validatePlugin(plugin *models.PluginRegistry) error {
 	}
 
 	if plugin.InputSchema != "" {
-		var schema map[string]interface{}
+		var schema map[string]any
 		if err := json.Unmarshal([]byte(plugin.InputSchema), &schema); err != nil {
 			return errors.New("invalid input schema JSON")
 		}
 	}
 
 	if plugin.OutputSchema != "" {
-		var schema map[string]interface{}
+		var schema map[string]any
 		if err := json.Unmarshal([]byte(plugin.OutputSchema), &schema); err != nil {
 			return errors.New("invalid output schema JSON")
 		}
@@ -178,7 +178,7 @@ func (s *PluginService) DeleteConfiguration(id uint) error {
 
 func (s *PluginService) validateConfiguration(config *models.PluginConfiguration, plugin *models.PluginRegistry) error {
 	if config.Parameters != "" {
-		var params map[string]interface{}
+		var params map[string]any
 		if err := json.Unmarshal([]byte(config.Parameters), &params); err != nil {
 			return errors.New("invalid parameters JSON")
 		}
@@ -187,7 +187,7 @@ func (s *PluginService) validateConfiguration(config *models.PluginConfiguration
 	return nil
 }
 
-func (s *PluginService) ExecutePlugin(pluginID uint, input interface{}) (*models.PluginExecutionLog, error) {
+func (s *PluginService) ExecutePlugin(pluginID uint, input any) (*models.PluginExecutionLog, error) {
 	plugin, err := s.GetPlugin(pluginID)
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func (s *PluginService) ExecutePlugin(pluginID uint, input interface{}) (*models
 	return log, nil
 }
 
-func (s *PluginService) runPlugin(plugin *models.PluginRegistry, input interface{}) (interface{}, error) {
+func (s *PluginService) runPlugin(plugin *models.PluginRegistry, input any) (any, error) {
 	switch plugin.PluginType {
 	case models.PluginTypeAlphaGenerator:
 		return s.runAlphaGeneratorPlugin(plugin, input)
@@ -246,8 +246,8 @@ func (s *PluginService) runPlugin(plugin *models.PluginRegistry, input interface
 	}
 }
 
-func (s *PluginService) runAlphaGeneratorPlugin(plugin *models.PluginRegistry, input interface{}) (interface{}, error) {
-	return map[string]interface{}{
+func (s *PluginService) runAlphaGeneratorPlugin(plugin *models.PluginRegistry, input any) (any, error) {
+	return map[string]any{
 		"plugin_name": plugin.PluginName,
 		"plugin_type": plugin.PluginType,
 		"result":      "Alpha generator plugin executed successfully",
@@ -255,8 +255,8 @@ func (s *PluginService) runAlphaGeneratorPlugin(plugin *models.PluginRegistry, i
 	}, nil
 }
 
-func (s *PluginService) runPortfolioOptimizerPlugin(plugin *models.PluginRegistry, input interface{}) (interface{}, error) {
-	return map[string]interface{}{
+func (s *PluginService) runPortfolioOptimizerPlugin(plugin *models.PluginRegistry, input any) (any, error) {
+	return map[string]any{
 		"plugin_name": plugin.PluginName,
 		"plugin_type": plugin.PluginType,
 		"result":      "Portfolio optimizer plugin executed successfully",
@@ -264,8 +264,8 @@ func (s *PluginService) runPortfolioOptimizerPlugin(plugin *models.PluginRegistr
 	}, nil
 }
 
-func (s *PluginService) runRiskModelPlugin(plugin *models.PluginRegistry, input interface{}) (interface{}, error) {
-	return map[string]interface{}{
+func (s *PluginService) runRiskModelPlugin(plugin *models.PluginRegistry, input any) (any, error) {
+	return map[string]any{
 		"plugin_name": plugin.PluginName,
 		"plugin_type": plugin.PluginType,
 		"result":      "Risk model plugin executed successfully",
@@ -370,7 +370,7 @@ func (s *PluginService) DeleteExperiment(id uint) error {
 func (s *PluginService) StartExperiment(id uint) error {
 	return s.db.Model(&models.StrategyExperiment{}).
 		Where("id = ?", id).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"status":     models.ExperimentStatusRunning,
 			"start_date": time.Now(),
 		}).Error
@@ -379,7 +379,7 @@ func (s *PluginService) StartExperiment(id uint) error {
 func (s *PluginService) CompleteExperiment(id uint, results string) error {
 	return s.db.Model(&models.StrategyExperiment{}).
 		Where("id = ?", id).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"status":            models.ExperimentStatusCompleted,
 			"experiment_result": results,
 			"end_date":          time.Now(),
@@ -389,7 +389,7 @@ func (s *PluginService) CompleteExperiment(id uint, results string) error {
 func (s *PluginService) FailExperiment(id uint, errorMsg string) error {
 	return s.db.Model(&models.StrategyExperiment{}).
 		Where("id = ?", id).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"status":   models.ExperimentStatusFailed,
 			"end_date": time.Now(),
 		}).Error

@@ -660,7 +660,7 @@ git commit -m "feat(doccheck): integrate quick mode with --quick and --changed-f
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26'
           cache-dependency-path: backend/go.sum
 
       - name: Run unified checks (backend)
@@ -788,9 +788,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.26'
 
     - name: Run documentation consistency check (full)
       run: |

@@ -44,7 +44,7 @@ func TestEventBus_Publish(t *testing.T) {
 		Type:      EventETFHoldingsUpdated,
 		Source:    "test",
 		Timestamp: time.Now(),
-		Payload: map[string]interface{}{
+		Payload: map[string]any{
 			"symbol": "QQQ",
 		},
 	}
@@ -70,7 +70,7 @@ func TestEventBus_PublishWithTimestampAutoFill(t *testing.T) {
 	event := &Event{
 		Type:   EventETFHoldingsUpdated,
 		Source: "test",
-		Payload: map[string]interface{}{
+		Payload: map[string]any{
 			"symbol": "VOO",
 		},
 	}

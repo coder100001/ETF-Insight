@@ -263,12 +263,12 @@ func (s *Scheduler) RunOnce() {
 }
 
 // GetJobs 获取所有任务
-func (s *Scheduler) GetJobs() []map[string]interface{} {
+func (s *Scheduler) GetJobs() []map[string]any {
 	entries := s.cron.Entries()
-	var jobs []map[string]interface{}
+	var jobs []map[string]any
 
 	for _, entry := range entries {
-		jobs = append(jobs, map[string]interface{}{
+		jobs = append(jobs, map[string]any{
 			"id":       entry.ID,
 			"next_run": entry.Next.Format("2006-01-02 15:04:05"),
 			"prev_run": entry.Prev.Format("2006-01-02 15:04:05"),

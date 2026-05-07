@@ -247,8 +247,8 @@ const ETFDashboard: React.FC = () => {
       ...etfs.reduce((acc, etf) => ({
         ...acc,
         [etf.symbol]: (
-          <span style={{ color: etf.total_return >= 0 ? theme.colors.success : theme.colors.danger }}>
-            {etf.total_return >= 0 ? '+' : ''}{etf.total_return.toFixed(2)}%
+          <span style={{ color: (etf.total_return ?? 0) >= 0 ? theme.colors.success : theme.colors.danger }}>
+            {(etf.total_return ?? 0) >= 0 ? '+' : ''}{(etf.total_return ?? 0).toFixed(2)}%
           </span>
         ),
       }), {}),
@@ -257,28 +257,28 @@ const ETFDashboard: React.FC = () => {
       indicator: '年化波动率',
       ...etfs.reduce((acc, etf) => ({
         ...acc,
-        [etf.symbol]: `${etf.volatility.toFixed(2)}%`,
+        [etf.symbol]: `${(etf.volatility ?? 0).toFixed(2)}%`,
       }), {}),
     },
     {
       indicator: '夏普比率',
       ...etfs.reduce((acc, etf) => ({
         ...acc,
-        [etf.symbol]: etf.sharpe_ratio.toFixed(2),
+        [etf.symbol]: (etf.sharpe_ratio ?? 0).toFixed(2),
       }), {}),
     },
     {
       indicator: '最大回撤',
       ...etfs.reduce((acc, etf) => ({
         ...acc,
-        [etf.symbol]: <span style={{ color: theme.colors.danger }}>{etf.max_drawdown.toFixed(2)}%</span>,
+        [etf.symbol]: <span style={{ color: theme.colors.danger }}>{(etf.max_drawdown ?? 0).toFixed(2)}%</span>,
       }), {}),
     },
     {
       indicator: '策略类型',
       ...etfs.reduce((acc, etf) => ({
         ...acc,
-        [etf.symbol]: <small>{etf.info.strategy}</small>,
+        [etf.symbol]: <small>{etf.info?.strategy ?? ''}</small>,
       }), {}),
     },
   ];
@@ -314,7 +314,7 @@ const ETFDashboard: React.FC = () => {
               <CardHeader>
                 <ETFTitle>
                   <strong>{etf.symbol}</strong>
-                  <small>{etf.info.focus}</small>
+                  <small>{etf.info?.focus ?? ''}</small>
                 </ETFTitle>
                 <Badge
                   count={`${etf.change_percent >= 0 ? '+' : ''}${etf.change_percent.toFixed(2)}%`}
@@ -341,21 +341,21 @@ const ETFDashboard: React.FC = () => {
                 </tr>
                 <tr>
                   <td>年化波动率</td>
-                  <td>{etf.volatility.toFixed(2)}%</td>
+                  <td>{(etf.volatility ?? 0).toFixed(2)}%</td>
                 </tr>
                 <tr>
                   <td>年度收益</td>
-                  <td style={{ color: etf.total_return >= 0 ? theme.colors.success : theme.colors.danger }}>
-                    {etf.total_return.toFixed(2)}%
+                  <td style={{ color: (etf.total_return ?? 0) >= 0 ? theme.colors.success : theme.colors.danger }}>
+                    {(etf.total_return ?? 0).toFixed(2)}%
                   </td>
                 </tr>
                 <tr>
                   <td>最大回撤</td>
-                  <td style={{ color: theme.colors.danger }}>{etf.max_drawdown.toFixed(2)}%</td>
+                  <td style={{ color: theme.colors.danger }}>{(etf.max_drawdown ?? 0).toFixed(2)}%</td>
                 </tr>
                 <tr>
                   <td>夏普比率</td>
-                  <td>{etf.sharpe_ratio.toFixed(2)}</td>
+                  <td>{(etf.sharpe_ratio ?? 0).toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td>费率</td>
@@ -364,7 +364,7 @@ const ETFDashboard: React.FC = () => {
               </tbody>
             </InfoTable>
 
-            <StrategyText>{etf.info.strategy}</StrategyText>
+            <StrategyText>{etf.info?.strategy ?? ''}</StrategyText>
 
             <Link to={`/etf-detail/${etf.symbol}`}>
               <Button block icon={<BarChartOutlined />}>

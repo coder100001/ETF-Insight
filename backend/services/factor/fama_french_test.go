@@ -86,7 +86,7 @@ func TestAnalyzePortfolio(t *testing.T) {
 
 	// Create sample portfolio returns
 	portfolioReturns := make([]float64, periods)
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		portfolioReturns[i] = 0.008 + (float64(i%5)-2)*0.01
 	}
 
@@ -158,7 +158,7 @@ func TestAnalyzeETF(t *testing.T) {
 
 	// Create sample ETF returns
 	etfReturns := make([]float64, periods)
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		etfReturns[i] = 0.01 + (float64(i%3)-1)*0.015
 	}
 
@@ -416,7 +416,7 @@ func TestRandNorm(t *testing.T) {
 	sum := 0.0
 	sumSq := 0.0
 
-	for i := 0; i < n; i++ {
+	for range n {
 		r := randNorm()
 		sum += r
 		sumSq += r * r
@@ -448,7 +448,7 @@ func TestComparePortfolios(t *testing.T) {
 	// Create sample portfolio returns
 	portfolio1 := make([]float64, periods)
 	portfolio2 := make([]float64, periods)
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		portfolio1[i] = 0.008 + (float64(i%5)-2)*0.01
 		portfolio2[i] = 0.006 + (float64(i%7)-3)*0.008
 	}
@@ -879,7 +879,7 @@ func TestAnalyzePortfolio_FiveFactor(t *testing.T) {
 
 	// Create sample portfolio returns
 	portfolioReturns := make([]float64, periods)
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		portfolioReturns[i] = 0.008 + (float64(i%5)-2)*0.01
 	}
 
@@ -940,7 +940,7 @@ func TestPerformRegression_EdgeCases(t *testing.T) {
 	// Test with constant returns (zero variance)
 	periods := 36
 	portfolioReturns := make([]float64, periods)
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		portfolioReturns[i] = 0.01 // Constant return
 	}
 
@@ -949,7 +949,7 @@ func TestPerformRegression_EdgeCases(t *testing.T) {
 	hmlReturns := make([]float64, periods)
 	riskFreeReturns := make([]float64, periods)
 
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		marketReturns[i] = 0.008 + (float64(i%5)-2)*0.002
 		smbReturns[i] = 0.002 + (float64(i%3)-1)*0.001
 		hmlReturns[i] = 0.003 + (float64(i%4)-1.5)*0.001

@@ -221,7 +221,7 @@ func (s *HoldingsService) CalculateOverlapBatch(ctx context.Context, symbols []s
 
 	results := make(map[string]*CalculateOverlapResult)
 
-	for i := 0; i < len(symbols); i++ {
+	for i := range symbols {
 		for j := i + 1; j < len(symbols); j++ {
 			key := fmt.Sprintf("%s-%s", symbols[i], symbols[j])
 			result, err := s.CalculateOverlap(ctx, symbols[i], symbols[j], date)

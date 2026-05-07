@@ -247,8 +247,8 @@ func (o *RiskParityOptimizer) solveRiskParity(
 		}
 
 		marginalRC := make([]float64, n)
-		for i := 0; i < n; i++ {
-			for j := 0; j < n; j++ {
+		for i := range n {
+			for j := range n {
 				marginalRC[i] += Sigma[i][j] * weights[j]
 			}
 		}
@@ -258,20 +258,20 @@ func (o *RiskParityOptimizer) solveRiskParity(
 
 		// 计算当前风险贡献
 		currentRC := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			currentRC[i] = weights[i] * marginalRC[i]
 		}
 
 		// 计算梯度（风险贡献与目标的差异）
 		gradient := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			gradient[i] = currentRC[i] - targetRC
 		}
 
 		// 梯度下降更新
 		learningRate := 0.1
 		newWeights := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			newWeights[i] = weights[i] - learningRate*gradient[i]/portfolioVol
 		}
 
@@ -280,7 +280,7 @@ func (o *RiskParityOptimizer) solveRiskParity(
 
 		// 检查收敛
 		diff := 0.0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			d := newWeights[i] - weights[i]
 			diff += d * d
 		}
@@ -349,8 +349,8 @@ func (o *RiskParityOptimizer) calculateRiskContributions(
 	}
 
 	marginalRC := make([]float64, n)
-	for i := 0; i < n; i++ {
-		for j := 0; j < n; j++ {
+	for i := range n {
+		for j := range n {
 			marginalRC[i] += Sigma[i][j] * weights[j]
 		}
 	}
@@ -376,8 +376,8 @@ func (o *RiskParityOptimizer) calculateRiskContributions(
 // calculatePortfolioVolatility 计算组合波动率
 func (o *RiskParityOptimizer) calculatePortfolioVolatility(Sigma [][]float64, weights []float64) float64 {
 	variance := 0.0
-	for i := 0; i < len(weights); i++ {
-		for j := 0; j < len(weights); j++ {
+	for i := range weights {
+		for j := range weights {
 			variance += weights[i] * Sigma[i][j] * weights[j]
 		}
 	}
@@ -387,7 +387,7 @@ func (o *RiskParityOptimizer) calculatePortfolioVolatility(Sigma [][]float64, we
 // calculateDiversificationRatio 计算分散化比率
 func (o *RiskParityOptimizer) calculateDiversificationRatio(Sigma [][]float64, weights []float64) float64 {
 	weightedAvgVol := 0.0
-	for i := 0; i < len(weights); i++ {
+	for i := range weights {
 		individualVol := math.Sqrt(Sigma[i][i])
 		weightedAvgVol += weights[i] * individualVol
 	}
@@ -494,15 +494,15 @@ func (o *RiskParityOptimizer) solveRiskBudget(
 		}
 
 		marginalRC := make([]float64, n)
-		for i := 0; i < n; i++ {
-			for j := 0; j < n; j++ {
+		for i := range n {
+			for j := range n {
 				marginalRC[i] += Sigma[i][j] * weights[j]
 			}
 		}
 
 		// 计算当前风险贡献
 		currentRC := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			currentRC[i] = weights[i] * marginalRC[i]
 		}
 
@@ -520,7 +520,7 @@ func (o *RiskParityOptimizer) solveRiskBudget(
 		// 梯度下降
 		learningRate := 0.1
 		newWeights := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			newWeights[i] = weights[i] - learningRate*gradient[i]/portfolioVol
 		}
 
@@ -529,7 +529,7 @@ func (o *RiskParityOptimizer) solveRiskBudget(
 
 		// 检查收敛
 		diff := 0.0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			d := newWeights[i] - weights[i]
 			diff += d * d
 		}

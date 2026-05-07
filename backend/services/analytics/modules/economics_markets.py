@@ -34,7 +34,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Union, Tuple
 from enum import Enum
 
-from config import MathConstants
+from .config import MathConstants
 
 class BusinessCyclePhase(Enum):
     EXPANSION = "expansion"

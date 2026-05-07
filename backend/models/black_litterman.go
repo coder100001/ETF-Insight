@@ -40,7 +40,7 @@ type BlackLittermanConfig struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Portfolio Portfolio `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
+	Portfolio Portfolio `json:"portfolio" gorm:"foreignKey:PortfolioID"`
 }
 
 func (BlackLittermanConfig) TableName() string {
@@ -61,7 +61,7 @@ type BLPosteriorReturn struct {
 
 	CreatedAt time.Time `json:"created_at"`
 
-	Config BlackLittermanConfig `json:"config,omitempty" gorm:"foreignKey:ConfigID"`
+	Config BlackLittermanConfig `json:"config" gorm:"foreignKey:ConfigID"`
 }
 
 func (BLPosteriorReturn) TableName() string {

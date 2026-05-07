@@ -185,7 +185,7 @@ func (h *QuantLibHandler) GetReferenceData(c *gin.Context) {
 		return
 	}
 
-	var result interface{}
+	var result any
 	var err error
 
 	switch dataType {

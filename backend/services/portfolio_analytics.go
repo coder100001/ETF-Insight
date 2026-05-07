@@ -222,7 +222,7 @@ func (s *PortfolioAnalyticsService) CalculateCorrelation(symbol1, symbol2 string
 	denom1 := 0.0
 	denom2 := 0.0
 
-	for i := 0; i < len(returns1); i++ {
+	for i := range returns1 {
 		diff1 := returns1[i] - mean1
 		diff2 := returns2[i] - mean2
 		numerator += diff1 * diff2

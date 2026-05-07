@@ -426,15 +426,15 @@ func (o *MPTOptimizer) solveQuadraticProgramming(
 	for iter := 0; iter < o.MaxIter; iter++ {
 		// 计算梯度: 2 * Sigma * w
 		gradient := make([]float64, n)
-		for i := 0; i < n; i++ {
-			for j := 0; j < n; j++ {
+		for i := range n {
+			for j := range n {
 				gradient[i] += 2 * Sigma[i][j] * weights[j]
 			}
 		}
 
 		// 梯度下降更新
 		newWeights := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			newWeights[i] = weights[i] - learningRate*gradient[i]
 		}
 
@@ -443,7 +443,7 @@ func (o *MPTOptimizer) solveQuadraticProgramming(
 
 		// 检查收敛
 		diff := 0.0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			d := newWeights[i] - weights[i]
 			diff += d * d
 		}
@@ -486,15 +486,15 @@ func (o *MPTOptimizer) solveQuadraticProgrammingWithReturnConstraint(
 	for iter := 0; iter < o.MaxIter; iter++ {
 		// 计算当前收益率
 		currentReturn := 0.0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			currentReturn += mu[i] * weights[i]
 		}
 
 		// 计算梯度
 		gradient := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			// 波动率梯度
-			for j := 0; j < n; j++ {
+			for j := range n {
 				gradient[i] += 2 * Sigma[i][j] * weights[j]
 			}
 			// 收益率约束梯度（惩罚函数）
@@ -504,7 +504,7 @@ func (o *MPTOptimizer) solveQuadraticProgrammingWithReturnConstraint(
 
 		// 梯度下降
 		newWeights := make([]float64, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			newWeights[i] = weights[i] - learningRate*gradient[i]
 		}
 
@@ -513,7 +513,7 @@ func (o *MPTOptimizer) solveQuadraticProgrammingWithReturnConstraint(
 
 		// 检查收敛
 		diff := 0.0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			d := newWeights[i] - weights[i]
 			diff += d * d
 		}
@@ -543,7 +543,7 @@ func (o *MPTOptimizer) projectToConstraints(
 	result := make([]float64, n)
 
 	// 第一步：裁剪到边界
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = weights[i]
 		if result[i] < minWeights[i] {
 			result[i] = minWeights[i]
@@ -567,7 +567,7 @@ func (o *MPTOptimizer) projectToConstraints(
 	}
 
 	// 第三步：再次检查边界（可能因为归一化超出边界）
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if result[i] < minWeights[i] {
 			result[i] = minWeights[i]
 		}
@@ -582,7 +582,7 @@ func (o *MPTOptimizer) projectToConstraints(
 // calculatePortfolioReturn 计算组合收益率
 func (o *MPTOptimizer) calculatePortfolioReturn(mu []float64, weights []float64) float64 {
 	result := 0.0
-	for i := 0; i < len(mu); i++ {
+	for i := range mu {
 		result += mu[i] * weights[i]
 	}
 	return result
@@ -591,8 +591,8 @@ func (o *MPTOptimizer) calculatePortfolioReturn(mu []float64, weights []float64)
 // calculatePortfolioVolatility 计算组合波动率
 func (o *MPTOptimizer) calculatePortfolioVolatility(Sigma [][]float64, weights []float64) float64 {
 	variance := 0.0
-	for i := 0; i < len(weights); i++ {
-		for j := 0; j < len(weights); j++ {
+	for i := range weights {
+		for j := range weights {
 			variance += weights[i] * Sigma[i][j] * weights[j]
 		}
 	}
@@ -644,8 +644,8 @@ func (o *MPTOptimizer) calculateRiskContribution(
 
 	// 计算边际风险贡献
 	marginalRC := make([]float64, n)
-	for i := 0; i < n; i++ {
-		for j := 0; j < n; j++ {
+	for i := range n {
+		for j := range n {
 			marginalRC[i] += Sigma[i][j] * weights[j]
 		}
 	}
@@ -666,7 +666,7 @@ func (o *MPTOptimizer) calculateDiversificationRatio(Sigma [][]float64, weights 
 	// 比率 > 1 表示有分散化效益
 
 	weightedAvgVol := 0.0
-	for i := 0; i < len(weights); i++ {
+	for i := range weights {
 		individualVol := math.Sqrt(Sigma[i][i])
 		weightedAvgVol += weights[i] * individualVol
 	}

@@ -77,7 +77,7 @@ func CalculateCovariance(values1, values2 []decimal.Decimal) decimal.Decimal {
 	mean2 := CalculateMean(values2[:minLen])
 
 	cov := decimal.Zero
-	for i := 0; i < minLen; i++ {
+	for i := range minLen {
 		diff1 := values1[i].Sub(mean1)
 		diff2 := values2[i].Sub(mean2)
 		cov = cov.Add(diff1.Mul(diff2))

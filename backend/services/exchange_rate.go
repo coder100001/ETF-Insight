@@ -184,9 +184,9 @@ func (s *ExchangeRateService) getDefaultRate(fromCurrency, toCurrency string) de
 }
 
 // GetHistory 获取汇率历史
-func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days int) ([]map[string]interface{}, error) {
+func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days int) ([]map[string]any, error) {
 	// 简化处理，返回空历史
-	return []map[string]interface{}{}, nil
+	return []map[string]any{}, nil
 }
 
 // CalculateCrossRate 计算交叉汇率

@@ -6,7 +6,7 @@ import (
 	"errors"
 )
 
-type JSONMap map[string]interface{}
+type JSONMap map[string]any
 
 func (j JSONMap) Value() (driver.Value, error) {
 	if j == nil {
@@ -15,7 +15,7 @@ func (j JSONMap) Value() (driver.Value, error) {
 	return json.Marshal(j)
 }
 
-func (j *JSONMap) Scan(value interface{}) error {
+func (j *JSONMap) Scan(value any) error {
 	if value == nil {
 		*j = nil
 		return nil
@@ -35,7 +35,7 @@ func (j *JSONMap) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
@@ -47,5 +47,5 @@ func (j JSONMap) MarshalJSON() ([]byte, error) {
 	if j == nil {
 		return []byte("null"), nil
 	}
-	return json.Marshal(map[string]interface{}(j))
+	return json.Marshal(map[string]any(j))
 }

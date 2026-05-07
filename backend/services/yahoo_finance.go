@@ -81,7 +81,7 @@ type QuoteResponse struct {
 			Exchange                   string  `json:"exchange"`
 			QuoteType                  string  `json:"quoteType"`
 		} `json:"result"`
-		Error interface{} `json:"error"`
+		Error any `json:"error"`
 	} `json:"quoteResponse"`
 }
 
@@ -117,7 +117,7 @@ type HistoricalData struct {
 				} `json:"adjclose"`
 			} `json:"indicators"`
 		} `json:"result"`
-		Error interface{} `json:"error"`
+		Error any `json:"error"`
 	} `json:"chart"`
 }
 
@@ -380,7 +380,7 @@ func (c *YahooFinanceClient) makeRequest(url string) (*http.Response, error) {
 // RetryGetQuote 带重试的获取报价
 func (c *YahooFinanceClient) RetryGetQuote(symbol string, maxRetries int) (*QuoteData, error) {
 	var lastErr error
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		quote, err := c.GetQuote(symbol)
 		if err == nil {
 			return quote, nil
@@ -395,7 +395,7 @@ func (c *YahooFinanceClient) RetryGetQuote(symbol string, maxRetries int) (*Quot
 // RetryGetHistoricalData 带重试的获取历史数据
 func (c *YahooFinanceClient) RetryGetHistoricalData(symbol string, period string, interval string, maxRetries int) ([]HistoricalPrice, error) {
 	var lastErr error
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		data, err := c.GetHistoricalData(symbol, period, interval)
 		if err == nil {
 			return data, nil

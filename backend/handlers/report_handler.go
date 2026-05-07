@@ -24,25 +24,25 @@ func NewReportHandler(reportService *services.ReportService) *ReportHandler {
 // ===== 请求结构体 =====
 
 type GenerateReportRequest struct {
-	TemplateID uint                   `json:"template_id" binding:"required"`
-	Title      string                 `json:"title" binding:"required"`
-	Format     string                 `json:"format" binding:"required"`
-	Data       map[string]interface{} `json:"data"`
+	TemplateID uint           `json:"template_id" binding:"required"`
+	Title      string         `json:"title" binding:"required"`
+	Format     string         `json:"format" binding:"required"`
+	Data       map[string]any `json:"data"`
 }
 
 type CreateTemplateRequest struct {
 	Name        string                   `json:"name" binding:"required"`
 	Description string                   `json:"description"`
 	Category    string                   `json:"category" binding:"required"`
-	Config      map[string]interface{}   `json:"config"`
+	Config      map[string]any           `json:"config"`
 	Sections    []models.ReportSection   `json:"sections"`
 	Parameters  []models.ReportParameter `json:"parameters"`
 }
 
 type UpdateTemplateRequest struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Config      map[string]interface{} `json:"config"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Config      map[string]any `json:"config"`
 }
 
 // ===== 模板相关接口 =====

@@ -24,9 +24,9 @@ type Engine interface {
 // ConfigurableEngine 可配置引擎接口
 type ConfigurableEngine interface {
 	Engine
-	Configure(config interface{}) error // 配置引擎
-	GetConfig() interface{}             // 获取当前配置
-	ResetConfig() error                 // 重置配置
+	Configure(config any) error // 配置引擎
+	GetConfig() any             // 获取当前配置
+	ResetConfig() error         // 重置配置
 }
 
 // ================================

@@ -109,7 +109,7 @@ func (h *ETFConfigHandler) UpdateETFConfig(c *gin.Context) {
 		return
 	}
 
-	var updateData map[string]interface{}
+	var updateData map[string]any
 	if err := c.ShouldBindJSON(&updateData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

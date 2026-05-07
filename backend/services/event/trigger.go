@@ -25,10 +25,10 @@ const (
 
 // Event 事件结构
 type Event struct {
-	Type      EventType              `json:"type"`
-	Source    string                 `json:"source"` // 触发源：api, sync, manual, etc.
-	Timestamp time.Time              `json:"timestamp"`
-	Payload   map[string]interface{} `json:"payload"`
+	Type      EventType      `json:"type"`
+	Source    string         `json:"source"` // 触发源：api, sync, manual, etc.
+	Timestamp time.Time      `json:"timestamp"`
+	Payload   map[string]any `json:"payload"`
 }
 
 // EventHandler 事件处理器接口
@@ -138,7 +138,7 @@ func (bus *EventBus) PublishETFHoldingsUpdated(ctx context.Context, symbol strin
 	return bus.Publish(ctx, &Event{
 		Type:   EventETFHoldingsUpdated,
 		Source: source,
-		Payload: map[string]interface{}{
+		Payload: map[string]any{
 			"symbol": symbol,
 		},
 	})
@@ -149,7 +149,7 @@ func (bus *EventBus) PublishETFDataUpdated(ctx context.Context, symbol string, s
 	return bus.Publish(ctx, &Event{
 		Type:   EventETFDataUpdated,
 		Source: source,
-		Payload: map[string]interface{}{
+		Payload: map[string]any{
 			"symbol": symbol,
 		},
 	})

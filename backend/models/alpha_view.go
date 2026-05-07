@@ -50,7 +50,7 @@ type AlphaView struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Portfolio   Portfolio             `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
+	Portfolio   Portfolio             `json:"portfolio" gorm:"foreignKey:PortfolioID"`
 	Performance *AlphaViewPerformance `json:"performance,omitempty" gorm:"foreignKey:ViewID"`
 }
 
@@ -73,7 +73,7 @@ type AlphaViewPerformance struct {
 
 	CreatedAt time.Time `json:"created_at"`
 
-	View AlphaView `json:"view,omitempty" gorm:"foreignKey:ViewID"`
+	View AlphaView `json:"view" gorm:"foreignKey:ViewID"`
 }
 
 func (AlphaViewPerformance) TableName() string {

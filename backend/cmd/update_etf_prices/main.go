@@ -214,7 +214,7 @@ func saveDataToDB(dp ETFDataPoint) error {
 	}
 
 	// 更新现有记录
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"open_price":  decimal.NewFromFloat(dp.Open),
 		"high_price":  decimal.NewFromFloat(dp.High),
 		"low_price":   decimal.NewFromFloat(dp.Low),

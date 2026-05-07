@@ -30,5 +30,5 @@ type AuditLogEntry struct {
 	Action     string
 	Resource   string
 	ResourceID string
-	Metadata   map[string]interface{}
+	Metadata   map[string]any
 }

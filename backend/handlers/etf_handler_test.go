@@ -87,7 +87,7 @@ func TestGetETFList(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -108,7 +108,7 @@ func TestGetETFList_WithPagination(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -270,7 +270,7 @@ func TestGetETFComparison(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -293,7 +293,7 @@ func TestGetETFComparison_NoETFs(t *testing.T) {
 	// 没有ETF时应该返回200，但数据为空
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -312,7 +312,7 @@ func TestGetETFHistory(t *testing.T) {
 	models.DB.Create(&cfg)
 
 	// 创建历史价格数据
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		price := models.ETFData{
 			Symbol:     "SPY",
 			Date:       time.Now().AddDate(0, 0, -i),
@@ -337,7 +337,7 @@ func TestGetETFHistory(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -355,7 +355,7 @@ func TestGetETFHistory_DefaultPeriod(t *testing.T) {
 	models.DB.Create(&cfg)
 
 	// 创建历史价格数据
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		price := models.ETFData{
 			Symbol:     "SPY",
 			Date:       time.Now().AddDate(0, 0, -i),
@@ -382,7 +382,7 @@ func TestGetETFHistory_DefaultPeriod(t *testing.T) {
 	// 应该返回200，使用默认period
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -400,7 +400,7 @@ func TestGetETFMetrics(t *testing.T) {
 	models.DB.Create(&cfg)
 
 	// 创建历史价格数据用于计算指标
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		price := models.ETFData{
 			Symbol:     "SPY",
 			Date:       time.Now().AddDate(0, 0, -i),
@@ -422,7 +422,7 @@ func TestGetETFMetrics(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -451,7 +451,7 @@ func TestGetETFForecast(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -526,7 +526,7 @@ func TestUpdateRealtimeData(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 }
@@ -556,7 +556,7 @@ func TestUpdateRealtimeData_NoEnabledETFs(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])

@@ -159,13 +159,13 @@ func (h *PortfolioOptimizerHandler) GetEfficientFrontier(c *gin.Context) {
 		return
 	}
 
-	frontierData := make([]map[string]interface{}, 0, len(frontier))
+	frontierData := make([]map[string]any, 0, len(frontier))
 	for _, point := range frontier {
 		weights := make(map[string]float64)
 		for symbol, weight := range point.Weights {
 			weights[symbol] = weight.InexactFloat64()
 		}
-		frontierData = append(frontierData, map[string]interface{}{
+		frontierData = append(frontierData, map[string]any{
 			"expected_return": point.ExpectedReturn.InexactFloat64(),
 			"volatility":      point.Volatility.InexactFloat64(),
 			"weights":         weights,

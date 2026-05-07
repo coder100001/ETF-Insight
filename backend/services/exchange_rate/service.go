@@ -65,7 +65,8 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
 	return rate.InexactFloat64()
 }
 
-// GetRateDecimal 获取汇率（decimal.Decimal类型）
+// GetRateDecimal 获取汇率（decimal.Decimal类型，无精度损失）
+// 推荐在需要高精度计算时使用此方法
 func (s *ExchangeRateService) GetRateDecimal(fromCurrency, toCurrency string) (decimal.Decimal, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -139,7 +140,7 @@ func (s *ExchangeRateService) ConsistencyCheck() (*syncpkg.ConsistencyReport, er
 }
 
 // GetHistory 获取汇率历史
-func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days int) ([]map[string]interface{}, error) {
+func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days int) ([]map[string]any, error) {
 	// 从数据库获取历史汇率数据
 	var rates []models.ExchangeRate
 	result := models.DB.Where(
@@ -151,9 +152,9 @@ func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days i
 		return nil, result.Error
 	}
 
-	history := make([]map[string]interface{}, 0, len(rates))
+	history := make([]map[string]any, 0, len(rates))
 	for _, rate := range rates {
-		history = append(history, map[string]interface{}{
+		history = append(history, map[string]any{
 			"date": rate.UpdatedAt.Format("2006-01-02"),
 			"rate": rate.Rate.InexactFloat64(),
 		})
@@ -182,12 +183,12 @@ func (s *ExchangeRateService) CalculateCrossRate(fromCurrency, toCurrency string
 }
 
 // GetDataSourceStatus 获取数据源状态
-func (s *ExchangeRateService) GetDataSourceStatus() map[string]interface{} {
+func (s *ExchangeRateService) GetDataSourceStatus() map[string]any {
 	return datasource.GetProviderStatus(s.manager)
 }
 
 // GetFailoverStats 获取故障转移统计
-func (s *ExchangeRateService) GetFailoverStats() map[string]interface{} {
+func (s *ExchangeRateService) GetFailoverStats() map[string]any {
 	return s.manager.GetFailoverStats()
 }
 

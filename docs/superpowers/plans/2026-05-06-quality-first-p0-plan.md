@@ -6,7 +6,7 @@
 
 **架构：** 在现有 Go + React + Python 微服务混合架构中，聚焦后端 Go 核心算法层。不引入新架构变更，仅增强测试覆盖和修复类型不一致问题。
 
-**技术栈：** Go 1.24 (testing package, httptest), shopspring/decimal, gorm.io/gorm, github.com/stretchr/testify
+**技术栈：** Go 1.26 (testing package, httptest), shopspring/decimal, gorm.io/gorm, github.com/stretchr/testify
 
 **设计规格：** [2026-05-06-code-evolution-quality-first-design.md](../specs/2026-05-06-code-evolution-quality-first-design.md)
 

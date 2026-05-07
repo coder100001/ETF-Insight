@@ -50,13 +50,13 @@ func AuditLogger() gin.HandlerFunc {
 		username, _ := c.Get("username")
 		userID, _ := c.Get("user_id")
 
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"duration_ms": duration.Milliseconds(),
 			"body_size":   len(requestBody),
 		}
 
 		if len(requestBody) > 0 {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			if json.Unmarshal(requestBody, &jsonBody) == nil {
 				sensitiveFields := []string{"password", "token", "secret", "api_key", "authorization"}
 				for _, field := range sensitiveFields {
@@ -111,7 +111,7 @@ func AuditLogger() gin.HandlerFunc {
 	}
 }
 
-func toString(v interface{}) string {
+func toString(v any) string {
 	if v == nil {
 		return ""
 	}

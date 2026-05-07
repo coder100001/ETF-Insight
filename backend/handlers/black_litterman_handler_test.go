@@ -132,7 +132,7 @@ func TestBlackLittermanHandler_GetConfig(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if !response["success"].(bool) {

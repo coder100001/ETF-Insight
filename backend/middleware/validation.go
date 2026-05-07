@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,7 +44,7 @@ func ValidateInput(rules []ValidationRule) gin.HandlerFunc {
 			return
 		}
 
-		var data map[string]interface{}
+		var data map[string]any
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
@@ -70,7 +71,7 @@ func ValidateInput(rules []ValidationRule) gin.HandlerFunc {
 	}
 }
 
-func validateData(rules []ValidationRule, data map[string]interface{}) ValidationErrors {
+func validateData(rules []ValidationRule, data map[string]any) ValidationErrors {
 	var errors ValidationErrors
 
 	for _, rule := range rules {
@@ -102,7 +103,7 @@ func validateData(rules []ValidationRule, data map[string]interface{}) Validatio
 	return errors
 }
 
-func validateString(value interface{}, rule ValidationRule) *ValidationError {
+func validateString(value any, rule ValidationRule) *ValidationError {
 	str, ok := value.(string)
 	if !ok {
 		return &ValidationError{Field: rule.Field, Message: rule.Field + " 必须是字符串"}
@@ -121,13 +122,7 @@ func validateString(value interface{}, rule ValidationRule) *ValidationError {
 	}
 
 	if len(rule.Enum) > 0 {
-		found := false
-		for _, e := range rule.Enum {
-			if str == e {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(rule.Enum, str)
 		if !found {
 			return &ValidationError{Field: rule.Field, Message: rule.Field + " 必须是指定的值之一"}
 		}
@@ -136,7 +131,7 @@ func validateString(value interface{}, rule ValidationRule) *ValidationError {
 	return nil
 }
 
-func validateNumber(value interface{}, rule ValidationRule) *ValidationError {
+func validateNumber(value any, rule ValidationRule) *ValidationError {
 	var num float64
 
 	switch v := value.(type) {
@@ -169,7 +164,7 @@ func validateNumber(value interface{}, rule ValidationRule) *ValidationError {
 	return nil
 }
 
-func validateEmail(value interface{}) *ValidationError {
+func validateEmail(value any) *ValidationError {
 	str, ok := value.(string)
 	if !ok {
 		return &ValidationError{Field: "email", Message: "邮箱格式不正确"}

@@ -98,7 +98,7 @@ func generateHistoricalData(config ETFConfig, startDate time.Time, days int) int
 	price := config.BasePrice
 	count := 0
 
-	for i := 0; i < days; i++ {
+	for i := range days {
 		date := startDate.AddDate(0, 0, i)
 
 		// 跳过周末

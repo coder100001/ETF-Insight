@@ -26,10 +26,10 @@ type Holding struct {
 	ChildType  AssetType   `json:"child_type" gorm:"size:20"`                         // 子资产类型
 
 	// 持仓权重信息
-	Weight        decimal.Decimal `json:"weight" gorm:"type:decimal(5,2)"`                    // 权重（百分比）
-	Shares        int64           `json:"shares,omitempty"`                                   // 持股数量
-	MarketValue   decimal.Decimal `json:"market_value,omitempty" gorm:"type:decimal(20,2)"`   // 持仓市值
-	NotionalValue decimal.Decimal `json:"notional_value,omitempty" gorm:"type:decimal(20,2)"` // 名义价值
+	Weight        decimal.Decimal `json:"weight" gorm:"type:decimal(5,2)"`          // 权重（百分比）
+	Shares        int64           `json:"shares,omitempty"`                         // 持股数量
+	MarketValue   decimal.Decimal `json:"market_value" gorm:"type:decimal(20,2)"`   // 持仓市值
+	NotionalValue decimal.Decimal `json:"notional_value" gorm:"type:decimal(20,2)"` // 名义价值
 
 	// 时间维度
 	EffectiveDate time.Time `json:"effective_date" gorm:"index:idx_effective_date"` // 生效日期（持仓数据发布日期）
@@ -47,8 +47,8 @@ type Holding struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// 关联（可选）
-	ParentAsset Asset `json:"parent_asset,omitempty" gorm:"foreignKey:ParentID"`
-	ChildAsset  Asset `json:"child_asset,omitempty" gorm:"foreignKey:ChildID"`
+	ParentAsset Asset `json:"parent_asset" gorm:"foreignKey:ParentID"`
+	ChildAsset  Asset `json:"child_asset" gorm:"foreignKey:ChildID"`
 }
 
 // TableName 指定表名

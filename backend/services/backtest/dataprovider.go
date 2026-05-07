@@ -274,7 +274,7 @@ func (p *MockDataProvider) GenerateData(symbol string, startDate time.Time, days
 	price := decimal.NewFromFloat(startPrice)
 	date := startDate
 
-	for i := 0; i < days; i++ {
+	for i := range days {
 		// 模拟价格波动
 		change := decimal.NewFromFloat(0.02 * (float64(i%10) - 5) / 5)
 		price = price.Mul(decimal.NewFromInt(1).Add(change))

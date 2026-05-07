@@ -1110,7 +1110,7 @@ func sqrtFloat(x float64) float64 {
 		return 0
 	}
 	z := x
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		z = (z + x/z) / 2
 	}
 	return z

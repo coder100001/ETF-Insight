@@ -206,7 +206,7 @@ func (h *ETFHoldingHandler) GetETFHoldingsComparison(c *gin.Context) {
 	}
 
 	// 获取每只ETF的持仓
-	comparison := make(map[string]interface{})
+	comparison := make(map[string]any)
 	for _, symbol := range req.Symbols {
 		holdings, err := h.holdingsService.GetETFHoldings(c.Request.Context(), symbol, date)
 		if err != nil {

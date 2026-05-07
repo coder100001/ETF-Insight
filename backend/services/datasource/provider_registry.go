@@ -215,13 +215,13 @@ func (r *ProviderRegistry) GetDefaultProvider(ctx context.Context) (DataSourcePr
 }
 
 // GetProviderInfo 获取提供者信息
-func (r *ProviderRegistry) GetProviderInfo(name string) map[string]interface{} {
+func (r *ProviderRegistry) GetProviderInfo(name string) map[string]any {
 	provider, ok := r.GetProvider(name)
 	if !ok {
 		return nil
 	}
 
-	info := make(map[string]interface{})
+	info := make(map[string]any)
 	info["name"] = provider.GetName()
 	info["rate_limit"] = provider.GetRateLimit()
 	info["priority"] = r.GetProviderPriority(name)

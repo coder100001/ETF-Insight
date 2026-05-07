@@ -9,6 +9,22 @@ scipy = pytest.importorskip("scipy")
 from modules.portfolio_optimization import optimize_portfolio, fetch_returns
 
 
+# Skip network-dependent tests if network is unavailable
+def check_network():
+    """Check if network is available for yfinance."""
+    import socket
+    try:
+        socket.create_connection(("query2.finance.yahoo.com", 443), timeout=5)
+        return True
+    except OSError:
+        return False
+
+
+network_available = check_network()
+skip_no_network = pytest.mark.skipif(not network_available, reason="Network unavailable")
+
+
+@skip_no_network
 def test_fetch_returns():
     """Test fetching returns for given symbols."""
     symbols = ["AAPL", "MSFT", "GOOGL"]
@@ -18,6 +34,7 @@ def test_fetch_returns():
     assert all(s in returns.columns for s in symbols)
 
 
+@skip_no_network
 def test_optimize_portfolio_max_sharpe():
     """Test portfolio optimization with max Sharpe ratio strategy."""
     symbols = ["AAPL", "MSFT", "GOOGL"]
@@ -31,6 +48,7 @@ def test_optimize_portfolio_max_sharpe():
     assert abs(sum(result["weights"]) - 1.0) < 0.01
 
 
+@skip_no_network
 def test_optimize_portfolio_min_volatility():
     """Test portfolio optimization with min volatility strategy."""
     symbols = ["AAPL", "MSFT", "GOOGL"]

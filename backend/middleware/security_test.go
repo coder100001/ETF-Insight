@@ -18,7 +18,7 @@ func TestRateLimiter(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
 	})
 
-	for i := 0; i < 300; i++ {
+	for i := range 300 {
 		req := httptest.NewRequest("GET", "/test", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -103,7 +103,7 @@ func TestRateLimiter_Allow(t *testing.T) {
 
 	ip := "192.168.1.1"
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if !rl.allow(ip) {
 			t.Errorf("Request %d should be allowed", i+1)
 		}
@@ -141,7 +141,7 @@ func TestRateLimiter_WindowExpiry(t *testing.T) {
 func TestRateLimiter_Cleanup(t *testing.T) {
 	rl := newRateLimiter(10, 10*time.Millisecond)
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		rl.allow("192.168.1." + string(rune(i)))
 	}
 

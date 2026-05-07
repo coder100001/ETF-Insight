@@ -328,7 +328,7 @@ func (s *ScenarioAnalysisService) generateScenario(
 	finalValues := make([]float64, numSimulations)
 	allProjections := make([][]PortfolioProjection, numSimulations)
 
-	for sim := 0; sim < numSimulations; sim++ {
+	for sim := range numSimulations {
 		projections, finalValue := s.runSingleSimulation(
 			assumptions,
 			totalInvestment,
@@ -410,12 +410,12 @@ func (s *ScenarioAnalysisService) runSingleSimulation(
 	dt := 1.0 / float64(quartersPerYear) // 季度时间步长
 	quarterlyDividendYield := assumptions.DividendYield / float64(quartersPerYear)
 
-	for year := 0; year < timeHorizonYears; year++ {
+	for year := range timeHorizonYears {
 		yearStartValue := currentValue
 		yearDividendIncome := 0.0
 
 		// 按季度模拟
-		for quarter := 0; quarter < quartersPerYear; quarter++ {
+		for range quartersPerYear {
 			quarterStartValue := currentValue
 
 			// 几何布朗运动: dS = μS dt + σS dW
@@ -490,12 +490,12 @@ func (s *ScenarioAnalysisService) runSingleSimulationMonthly(
 	// 大多数ETF每季度支付，但在不同月份
 	dividendMonths := map[int]bool{2: true, 5: true, 8: true, 11: true} // 3月、6月、9月、12月(0-indexed)
 
-	for year := 0; year < timeHorizonYears; year++ {
+	for year := range timeHorizonYears {
 		yearStartValue := currentValue
 		yearDividendIncome := 0.0
 
 		// 按月度模拟
-		for month := 0; month < monthsPerYear; month++ {
+		for month := range monthsPerYear {
 			monthStartValue := currentValue
 
 			// 几何布朗运动
@@ -556,10 +556,7 @@ func (s *ScenarioAnalysisService) calculateCVaRFromSimulations(values []float64,
 	sort.Float64s(values)
 
 	// 找到对应分位数的位置
-	index := int(float64(len(values)) * (1 - confidence))
-	if index < 0 {
-		index = 0
-	}
+	index := max(int(float64(len(values))*(1-confidence)), 0)
 
 	// 计算尾部平均值
 	sum := 0.0

@@ -44,7 +44,7 @@ func TestBlackLittermanConfig_JSONMapSerialization(t *testing.T) {
 	if decoded.OmegaMatrix == nil {
 		t.Error("OmegaMatrix should not be nil after round-trip")
 	}
-	row0, ok := decoded.OmegaMatrix["0"].(map[string]interface{})
+	row0, ok := decoded.OmegaMatrix["0"].(map[string]any)
 	if !ok {
 		t.Fatalf("OmegaMatrix[0] should be map, got %T", decoded.OmegaMatrix["0"])
 	}

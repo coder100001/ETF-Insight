@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -358,10 +360,8 @@ func (p *FrankfurterProvider) isCurrencySupported(currency string) bool {
 	currency = p.normalizeCurrencyCode(currency)
 
 	// 检查支持的货币列表
-	for _, supported := range p.supportedCurrencies {
-		if supported == currency {
-			return true
-		}
+	if slices.Contains(p.supportedCurrencies, currency) {
+		return true
 	}
 
 	// Frankfurter支持30+货币，这里检查是否是主要货币
@@ -377,15 +377,15 @@ func (p *FrankfurterProvider) isCurrencySupported(currency string) bool {
 // normalizeCurrencyCode 标准化货币代码
 func (p *FrankfurterProvider) normalizeCurrencyCode(currency string) string {
 	// 转换为大写
-	normalized := ""
+	var normalized strings.Builder
 	for _, r := range currency {
 		if r >= 'a' && r <= 'z' {
-			normalized += string(r - 32)
+			normalized.WriteString(string(r - 32))
 		} else {
-			normalized += string(r)
+			normalized.WriteString(string(r))
 		}
 	}
-	return normalized
+	return normalized.String()
 }
 
 // recordRequest 记录请求统计

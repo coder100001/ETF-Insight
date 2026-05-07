@@ -52,7 +52,7 @@ func TestPriceEuropeanOption(t *testing.T) {
 		resp := models.QuantLibAPIResponse{
 			Success: true,
 			Message: "ok",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"price": "10.4506",
 				"delta": "0.5948",
 				"gamma": "0.0188",
@@ -159,12 +159,12 @@ func TestPriceEuropeanOptionAPIFailure(t *testing.T) {
 func TestPriceBond(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "/bonds/fixed", r.URL.Path)
+		assert.Equal(t, "/bonds/price", r.URL.Path)
 
 		resp := models.QuantLibAPIResponse{
 			Success: true,
 			Message: "ok",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"dirty_price":       "103.2500",
 				"clean_price":       "102.5000",
 				"duration":          "4.5230",
@@ -213,7 +213,7 @@ func TestCalculateVaR(t *testing.T) {
 		resp := models.QuantLibAPIResponse{
 			Success: true,
 			Message: "ok",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"var":            "15230.45",
 				"cvar":           "18950.20",
 				"confidence":     "0.95",
@@ -258,7 +258,7 @@ func TestPriceEuropeanOptionDirectParse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"price": "5.50",
 			"delta": "0.45",
 			"gamma": "0.02",
@@ -297,7 +297,7 @@ func TestAPIKeyHeader(t *testing.T) {
 
 		resp := models.QuantLibAPIResponse{
 			Success: true,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"price": "1.0", "delta": "0.5", "gamma": "0.01",
 				"theta": "-0.01", "vega": "0.1", "rho": "0.05",
 			},

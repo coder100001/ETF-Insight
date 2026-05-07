@@ -95,7 +95,7 @@ const ChartCard = styled(Card)`
   }
 `;
 
-const StyledTable = styled(Table)`
+const StyledTable = styled(Table<AShareHoldingDetail>)`
   .ant-table-thead > tr > th {
     background: ${theme.colors.background};
     font-weight: ${theme.fonts.weight.semibold};
@@ -343,7 +343,7 @@ export default function ASharePortfolioPage() {
       dataIndex: 'symbol',
       key: 'symbol',
       width: 90,
-      render: (text) => <strong>{text as string}</strong>,
+      render: (text: string) => <strong>{text}</strong>,
     },
     {
       title: 'ETF名称',
@@ -355,8 +355,8 @@ export default function ASharePortfolioPage() {
       title: '当前价格',
       key: 'current_price',
       width: 100,
-      render: (_value, record) => {
-        const r = record as AShareHoldingDetail;
+      render: (_value: unknown, record: AShareHoldingDetail) => {
+        const r = record;
         const price = prices[r.symbol];
         if (!price) return '-';
         return (
@@ -370,8 +370,8 @@ export default function ASharePortfolioPage() {
       title: '涨跌幅',
       key: 'price_change_pct',
       width: 90,
-      render: (_value, record) => {
-        const r = record as AShareHoldingDetail;
+      render: (_value: unknown, record: AShareHoldingDetail) => {
+        const r = record;
         const price = prices[r.symbol];
         if (!price) return '-';
         const changePct = price.price_change_pct;
@@ -388,11 +388,10 @@ export default function ASharePortfolioPage() {
       title: '成交量',
       key: 'volume',
       width: 100,
-      render: (_value, record) => {
-        const r = record as AShareHoldingDetail;
+      render: (_value: unknown, record: AShareHoldingDetail) => {
+        const r = record;
         const price = prices[r.symbol];
         if (!price) return '-';
-        // 格式化成交量（万手）
         const volumeWan = (price.volume / 10000).toFixed(0);
         return <span>{volumeWan}万</span>;
       },
@@ -402,21 +401,21 @@ export default function ASharePortfolioPage() {
       dataIndex: 'investment',
       key: 'investment',
       width: 130,
-      render: (value, record) => {
-        const r = record as AShareHoldingDetail;
+      render: (value: number, record: AShareHoldingDetail) => {
+        const r = record;
         return editing ? (
           <EditableCell>
             <InputNumber
-              value={investments[r.symbol] || (value as number)}
+              value={investments[r.symbol] || value}
               onChange={(v) => handleInvestmentChange(r.symbol, v)}
-              formatter={value => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={value => value!.replace(/¥\s?|(,*)/g, '') as unknown as number}
+              formatter={v => `¥ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              parser={v => v!.replace(/¥\s?|(,*)/g, '') as unknown as number}
               step={1000}
               min={0}
             />
           </EditableCell>
         ) : (
-          formatMoney(value as number)
+          formatMoney(value)
         );
       },
     },
@@ -425,15 +424,15 @@ export default function ASharePortfolioPage() {
       dataIndex: 'weight',
       key: 'weight',
       width: 80,
-      render: (value) => formatPercent(value as number),
+      render: (value: number) => formatPercent(value),
     },
     {
       title: '股息率',
       dataIndex: 'dividend_yield',
       key: 'dividend_yield',
       width: 80,
-      render: (value) => (
-        <span style={{ color: theme.colors.success }}>{formatPercent(value as number)}</span>
+      render: (value: number) => (
+        <span style={{ color: theme.colors.success }}>{formatPercent(value)}</span>
       ),
     },
     {
@@ -441,10 +440,9 @@ export default function ASharePortfolioPage() {
       dataIndex: 'dividend_frequency',
       key: 'dividend_frequency',
       width: 100,
-      render: (freq) => {
-        const f = freq as string;
-        const className = f === '月分' ? 'monthly' : f === '季分' ? 'quarterly' : 'yearly';
-        return <FrequencyTag className={className}>{f}</FrequencyTag>;
+      render: (freq: string) => {
+        const className = freq === '月分' ? 'monthly' : freq === '季分' ? 'quarterly' : 'yearly';
+        return <FrequencyTag className={className}>{freq}</FrequencyTag>;
       },
     },
     {
@@ -452,14 +450,14 @@ export default function ASharePortfolioPage() {
       dataIndex: 'expected_dividend',
       key: 'expected_dividend',
       width: 150,
-      render: (value) => formatMoney(value as number),
+      render: (value: number) => formatMoney(value),
     },
     {
       title: '分红贡献',
       dataIndex: 'dividend_contribution',
       key: 'dividend_contribution',
       width: 100,
-      render: (value) => formatPercent(value as number),
+      render: (value: number) => formatPercent(value),
     },
   ];
 
@@ -587,7 +585,7 @@ export default function ASharePortfolioPage() {
                   cx="40%"
                   cy="50%"
                   labelLine={false}
-                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                  label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={80}
                   innerRadius={40}
                   fill="#8884d8"

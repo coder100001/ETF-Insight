@@ -39,7 +39,7 @@ import json
 import pickle
 from abc import ABC, abstractmethod
 
-from config import (
+from .config import (
     DataSchema, AssetClass, MathConstants,
     PRICE_DATA_SCHEMA, RETURN_DATA_SCHEMA, PORTFOLIO_DATA_SCHEMA,
     ERROR_MESSAGES, validate_returns

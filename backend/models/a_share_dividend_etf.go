@@ -67,7 +67,7 @@ type ASharePortfolioHolding struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 
 	// 关联
-	ETF AShareDividendETF `json:"etf,omitempty" gorm:"foreignKey:ETFID"`
+	ETF AShareDividendETF `json:"etf" gorm:"foreignKey:ETFID"`
 }
 
 // AShareDividendCalculation 分红收益计算

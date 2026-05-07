@@ -37,11 +37,11 @@ import pandas as pd
 from typing import Dict, List, Optional, Union, Tuple
 import warnings
 
-from config import (
+from .config import (
     AssetClass, MathConstants, PortfolioParameters,
     DEFAULT_PORTFOLIO_PARAMS, validate_weights, ERROR_MESSAGES
 )
-from math_engine import (
+from .math_engine import (
     StatisticalCalculations, PortfolioMath, PerformanceCalculations,
     RiskCalculations, OptimizationEngine
 )

@@ -276,11 +276,11 @@ func (m *DataSourceManager) StopHealthCheck() {
 }
 
 // GetFailoverStats 获取故障转移统计
-func (m *DataSourceManager) GetFailoverStats() map[string]interface{} {
+func (m *DataSourceManager) GetFailoverStats() map[string]any {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"last_failover_time": m.lastFailover,
 		"failover_count":     m.failoverCount,
 		"current_source":     m.current.GetName(),

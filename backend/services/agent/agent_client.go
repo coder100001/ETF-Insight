@@ -19,13 +19,13 @@ type AgentInfo struct {
 }
 
 type AgentRunRequest struct {
-	AgentID     string                 `json:"agent_id"`
-	Query       string                 `json:"query"`
-	Context     map[string]interface{} `json:"context,omitempty"`
-	LLMProvider string                 `json:"llm_provider"`
-	Model       string                 `json:"model"`
-	Temperature float64                `json:"temperature,omitempty"`
-	MaxTokens   int                    `json:"max_tokens,omitempty"`
+	AgentID     string         `json:"agent_id"`
+	Query       string         `json:"query"`
+	Context     map[string]any `json:"context,omitempty"`
+	LLMProvider string         `json:"llm_provider"`
+	Model       string         `json:"model"`
+	Temperature float64        `json:"temperature,omitempty"`
+	MaxTokens   int            `json:"max_tokens,omitempty"`
 }
 
 type AgentRunResponse struct {
@@ -46,9 +46,9 @@ type AgentTeamRequest struct {
 }
 
 type AgentTeamResponse struct {
-	Query     string                   `json:"query"`
-	Rounds    []map[string]interface{} `json:"rounds"`
-	Synthesis string                   `json:"synthesis"`
+	Query     string           `json:"query"`
+	Rounds    []map[string]any `json:"rounds"`
+	Synthesis string           `json:"synthesis"`
 }
 
 type apiEnvelope struct {
@@ -75,7 +75,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) doRequest(method, endpoint string, body interface{}, result interface{}) error {
+func (c *Client) doRequest(method, endpoint string, body any, result any) error {
 	var reqBody io.Reader
 	if body != nil {
 		jsonBytes, err := json.Marshal(body)
@@ -118,8 +118,8 @@ func (c *Client) doRequest(method, endpoint string, body interface{}, result int
 	return json.Unmarshal(respBytes, result)
 }
 
-func (c *Client) Health() (map[string]interface{}, error) {
-	var result map[string]interface{}
+func (c *Client) Health() (map[string]any, error) {
+	var result map[string]any
 	if err := c.doRequest(http.MethodGet, "/health", nil, &result); err != nil {
 		return nil, err
 	}

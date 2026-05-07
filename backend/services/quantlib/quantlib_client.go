@@ -94,7 +94,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) doRequest(method, endpoint string, body interface{}, result interface{}) error {
+func (c *Client) doRequest(method, endpoint string, body any, result any) error {
 	var reqBody io.Reader
 
 	if body != nil {
@@ -161,7 +161,7 @@ func (c *Client) doRequest(method, endpoint string, body interface{}, result int
 	return nil
 }
 
-func (c *Client) doRequestWithCache(method, endpoint string, body interface{}, result interface{}, ttl time.Duration) error {
+func (c *Client) doRequestWithCache(method, endpoint string, body any, result any, ttl time.Duration) error {
 	cacheKey := c.generateCacheKey(method, endpoint, body)
 	if cachedData, found := c.cache.get(cacheKey); found {
 		if err := json.Unmarshal(cachedData, result); err != nil {
@@ -182,7 +182,7 @@ func (c *Client) doRequestWithCache(method, endpoint string, body interface{}, r
 	return nil
 }
 
-func (c *Client) generateCacheKey(method, endpoint string, body interface{}) string {
+func (c *Client) generateCacheKey(method, endpoint string, body any) string {
 	h := sha256.New()
 	h.Write([]byte(method))
 	h.Write([]byte(endpoint))
@@ -227,7 +227,7 @@ func (c *Client) BuildYieldCurve(req models.YieldCurveRequest) (*models.YieldCur
 
 func (c *Client) PriceBond(req models.BondRequest) (*models.BondResult, error) {
 	var result models.BondResult
-	if err := c.doRequest(http.MethodPost, "/bonds/fixed", req, &result); err != nil {
+	if err := c.doRequest(http.MethodPost, "/bonds/price", req, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -243,32 +243,32 @@ func (c *Client) CalculateVaR(req models.VaRRequest) (*models.VaRResult, error) 
 
 const referenceDataCacheTTL = 1 * time.Hour
 
-func (c *Client) GetSupportedCurrencies() (interface{}, error) {
-	var result interface{}
+func (c *Client) GetSupportedCurrencies() (any, error) {
+	var result any
 	if err := c.doRequestWithCache(http.MethodGet, "/core/types/currencies", nil, &result, referenceDataCacheTTL); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (c *Client) GetFrequencies() (interface{}, error) {
-	var result interface{}
+func (c *Client) GetFrequencies() (any, error) {
+	var result any
 	if err := c.doRequestWithCache(http.MethodGet, "/core/types/frequencies", nil, &result, referenceDataCacheTTL); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (c *Client) GetCalendars() (interface{}, error) {
-	var result interface{}
+func (c *Client) GetCalendars() (any, error) {
+	var result any
 	if err := c.doRequestWithCache(http.MethodGet, "/scheduling/calendar/list", nil, &result, referenceDataCacheTTL); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (c *Client) GetDayCountConventions() (interface{}, error) {
-	var result interface{}
+func (c *Client) GetDayCountConventions() (any, error) {
+	var result any
 	if err := c.doRequestWithCache(http.MethodGet, "/scheduling/daycount/conventions", nil, &result, referenceDataCacheTTL); err != nil {
 		return nil, err
 	}

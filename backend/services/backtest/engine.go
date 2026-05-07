@@ -2,6 +2,7 @@ package backtest
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"sort"
 	"time"
@@ -472,9 +473,7 @@ func (e *BacktestEngine) calculateFactors(bar *Bar) {
 	// 由策略实现具体的因子计算
 	if factorStrategy, ok := e.strategy.(FactorStrategy); ok {
 		factors := factorStrategy.CalculateFactors(e, bar)
-		for name, value := range factors {
-			e.factors[name] = value
-		}
+		maps.Copy(e.factors, factors)
 	}
 }
 

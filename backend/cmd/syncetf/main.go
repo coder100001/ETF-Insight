@@ -253,7 +253,7 @@ func getEnvProxy() string {
 }
 
 // decimalNewFromFloat 转换为decimal
-type decimalType interface{}
+type decimalType any
 
 func decimalNewFromFloat(f float64) decimalType {
 	return decimal.NewFromFloat(f)

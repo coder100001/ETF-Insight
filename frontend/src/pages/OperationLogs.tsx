@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import {
   Card,
@@ -32,12 +32,15 @@ import {
   type ActionTypesResponse,
   type UsersResponse,
 } from '../services/operationLogsService';
-const debounce = <T extends (...args: any[]) => void>(fn: T, ms: number): T => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DebounceFunction = (...args: any[]) => void;
+
+const debounce = <T extends DebounceFunction>(fn: T, ms: number): ((...args: Parameters<T>) => void) => {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  return ((...args: Parameters<T>) => {
+  return (...args: Parameters<T>) => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
-  }) as unknown as T;
+  };
 };
 
 const { RangePicker } = DatePicker;
@@ -214,18 +217,24 @@ const OperationLogs: React.FC = () => {
     loadLogs();
   }, [loadLogs]);
 
-  // 防抖搜索
-  const debouncedSearch = useCallback(
+  // 防抖搜索 - 使用 ref 避免闭包问题
+  const debouncedSearchRef = useRef(
     debounce((newParams: LogFilterParams) => {
       setFilterParams(newParams);
-    }, 500),
-    []
+    }, 500)
   );
+
+  // 保持 ref 最新
+  useEffect(() => {
+    debouncedSearchRef.current = debounce((newParams: LogFilterParams) => {
+      setFilterParams(newParams);
+    }, 500);
+  }, []);
 
   // 筛选条件变更处理
   const handleFilterChange = (key: keyof LogFilterParams, value: string | number | undefined) => {
     const newParams = { ...filterParams, [key]: value, page: 1 };
-    debouncedSearch(newParams);
+    debouncedSearchRef.current(newParams);
   };
 
   // 分页处理

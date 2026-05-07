@@ -55,7 +55,7 @@ Step 7:   验证交付
 # 后端 Go 配置
 # ============================================================
 backend:
-  language: "Go 1.24"
+  language: "Go 1.26"
   test_command: "go test ./... -race"
   coverage_command: "go test ./... -coverprofile=coverage.out"
   bench_command: "go test -bench=. -benchmem ./..."

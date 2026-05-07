@@ -1,474 +1,100 @@
-# ETF-Insight (v2.10.0) 🚀
+# ETF-Insight
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.26-blue)](https://golang.org/)
 [![React Version](https://img.shields.io/badge/React-19.2.4-61DAFB)](https://reactjs.org/)
-[![Test Coverage](https://img.shields.io/badge/coverage-55%25-yellowgreen)](https://github.com/coder100001/ETF-Insight)
 
-**开源专业的 ETF 量化分析平台**
+**开源专业的 ETF 量化分析平台** — 面向专业投资者、量化研究员和金融机构，提供机构级 ETF 数据洞察、多维度量化分析、投资组合优化。
 
-ETF-Insight 是一个面向专业投资者、量化研究员和金融机构的开源 ETF 分析平台。基于 Go + React 技术栈，提供机构级的 ETF 数据洞察、多维度量化分析、投资组合优化等专业功能。
+> 愿景：成为开源社区最专业的 ETF 量化分析工具，为投资者提供透明、可验证的分析能力
 
-> 🎯 **愿景**: 成为开源社区最专业的 ETF 量化分析工具，为投资者提供透明、可验证的分析能力
+## 核心特性
 
-## 📢 最新动态
+| 模块 | 能力 |
+|------|------|
+| **投资组合分析** | 蒙特卡洛模拟、情景分析、VaR/CVaR、夏普/索提诺/卡尔玛比率 |
+| **组合优化** | 马科维茨 MPT、风险平价、Black-Litterman、有效前沿 |
+| **因子分析** | Fama-French 三因子/五因子模型、归因分析 |
+| **回测引擎** | 事件驱动架构、订单系统、滑点/手续费模型、分红再投资 |
+| **技术指标** | RSI、MACD、布林带、移动平均线 |
+| **ETF 对比** | 多维度并排对比、持仓重叠分析、业绩回测 |
+| **持仓穿透** | 底层资产明细、行业/地区/市值分布、集中度指标 |
+| **QuantLib 集成** | 期权定价、收益率曲线、债券定价、VaR 计算 |
+| **AI Agent** | 4 个金融 Agent（Buffett/Graham/Bridgewater/Macro）、团队辩论模式 |
+| **数据源** | Finage（ETF）、AKShare/TuShare（A 股）、多数据源汇率故障转移 |
 
-**v2.11 分析微服务** (2026-05-06):
-- ✅ **TDD 开发**: RED → GREEN → REFACTOR 流程
-- ✅ **Portfolio Management 模块**: 16 个分析模块从 FinceptTerminal 提取
-  - Portfolio Optimization: 组合优化 (最大夏普/最小波动率/等权重)
-  - Risk Management: VaR/CVaR 计算、风险预算、情景分析
-  - Portfolio Analytics: CAPM 分析、有效前沿、组合指标
-  - Portfolio Planning: 资产配置、风险容忍度分析
-- ✅ **FastAPI 服务** (port 8093): 4 个路由模块
-- ✅ **Go 后端代理**: `/api/analytics/*` 路由代理转发
-- ✅ **Docker 支持**: `Dockerfile` 容器化部署
-- ✅ **测试覆盖**: 4 个单元测试 (跳过 scipy 依赖)
-- ✅ **AGPL 合规**: `NOTICE` 文件声明
+## 技术栈
 
-**v2.10 数据源微服务** (2026-05-06):
-- ✅ **直接集成 FinceptTerminal 脚本**: AGPL 非商业使用，16 个数据源脚本
-- ✅ **统一数据 API 服务** (port 8092): FastAPI 封装 6 大数据源
-  - FRED: 美联储经济数据 API
-  - World Bank: 世界银行经济指标
-  - IMF: 国际货币基金组织数据
-  - Yahoo Finance: 股票实时报价和历史数据
-  - AkShare: A股实时行情、宏观经济、债券、加密货币 (11 个模块)
-  - CoinGecko: 加密货币市场数据
-- ✅ **Go 后端代理**: `/api/data/*` 路由代理转发到 Python 服务
-- ✅ **Docker 支持**: `Dockerfile` 容器化部署
-- ✅ **测试覆盖**: 3 个单元测试通过
-- ✅ **AGPL 合规**: `NOTICE` 文件声明
+| 层级 | 技术 |
+|------|------|
+| **后端** | Go 1.26、Gin、GORM（SQLite/PostgreSQL） |
+| **前端** | React 19、TypeScript、Vite、Ant Design、ECharts |
+| **微服务** | Python FastAPI（AI Agent port 8091、数据源 port 8092、分析 port 8093） |
+| **数据源** | Finage API、Open Exchange Rates、AKShare |
 
-**v2.9 AI Agent 微服务** (2026-05-05):
-- ✅ **从零重写 Agent 框架**: 零 AGPL 风险，完全自主实现
-  - 多 LLM 支持: OpenAI/Ollama/DeepSeek，通过 `get_provider()` 工厂切换
-  - Agent 抽象基类 + 工具注册机制 + Agent 管理器
-- ✅ **4 个金融 Agent**: Warren Buffett、Benjamin Graham、Bridgewater、Macroeconomic Analyst
-- ✅ **FastAPI 服务** (port 8091): discover/run/stream/team 4 个端点
-- ✅ **Go 后端集成**: `/api/agents/*` 代理路由
-- ✅ **前端页面**: `AIAgents.tsx` - 单 Agent 分析 + 多 Agent 团队辩论
-- ✅ **测试覆盖**: 19 个 Python 单元测试全部通过
-
-**v2.8 FinceptTerminal QuantLib 集成** (2026-05-04):
-- ✅ **QuantLib 云 API 对接**: 直接调用 `api.fincept.in/quantlib/` 云服务
-  - 期权定价: 欧式/美式 Black-Scholes 定价，完整 Greeks (Delta/Gamma/Theta/Vega/Rho)
-  - 收益率曲线: 构建和可视化，支持多货币 (USD/EUR/CNY/GBP/JPY)
-  - 债券定价: 固定收益分析，包含久期、修正久期、凸性
-  - VaR 计算: QuantLib 引擎驱动的风险价值计算
-  - 参考数据: 缓存 1 小时 TTL (货币/频率/日历/计息基准)
-- ✅ **前端量化分析页面**: `QuantLibAnalysis.tsx` - 4 个 Tab (期权/债券/收益率曲线/VaR)
-- ✅ **代码审查**: 2 轮审查，10 个问题已修复 (P0×3, P1×4, P2×3)
-
-**v2.6.1 前后端接口一致性修复** (2026-04-25):
-- ✅ **API参数优化**: MPT/有效前沿的Returns/CovMatrix改为可选，自动从历史数据计算
-- ✅ **字段名对齐**: 前后端响应字段完全一致（weights/volatility/target_return等）
-- ✅ **有效前沿图表修复**: 动态坐标轴、格式化显示、边距优化
-- ✅ **文档清理**: 移除所有JWT/登录相关残留描述
-
-**v2.6 数据层重构与穿透分析**:
-- ✅ **统一资产模型**: Asset 基表支持股票/ETF/指数等多种资产类型
-- ✅ **ETF持仓穿透**: 底层持仓明细查询、权重分析
-- ✅ **重叠度计算**: 两只ETF持仓重叠度分析(最小权重法)
-- ✅ **组合穿透分析**: 投资组合底层资产行业/地理分布
-- ✅ **集中度指标**: Top10/Top20权重、Herfindahl指数、有效持仓数
-- ✅ **智能缓存**: 重叠度计算结果缓存(7天TTL)、自动失效
-- ✅ **事件驱动**: 持仓更新自动触发缓存失效
-- ✅ **测试覆盖**: portfolio 84.9%, event 73.2%
-
-**v2.5 量化引擎增强**:
-- ✅ **回测引擎**: 事件驱动架构、完整订单系统、滑点/手续费模型
-- ✅ **组合优化增强**: 马科维茨MPT、风险平价、Black-Litterman三种模型
-- ✅ **因子分析模块**: Fama-French三因子/五因子模型、归因分析
-- ✅ **A股数据源**: AKShare/TuShare接入、实时行情同步
-- ✅ **跨资产类别**: 股票/债券/商品/REIT/货币/多资产全覆盖
-
-**v2.5 实时数据与量化分析升级**:
-- ✅ **实时数据获取**: Finage API 集成，3年历史数据同步(约388天)
-- ✅ **投资组合情景分析**: 蒙特卡洛模拟(1000次)、三种市场情景(乐观/中性/悲观)、VaR/CVaR风险指标
-- ✅ **动态 ETF 选择**: Portfolio Analysis 页面支持从 API 获取 ETF 列表，显示实时价格
-- ✅ **灵活权重配置**: 支持添加/删除 ETF，实时权重验证
-- ✅ **金融计算公式**: 标准金融公式计算组合指标，使用真实历史数据
-  - 组合方差: $\sigma_p^2 = \sum_i w_i^2 \sigma_i^2 + 2 \sum_{i<j} w_i w_j \sigma_i \sigma_j \rho_{ij}$
-  - 组合最大回撤: 基于净值序列计算，非简单加权
-- ✅ **新增风险调整指标**: 索提诺比率(下行风险)、卡尔玛比率(收益/回撤)
-- ✅ **滚动窗口指标**: 30/60/90/180/252日动态窗口，含胜率、盈亏比
-- ✅ **统计指标**: 偏度、峰度分析收益分布特征
-- ✅ **改进股息再投资**: 季度/月度再投资模型，更精确的复利计算
-- ✅ **默认投资组合模板**: 6种预设组合(保守/平衡/进取/收入/股息增长/科技聚焦)
-- ✅ **技术指标库**: RSI、MACD、布林带、移动平均线
-- ✅ **风险模型**: VaR/CVaR (历史法/参数法)、组合风险分析
-- ✅ **风险指标**: 夏普比率、索提诺比率、最大回撤、Beta/Alpha
-- ✅ **前端分析页面**: 投资组合情景分析、技术分析(雷达图)、风险分析(VaR可视化)
-- ✅ **测试覆盖率**: factor 80.8%, middleware 68.8%, utils 81.2%
-- ✅ **因子分析修复**: Fama-French模型数值稳定性优化、Tikhonov正则化、随机数生成修复
-- ✅ **CI/CD**: 覆盖率检测、Codecov集成
-
-**v2.4 API文档与基础设施升级**:
-- ✅ **审计日志**: 异步写入，敏感信息自动脱敏，Request ID追踪
-- ✅ **数据验证**: 通用验证中间件，支持string/number/email多种类型
-- ✅ **API分页**: 通用分页响应结构，支持page/pageSize参数
-- ✅ **速率限制**: IP级别的请求频率限制
-- ✅ **股票代码验证**: 防止非法字符注入
-- ✅ **Swagger API文档**: OpenAPI 3.0规范，交互式API测试
-
-> **📚 开发者必读**: [AGENTS.md](./AGENTS.md) - 架构设计、数据模型、编码规则等核心文档
-> **📖 API文档**: http://localhost:8080/swagger - 交互式API文档
-> **📊 实现文档**: [docs/development/v2.5_phase1_implementation.md](./docs/development/v2.5_phase1_implementation.md) - v2.5详细实现文档
-
-## 🎯 开源定位
-
-ETF-Insight 坚持**开源、专业、透明**的理念：
-
-- 🔓 **完全开源**: MIT 协议，代码透明可审计
-- 📊 **专业分析**: 机构级量化指标，支持学术研究
-- 🔧 **可扩展**: 插件化架构，支持自定义数据源和算法
-- 🏛️ **社区驱动**: 欢迎贡献代码、策略和数据源
-
-### 适用场景
-
-| 用户类型 | 应用场景 |
-|---------|---------|
-| **量化研究员** | 策略回测、因子分析、学术验证 |
-| **专业投资者** | 组合优化、风险管理、资产配置 |
-| **金融机构** | 内部研究平台、客户报告生成 |
-| **开发者** | 学习量化金融、构建自定义分析工具 |
-| **数据科学家** | ETF 数据分析、机器学习特征工程 |
-
-## ✨ 核心特性
-
-### 📊 投资组合情景分析 (v2.5 新增)
-- **蒙特卡洛模拟** - 1000次模拟路径，基于几何布朗运动模型
-- **三种市场情景** - 乐观(+20%)、中性(0%)、悲观(-20%)情景分析
-- **金融计算公式** - 标准金融公式计算组合指标
-  - 组合收益率: $R_p = \sum w_i R_i$
-  - 组合方差: $\sigma_p^2 = \sum_i w_i^2 \sigma_i^2 + 2 \sum_{i<j} w_i w_j \sigma_i \sigma_j \rho_{ij}$
-  - 组合最大回撤: 基于净值序列计算，非简单加权
-- **风险指标** - VaR 95%/99%、CVaR 95%、最大回撤、夏普比率
-- **新增风险调整指标** - 索提诺比率、卡尔玛比率
-- **滚动窗口指标** - 30/60/90/180/252日动态窗口
-- **统计指标** - 偏度、峰度分析收益分布
-- **改进股息再投资** - 季度/月度再投资模型
-- **默认组合模板** - 6种预设投资组合(保守/平衡/进取/收入/股息增长/科技聚焦)
-- **可视化展示** - 折线图展示资产增长路径，对比表格展示关键指标
-
-### 📈 量化技术分析 (v2.5 新增)
-- **技术指标库** - RSI、MACD、布林带、移动平均线
-- **多因子雷达图** - 多维度技术指标可视化对比
-- **趋势分析** - MACD趋势图、布林带位置分析
-- **超买超卖提示** - RSI阈值预警
-
-### 🛡️ 风险分析 (v2.5 新增)
-- **VaR/CVaR计算** - 历史模拟法和参数法风险价值
-- **组合风险分解** - 成分VaR、边际VaR分析
-- **风险调整收益** - 夏普比率、索提诺比率(下行风险)、卡尔玛比率(收益/回撤)
-- **滚动窗口分析** - 30/60/90/180/252日动态风险评估
-- **统计分布分析** - 偏度、峰度分析收益分布特征
-- **市场风险指标** - Beta、Alpha、最大回撤
-- **风险等级评估** - 保守/平衡/激进组合风险评级
-
-### 📊 ETF 对比分析（ETF Comparison）
-- **并排对比** - 最多支持 5 只 ETF 同时对比
-- **多维度指标** - 费率、AUM、股息率、业绩表现、风险指标
-- **智能股息率** - 根据 ETF 类型自动设置合理股息率（高股息 3.5%、覆盖收益型 7%、债券 4%）
-- **持仓重叠分析** - 识别 ETF 间的持仓重合度，避免过度集中
-- **业绩回测对比** - 不同时间周期的收益表现对比
-
-### 🔍 持仓深度解构（Holdings Analysis）
-- **前十大持仓** - 穿透底层资产，了解核心持仓
-- **行业分布** - sector 权重分布及变化趋势
-- **地区分布** - 国家/地区配置比例
-- **市值分布** - 大/中/小盘股配置比例
-- **风格分析** - 价值/成长风格暴露度
-
-### 📊 ETF持仓穿透分析 (v2.6 新增)
-- **底层持仓查询** - 获取ETF底层资产明细及权重
-- **重叠度计算** - 两只ETF持仓重叠度分析(最小权重法)
-  - 公式: $Overlap = \frac{\sum \min(w_A, w_B)}{avg(\sum w_A, \sum w_B)} \times 100\%$
-- **组合穿透分析** - 投资组合底层资产穿透
-  - 行业分布聚合
-  - 地理分布聚合
-  - 前十大底层持仓
-- **集中度指标** - 组合风险分散度评估
-  - Top10/Top20权重占比
-  - Herfindahl指数 (HHI)
-  - 有效持仓数 = $1 / HHI$
-- **智能缓存** - 计算结果缓存(7天TTL)
-- **事件驱动失效** - 持仓更新自动触发缓存清理
-
-### 💼 A股红利ETF投资组合
-- **A股ETF管理** - 支持中证红利、红利低波等主流红利ETF
-- **投资占比分布** - 饼状图可视化展示投资组合配置
-- **分红数据追踪** - 股息率、分红频率等关键指标
-
-### 💱 汇率数据管理
-- **实时汇率** - USD/CNY、USD/HKD 等主要货币对
-- **多数据源支持** - Open Exchange Rates、CurrencyAPI、Frankfurter 三数据源
-- **自动故障转移** - 主数据源不可用时自动切换到备用数据源
-- **健康监控** - 实时监控数据源可用性
-- **自动同步** - 定时任务自动更新汇率数据（每5分钟）
-- **货币转换** - 支持多种货币间的换算功能
-- **同步日志** - 完整的汇率同步批次记录与明细追踪
-
-### 📊 投资组合情景分析
-- **蒙特卡洛模拟** - 1000次模拟路径预测未来资产价值
-- **三种市场情景** - 乐观、中性、悲观情景对比分析
-- **风险指标计算** - VaR/CVaR、夏普比率、最大回撤
-- **默认组合模板** - 6种预设投资组合快速选择
-- **可视化展示** - 交互式图表展示分析结果
-
-### 🔄 回测引擎 (v2.5 新增)
-- **事件驱动架构** - 基于事件总线的高性能回测引擎
-- **订单系统** - 市价单/限价单/止损单/止盈单完整支持
-- **滑点模型** - 固定滑点/百分比滑点/波动率滑点
-- **手续费模型** - 固定费率/阶梯费率
-- **分红再投资** - 支持股息自动再投资
-- **再平衡策略** - 定期再平衡和阈值再平衡
-- **回测分析** - 收益指标、风险指标、交易统计
-
-### 🎯 组合优化 (v2.5 增强)
-- **马科维茨MPT** - 均值-方差优化、有效前沿计算
-- **风险平价** - 等风险贡献(ERC)、反向波动率加权
-- **Black-Litterman** - 贝叶斯观点融合、后验收益分布
-- **权重约束** - 支持单资产上下限约束
-- **优化目标** - 最大夏普/最小波动/目标收益
-
-### 🔬 QuantLib 量化分析 (v2.8 新增)
-- **期权定价** - 欧式/美式 Black-Scholes 定价，完整 Greeks 计算
-- **收益率曲线** - 构建和可视化收益率曲线，支持多货币
-- **债券定价** - 固定收益债券定价分析，久期/凸性计算
-- **VaR 计算** - QuantLib 引擎驱动的历史模拟法/参数法 VaR
-- **交互式分析** - 4 个 Tab 的专业分析界面
-
-### 🤖 AI Agent 微服务 (v2.9 新增)
-- **投资大师分析** - Warren Buffett (价值投资)、Benjamin Graham (防御型投资)
-- **对冲基金视角** - Bridgewater Associates (宏观风险平价)
-- **宏观经济分析** - 自上而下宏观经济分析
-- **多 Agent 团队辩论** - 2-5 个 Agent 同时分析，综合观点
-- **多 LLM 模型** - 支持 OpenAI/Ollama/DeepSeek 等
-- **Go 后端代理** - `/api/agents/*` 路由转发
-
-### 📈 因子分析 (v2.5 新增)
-- **Fama-French模型** - 三因子/五因子模型支持
-- **因子暴露度** - 组合在各因子上的暴露分析
-- **归因分析** - 收益归因、风险归因分解
-- **主动收益分析** - Alpha分解、超额收益来源
-
-### 🌏 A股ETF数据源 (v2.5 新增)
-- **AKShare接入** - Python AKShare服务，实时A股ETF数据
-- **TuShare支持** - 备选数据源，基金净值数据
-- **数据同步** - ETF列表、价格、历史K线自动同步
-- **分红追踪** - 股息率计算、分红频率统计
-
-### 🌍 跨资产类别ETF (v2.5 新增)
-- **资产类别全覆盖** - 股票/债券/商品/REIT/货币/多资产/另类
-- **全球地区覆盖** - 美国/中国/欧洲/日本/新兴市场/亚太/拉美
-- **ETF类型丰富** - 指数/行业/因子/主题/主动/杠杆/反向
-- **多维度筛选** - 资产类别/地区/类型/行业/费率
-- **组合配置建议** - 保守/平衡/激进/股息策略模板
-
-### ⚙️ ETF 配置管理
-- **CRUD 操作** - 增删改查 ETF 配置信息
-- **状态管理** - 启用/禁用 ETF 数据自动更新
-- **数据源配置** - **Finage 唯一真实数据源** (v2.0 架构)
-
-### 📈 投资组合配置
-- **组合构建** - 自定义投资组合及权重分配
-- **收益分析** - 基于历史数据的组合收益模拟
-- **资本利得计算** - 基于真实历史数据计算资本利得和收益率
-- **预设组合** - 内置多种投资策略组合模板
-
-## 🛠️ 技术栈
-
-### 后端 (Go)
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Go | >= 1.21 | 核心语言 |
-| Gin | v1.9.1 | Web 框架 |
-| GORM | v1.30.0 | ORM 框架 (SQLite/PostgreSQL) |
-| go-cache | v2.1.0 | 内存缓存 |
-| cron/v3 | v3.0.1 | 定时任务调度 |
-| uuid | v1.6.0 | 唯一标识生成 |
-
-### 前端 (React)
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| React | ^19.2.4 | UI 框架 |
-| TypeScript | ^5.x | 类型安全 |
-| Vite | latest | 构建工具 |
-| Ant Design | ^6.3.4 | UI 组件库 |
-| ECharts | ^6.0.0 | 数据可视化 |
-| Recharts | ^3.8.1 | 图表组件 |
-| React Router | ^7.13.2 | 路由管理 |
-
-### 数据存储
-- **SQLite** - 默认本地数据库（开发环境）
-- **PostgreSQL** - 生产数据库支持
-
-## 🚀 快速开始
-
-### 方式一：一键启动（推荐）
+## 快速开始
 
 ```bash
-# 克隆项目
 git clone <repository-url>
 cd py_project
 
-# 一键启动（macOS/Linux）
-./start.sh
-
-# 一键启动（Windows）
-start.bat
+# 一键启动
+./start.sh        # macOS/Linux
+start.bat         # Windows
 ```
 
-### 方式二：手动启动
+**手动启动：**
 
-#### 1. 后端服务启动
 ```bash
-cd backend
+# 后端
+cd backend && go mod tidy && go run main.go
 
-# 安装依赖
-go mod tidy
-
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件，配置 Finage API Key
-
-# 启动后端服务
-go run main.go
+# 前端
+cd frontend && npm install && npm run dev
 ```
 
-#### 2. 前端服务启动
-```bash
-cd frontend
+**环境要求：** Go >= 1.26、Node.js >= 18、SQLite 3.35+
 
-# 安装依赖
-npm install
+**数据源配置：** 设置 `FINAGE_API_KEY` 环境变量（[.env.example](./backend/.env.example)）
 
-# 启动前端服务
-npm run dev
+## 项目结构
+
+```
+py_project/
+├── backend/              # Go 后端服务
+├── frontend/             # React 前端应用
+├── services/
+│   ├── agent/            # AI Agent 微服务 (port 8091)
+│   ├── data/             # 数据源微服务 (port 8092)
+│   └── analytics/        # 分析微服务 (port 8093)
+├── tools/doccheck/       # 文档一致性检查工具
+├── AGENTS.md             # 项目核心上下文文档
+└── CHANGELOG.md          # 版本变更日志
 ```
 
-### 环境要求
-- **Go**: >= 1.21
-- **Node.js**: >= 18.0.0
-- **npm**: >= 9.0.0
-- **SQLite**: 3.35.0+
+## 文档索引
 
-## 📊 数据源配置
+| 文档 | 说明 |
+|------|------|
+| [AGENTS.md](./AGENTS.md) | 架构设计、数据模型、编码规范、金融算法标准（**开发者必读**） |
+| [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
+| [README_EN.md](./README_EN.md) | English documentation |
+| [docs/roadmap/](./docs/roadmap/) | 演进路线图 |
+| [docs/security/](./docs/security/) | 安全审计与改进 |
+| [docs/reviews/](./docs/reviews/) | 代码审查报告 |
+| [docs/development/](./docs/development/) | 开发实施文档 |
+| [design-docs/](./design-docs/) | 设计文档 |
+| API 文档 | `http://localhost:8080/swagger`（交互式） |
 
-### ETF 数据源
-- **主数据源**: Finage API (必须配置)
-- **环境变量**: `FINAGE_API_KEY=your_api_key_here`
+## 贡献
 
-### 汇率数据源
-- **主数据源**: Open Exchange Rates
-- **备用数据源**: CurrencyAPI、Frankfurter
-- **故障转移**: 自动切换，无需手动配置
-
-## 🔧 开发指南
-
-### 代码规范
-- **Go**: 遵循官方代码规范，使用 `gofmt` 格式化
-- **TypeScript**: 严格类型检查，禁用 `any` 类型
-- **React**: 函数式组件，Hooks 规范使用
-- **Pre-commit钩子**: 提交前自动执行TypeScript和ESLint检查
-
-### 项目结构
-```
-ETF-Insight/
-├── backend/          # Go 后端服务
-├── frontend/         # React 前端应用
-├── services/agent/     # Python AI Agent 微服务 (port 8091)
-├── AGENTS.md         # 项目核心上下文文档
-├── README.md         # 中文文档
-└── README_EN.md      # 英文文档
-```
-
-### 核心文档
-- **[AGENTS.md](./AGENTS.md)** - 项目架构、数据模型、开发规范
-- **[docs/security/](./docs/security/)** - 安全文档和改进指南
-- **[docs/reviews/](./docs/reviews/)** - 代码审查报告
-- **[docs/roadmap/](./docs/roadmap/)** - 演进路线图
-- **[docs/guides/](./docs/guides/)** - 使用指南
-- **API 文档**: http://localhost:8080/swagger - OpenAPI 3.0 交互式文档
-
-## 🎯 演进路线图
-
-### v2.4 ✅
-- ✅ 审计日志与数据验证
-- ✅ Swagger/OpenAPI 3.0 API文档
-- ✅ 代码质量优化
-
-### v2.5 (已完成) ✅
-- ✅ 测试覆盖率提升至80%
-- ✅ 技术指标库（RSI/MACD/布林带）
-- ✅ 风险模型（VaR/CVaR）
-- ✅ 金融计算优化（组合方差、最大回撤修复）
-- ✅ 新增风险调整指标（索提诺比率、卡尔玛比率）
-- ✅ 滚动窗口指标（30/60/90/180/252日）
-- ✅ 统计指标（偏度、峰度）
-- ✅ 改进股息再投资模型（季度/月度）
-
-### v2.6 (已完成) ✅
-- ✅ 统一资产模型（Asset基表支持多种资产类型）
-- ✅ ETF持仓穿透（底层持仓明细、权重分析）
-- ✅ 重叠度计算（最小权重法）
-- ✅ 组合穿透分析（行业/地理分布）
-- ✅ 集中度指标（Top10/Top20、Herfindahl指数）
-- ✅ 智能缓存与事件驱动失效
-
-### v2.7-2.8 ✅
-- ✅ QuantLib 云 API 集成 (期权/债券/收益率曲线/VaR)
-- ✅ QuantLib 前端分析页面 (4 Tab 交互式界面)
-- ✅ 代码审查与质量保证 (2 轮审查)
-- ✅ AI Agent 微服务 (4 个金融 Agent，框架支持无限扩展)
-- 📋 数据源微服务 (60+ 数据源)
-
-### v2.9 ✅
-- ✅ AI Agent 微服务 (Python FastAPI, port 8091)
-- ✅ 多 LLM 支持 (OpenAI/Ollama/DeepSeek)
-- ✅ 4 个金融 Agent (Buffett/Graham/Bridgewater/Macro)
-- ✅ 多 Agent 团队辩论模式
-- ✅ Go 后端集成 + 前端交互页面
-- 📋 更多 Agent (地缘政治/技术分析/对冲基金)
-
-### v3.0 (6-12个月) 🚀
-- 🚀 插件系统架构
-- 🚀 开源生态建设
-- 🚀 学术合作支持
-
-> 详细路线图: [docs/roadmap/PROFESSIONAL_ENHANCEMENT.md](./docs/roadmap/PROFESSIONAL_ENHANCEMENT.md)
-
-## 📞 技术支持
-
-### 常见问题
-1. **数据源连接失败**: 检查网络连接和 API Key 配置
-2. **汇率数据不一致**: 系统会自动故障转移，检查日志确认当前数据源
-3. **性能问题**: 启用 Redis 缓存提升性能
-
-### 日志查看
-```bash
-# 查看后端日志
-tail -f backend/logs/app.log
-
-# 查看汇率同步日志
-tail -f backend/logs/exchange_rate.log
-```
-
-## 🤝 贡献指南
-
-欢迎提交 Issue 和 Pull Request！请确保：
-1. 遵循项目代码规范
-2. 新功能包含单元测试
+欢迎 Issue 和 Pull Request。请确保：
+1. 遵循代码规范（Go: `gofmt`，TypeScript: 严格类型）
+2. 新功能包含单元测试（覆盖率 >= 80%）
 3. 更新相关文档
-4. 通过代码审查
 
-## 📄 许可证
+详见 [AGENTS.md 贡献指南](./AGENTS.md#-贡献指南)。
 
-本项目采用 MIT 许可证。
+## 许可证
 
----
-
-**立即体验**: [http://localhost:8080](http://localhost:8080)
-**API 文档**: [http://localhost:8080/swagger](http://localhost:8080/swagger)
+[MIT](./LICENSE)

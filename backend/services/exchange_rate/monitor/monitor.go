@@ -55,6 +55,6 @@ func (m *Monitor) GetStatusReport() *StatusReport {
 type StatusReport struct {
 	GeneratedAt    time.Time                           `json:"generated_at"`
 	HealthStatus   map[string]*datasource.HealthStatus `json:"health_status"`
-	FailoverStats  map[string]interface{}              `json:"failover_stats"`
-	ProviderStatus map[string]interface{}              `json:"provider_status"`
+	FailoverStats  map[string]any                      `json:"failover_stats"`
+	ProviderStatus map[string]any                      `json:"provider_status"`
 }

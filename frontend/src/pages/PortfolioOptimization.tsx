@@ -623,7 +623,7 @@ const PortfolioOptimization: React.FC = () => {
                             step={0.01}
                             value={view}
                             onChange={(v) => setAbsoluteViews({ ...absoluteViews, [symbol]: v || 0 })}
-                            formatter={(v) => `${(v * 100).toFixed(0)}%`}
+                            formatter={(v) => `${((v ?? 0) * 100).toFixed(0)}%`}
                             parser={(v) => parseFloat(v?.replace('%', '') || '0') / 100}
                             style={{ width: 100 }}
                           />

@@ -25,7 +25,7 @@ func NewOperationLogsHandler(service *services.OperationLogsService) *OperationL
 type GetLogsResponse struct {
 	Success bool                  `json:"success"`
 	Data    []services.UnifiedLog `json:"data,omitempty"`
-	Meta    LogsResponseMeta      `json:"meta,omitempty"`
+	Meta    LogsResponseMeta      `json:"meta"`
 	Error   string                `json:"error,omitempty"`
 }
 
@@ -415,7 +415,7 @@ func (h *OperationLogsHandler) GetUsers(c *gin.Context) {
 
 // GetLogDetailResponse 日志详情响应
 type GetLogDetailResponse struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Data    any    `json:"data,omitempty"`
+	Error   string `json:"error,omitempty"`
 }

@@ -85,6 +85,12 @@ const mockDailyStats = [
   { date: '03-28', total: 10, success: 9, failed: 1 },
 ];
 
+// 将 theme 转换为稳定引用，避免 useEffect 依赖警告
+const themeColors = {
+  success: theme.colors.success,
+  danger: theme.colors.danger,
+};
+
 const Dashboard: React.FC = () => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [todayStats] = useState({
@@ -133,7 +139,7 @@ const Dashboard: React.FC = () => {
             type: 'line',
             smooth: true,
             data: mockDailyStats.map(d => d.success),
-            itemStyle: { color: theme.colors.success },
+            itemStyle: { color: themeColors.success },
             // Safari 中禁用系列动画
             animation: !isSafari,
           },
@@ -142,7 +148,7 @@ const Dashboard: React.FC = () => {
             type: 'line',
             smooth: true,
             data: mockDailyStats.map(d => d.failed),
-            itemStyle: { color: theme.colors.danger },
+            itemStyle: { color: themeColors.danger },
             // Safari 中禁用系列动画
             animation: !isSafari,
           },

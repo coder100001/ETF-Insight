@@ -34,7 +34,7 @@ func (p *PaginationQuery) GetLimit() int {
 
 type PaginatedResponse struct {
 	Success    bool           `json:"success"`
-	Data       interface{}    `json:"data"`
+	Data       any            `json:"data"`
 	Pagination PaginationMeta `json:"pagination"`
 }
 
@@ -47,7 +47,7 @@ type PaginationMeta struct {
 	HasPrev    bool  `json:"has_prev"`
 }
 
-func NewPaginatedResponse(data interface{}, page, pageSize int, total int64) *PaginatedResponse {
+func NewPaginatedResponse(data any, page, pageSize int, total int64) *PaginatedResponse {
 	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
 	return &PaginatedResponse{
 		Success: true,

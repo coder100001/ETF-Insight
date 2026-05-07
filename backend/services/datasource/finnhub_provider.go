@@ -227,9 +227,7 @@ func (f *FinnhubProvider) GetQuotes(ctx context.Context, symbols []string) ([]*Q
 
 	// 启动工作协程
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for symbol := range symbolChan {
 				quote, err := f.GetQuote(ctx, symbol)
 				if err != nil {
@@ -240,7 +238,7 @@ func (f *FinnhubProvider) GetQuotes(ctx context.Context, symbols []string) ([]*Q
 				results = append(results, quote)
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 
 	// 发送任务

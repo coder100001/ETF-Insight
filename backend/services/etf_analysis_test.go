@@ -65,7 +65,7 @@ func (s *ETFAnalysisServiceTestSuite) TestCalculateMetrics_VolatilityCalculation
 	// 生成高波动率数据
 	prices := []models.ETFData{}
 	basePrice := 100.0
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		price := basePrice + float64(i%10)*5 - 25 // 波动范围 75-125
 		prices = append(prices, models.ETFData{
 			Symbol:     "VOLATILE",
@@ -236,7 +236,7 @@ func (s *ETFAnalysisServiceTestSuite) TestGetComparisonData() {
 	// 创建测试价格数据
 	now := time.Now()
 	for i, symbol := range symbols {
-		for day := 0; day < 30; day++ {
+		for day := range 30 {
 			price := models.ETFData{
 				Symbol:     symbol,
 				Date:       now.AddDate(0, 0, -day),
@@ -277,7 +277,7 @@ func generateTestPrices(symbol string, startPrice, endPrice float64, days int) [
 	prices := []models.ETFData{}
 	priceStep := (endPrice - startPrice) / float64(days-1)
 
-	for i := 0; i < days; i++ {
+	for i := range days {
 		price := startPrice + priceStep*float64(i)
 		prices = append(prices, models.ETFData{
 			Symbol:     symbol,

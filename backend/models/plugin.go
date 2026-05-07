@@ -61,8 +61,8 @@ type PluginConfiguration struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Plugin    PluginRegistry `json:"plugin,omitempty" gorm:"foreignKey:PluginID"`
-	Portfolio Portfolio      `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
+	Plugin    PluginRegistry `json:"plugin" gorm:"foreignKey:PluginID"`
+	Portfolio Portfolio      `json:"portfolio" gorm:"foreignKey:PortfolioID"`
 }
 
 func (PluginConfiguration) TableName() string {
@@ -98,8 +98,8 @@ type PluginExecutionLog struct {
 
 	CreatedAt time.Time `json:"created_at"`
 
-	Plugin PluginRegistry      `json:"plugin,omitempty" gorm:"foreignKey:PluginID"`
-	Config PluginConfiguration `json:"config,omitempty" gorm:"foreignKey:ConfigID"`
+	Plugin PluginRegistry      `json:"plugin" gorm:"foreignKey:PluginID"`
+	Config PluginConfiguration `json:"config" gorm:"foreignKey:ConfigID"`
 }
 
 func (PluginExecutionLog) TableName() string {
@@ -132,9 +132,9 @@ type ModelBenchmarkMatrix struct {
 	ComparisonDate time.Time `json:"comparison_date"`
 	CreatedAt      time.Time `json:"created_at"`
 
-	AlphaPlugin     PluginRegistry `json:"alpha_plugin,omitempty" gorm:"foreignKey:AlphaPluginID"`
-	OptimizerPlugin PluginRegistry `json:"optimizer_plugin,omitempty" gorm:"foreignKey:OptimizerPluginID"`
-	RiskPlugin      PluginRegistry `json:"risk_plugin,omitempty" gorm:"foreignKey:RiskPluginID"`
+	AlphaPlugin     PluginRegistry `json:"alpha_plugin" gorm:"foreignKey:AlphaPluginID"`
+	OptimizerPlugin PluginRegistry `json:"optimizer_plugin" gorm:"foreignKey:OptimizerPluginID"`
+	RiskPlugin      PluginRegistry `json:"risk_plugin" gorm:"foreignKey:RiskPluginID"`
 }
 
 func (ModelBenchmarkMatrix) TableName() string {
@@ -168,7 +168,7 @@ type StrategyExperiment struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	BenchmarkMatrix ModelBenchmarkMatrix `json:"benchmark_matrix,omitempty" gorm:"foreignKey:BenchmarkMatrixID"`
+	BenchmarkMatrix ModelBenchmarkMatrix `json:"benchmark_matrix" gorm:"foreignKey:BenchmarkMatrixID"`
 }
 
 func (StrategyExperiment) TableName() string {

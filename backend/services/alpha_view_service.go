@@ -372,7 +372,7 @@ func (s *BlackLittermanService) parseCovarianceMatrix(covJSON models.JSONMap) ([
 	// Convert map to ordered 2D slice
 	n := len(covMap)
 	result := make([][]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		key := fmt.Sprintf("%d", i)
 		row, ok := covMap[key]
 		if !ok {
@@ -382,7 +382,7 @@ func (s *BlackLittermanService) parseCovarianceMatrix(covJSON models.JSONMap) ([
 			return nil, fmt.Errorf("row %d has %d elements, expected %d", i, len(row), n)
 		}
 		result[i] = make([]decimal.Decimal, n)
-		for j := 0; j < n; j++ {
+		for j := range n {
 			colKey := fmt.Sprintf("%d", j)
 			val, ok := row[colKey]
 			if !ok {
@@ -398,9 +398,9 @@ func (s *BlackLittermanService) calculateEquilibriumReturns(weights []decimal.De
 	n := len(weights)
 	returns := make([]decimal.Decimal, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sum := decimal.Zero
-		for j := 0; j < n; j++ {
+		for j := range n {
 			sum = sum.Add(cov[i][j].Mul(weights[j]))
 		}
 		returns[i] = riskAversion.Mul(sum)
@@ -495,7 +495,7 @@ func (s *BlackLittermanService) blFormula(pi []decimal.Decimal, cov [][]decimal.
 	return jsonToMap(posteriorReturns), jsonToMap(posteriorCov)
 }
 
-func jsonToMap(v interface{}) models.JSONMap {
+func jsonToMap(v any) models.JSONMap {
 	switch val := v.(type) {
 	case []decimal.Decimal:
 		// Convert vector to map: [0.1, 0.2] -> {"0": 0.1, "1": 0.2}
@@ -508,7 +508,7 @@ func jsonToMap(v interface{}) models.JSONMap {
 		// Convert matrix to map: [[0.1, 0.2], [0.3, 0.4]] -> {"0": {"0": 0.1, "1": 0.2}, ...}
 		result := make(models.JSONMap, len(val))
 		for i, row := range val {
-			rowMap := make(map[string]interface{}, len(row))
+			rowMap := make(map[string]any, len(row))
 			for j, d := range row {
 				rowMap[fmt.Sprintf("%d", j)] = d.InexactFloat64()
 			}
@@ -532,7 +532,7 @@ func jsonToMap(v interface{}) models.JSONMap {
 func scaleMatrix(matrix [][]decimal.Decimal, scalar decimal.Decimal) [][]decimal.Decimal {
 	n := len(matrix)
 	result := make([][]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = make([]decimal.Decimal, len(matrix[i]))
 		for j := 0; j < len(matrix[i]); j++ {
 			result[i][j] = matrix[i][j].Mul(scalar)
@@ -544,7 +544,7 @@ func scaleMatrix(matrix [][]decimal.Decimal, scalar decimal.Decimal) [][]decimal
 func addMatrices(A, B [][]decimal.Decimal) [][]decimal.Decimal {
 	n := len(A)
 	result := make([][]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = make([]decimal.Decimal, len(A[i]))
 		for j := 0; j < len(A[i]); j++ {
 			result[i][j] = A[i][j].Add(B[i][j])
@@ -556,7 +556,7 @@ func addMatrices(A, B [][]decimal.Decimal) [][]decimal.Decimal {
 func addVectors(a, b []decimal.Decimal) []decimal.Decimal {
 	n := len(a)
 	result := make([]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = a[i].Add(b[i])
 	}
 	return result
@@ -565,9 +565,9 @@ func addVectors(a, b []decimal.Decimal) []decimal.Decimal {
 func matrixVectorMultiply(matrix [][]decimal.Decimal, vector []decimal.Decimal) []decimal.Decimal {
 	m := len(matrix)
 	result := make([]decimal.Decimal, m)
-	for i := 0; i < m; i++ {
+	for i := range m {
 		sum := decimal.Zero
-		for j := 0; j < len(vector); j++ {
+		for j := range vector {
 			sum = sum.Add(matrix[i][j].Mul(vector[j]))
 		}
 		result[i] = sum
@@ -577,28 +577,35 @@ func matrixVectorMultiply(matrix [][]decimal.Decimal, vector []decimal.Decimal) 
 
 func calculateMatrixInverse(matrix [][]decimal.Decimal) ([][]decimal.Decimal, error) {
 	n := len(matrix)
+
+	workMatrix := make([][]decimal.Decimal, n)
+	for i := range n {
+		workMatrix[i] = make([]decimal.Decimal, len(matrix[i]))
+		copy(workMatrix[i], matrix[i])
+	}
+
 	inverse := make([][]decimal.Decimal, n)
 	for i := range inverse {
 		inverse[i] = make([]decimal.Decimal, n)
 		inverse[i][i] = decimal.NewFromInt(1)
 	}
 
-	for i := 0; i < n; i++ {
-		pivot := matrix[i][i]
+	for i := range n {
+		pivot := workMatrix[i][i]
 		if pivot.IsZero() {
 			return nil, errors.New("matrix is singular")
 		}
 
-		for j := 0; j < n; j++ {
-			matrix[i][j] = matrix[i][j].Div(pivot)
+		for j := range n {
+			workMatrix[i][j] = workMatrix[i][j].Div(pivot)
 			inverse[i][j] = inverse[i][j].Div(pivot)
 		}
 
-		for k := 0; k < n; k++ {
+		for k := range n {
 			if k != i {
-				factor := matrix[k][i]
-				for j := 0; j < n; j++ {
-					matrix[k][j] = matrix[k][j].Sub(factor.Mul(matrix[i][j]))
+				factor := workMatrix[k][i]
+				for j := range n {
+					workMatrix[k][j] = workMatrix[k][j].Sub(factor.Mul(workMatrix[i][j]))
 					inverse[k][j] = inverse[k][j].Sub(factor.Mul(inverse[i][j]))
 				}
 			}
@@ -618,11 +625,11 @@ func calculateMatrixMultiply(A, B [][]decimal.Decimal) ([][]decimal.Decimal, err
 	p := len(B)
 
 	result := make([][]decimal.Decimal, m)
-	for i := 0; i < m; i++ {
+	for i := range m {
 		result[i] = make([]decimal.Decimal, n)
-		for j := 0; j < n; j++ {
+		for j := range n {
 			sum := decimal.Zero
-			for k := 0; k < p; k++ {
+			for k := range p {
 				sum = sum.Add(A[i][k].Mul(B[k][j]))
 			}
 			result[i][j] = sum
@@ -640,9 +647,9 @@ func calculateMatrixTranspose(matrix [][]decimal.Decimal) [][]decimal.Decimal {
 	m := len(matrix)
 	n := len(matrix[0])
 	result := make([][]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = make([]decimal.Decimal, m)
-		for j := 0; j < m; j++ {
+		for j := range m {
 			result[i][j] = matrix[j][i]
 		}
 	}

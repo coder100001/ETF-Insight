@@ -105,14 +105,14 @@ func ValidateAllProviders(manager *DataSourceManager) map[string]bool {
 }
 
 // GetProviderStatus 获取所有数据源状态摘要
-func GetProviderStatus(manager *DataSourceManager) map[string]interface{} {
+func GetProviderStatus(manager *DataSourceManager) map[string]any {
 	ctx := context.Background()
-	status := make(map[string]interface{})
+	status := make(map[string]any)
 
 	// 主数据源状态
 	primary := manager.GetPrimaryProvider()
 	if primary != nil {
-		status["primary"] = map[string]interface{}{
+		status["primary"] = map[string]any{
 			"name":          primary.GetName(),
 			"available":     primary.IsAvailable(ctx),
 			"rate_limit":    primary.GetRateLimit(),
@@ -123,9 +123,9 @@ func GetProviderStatus(manager *DataSourceManager) map[string]interface{} {
 	}
 
 	// 备份数据源状态
-	var backupStatus []map[string]interface{}
+	var backupStatus []map[string]any
 	for _, backup := range manager.GetBackupProviders() {
-		backupStatus = append(backupStatus, map[string]interface{}{
+		backupStatus = append(backupStatus, map[string]any{
 			"name":          backup.GetName(),
 			"available":     backup.IsAvailable(ctx),
 			"rate_limit":    backup.GetRateLimit(),

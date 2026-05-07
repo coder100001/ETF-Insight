@@ -103,7 +103,7 @@ type GeneratedReport struct {
 	CompletedAt *time.Time `json:"completed_at"`
 
 	// 关联
-	Template ReportTemplate `json:"template,omitempty" gorm:"foreignKey:TemplateID"`
+	Template ReportTemplate `json:"template" gorm:"foreignKey:TemplateID"`
 }
 
 // TableName 指定表名

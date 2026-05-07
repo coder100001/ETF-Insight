@@ -216,7 +216,7 @@ func TestReportService_GenerateReport(t *testing.T) {
 	}
 	service.CreateTemplate(template)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"portfolio_id": 1,
 		"start_date":   "2024-01-01",
 	}
@@ -265,7 +265,7 @@ func TestReportService_GetReports_Pagination(t *testing.T) {
 	}
 	service.CreateTemplate(template)
 
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		report := &models.GeneratedReport{
 			TemplateID: template.ID,
 			Title:      "Report",

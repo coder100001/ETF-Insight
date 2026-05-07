@@ -335,7 +335,7 @@ func TestPluginService_ExecutePlugin(t *testing.T) {
 
 	_ = service.RegisterPlugin(plugin)
 
-	input := map[string]interface{}{
+	input := map[string]any{
 		"test_param": "test_value",
 	}
 
@@ -373,8 +373,8 @@ func TestPluginService_GetExecutionLogs(t *testing.T) {
 
 	_ = service.RegisterPlugin(plugin)
 
-	for i := 0; i < 3; i++ {
-		_, _ = service.ExecutePlugin(plugin.ID, map[string]interface{}{"test": i})
+	for i := range 3 {
+		_, _ = service.ExecutePlugin(plugin.ID, map[string]any{"test": i})
 	}
 
 	logs, err := service.GetExecutionLogs(plugin.ID, 10)
@@ -443,7 +443,7 @@ func TestPluginService_ListBenchmarkMatrices(t *testing.T) {
 
 	_ = service.RegisterPlugin(plugin)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		matrix := &models.ModelBenchmarkMatrix{
 			ComparisonName:     "test-comparison-" + string(rune('A'+i)),
 			AlphaPluginID:      plugin.ID,

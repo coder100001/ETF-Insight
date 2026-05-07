@@ -36,7 +36,7 @@ from scipy import optimize, stats
 from scipy.linalg import sqrtm, inv, LinAlgError
 import warnings
 
-from config import (
+from .config import (
     MathConstants, PerformanceMetric, RiskMetric,
     validate_weights, validate_returns, validate_covariance_matrix,
     ERROR_MESSAGES

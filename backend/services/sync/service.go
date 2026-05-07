@@ -233,7 +233,7 @@ func (s *SyncService) updateETFConfig(etf datasource.ETFInfo) error {
 	}
 
 	// 更新现有配置
-	return models.DB.Model(&config).Updates(map[string]interface{}{
+	return models.DB.Model(&config).Updates(map[string]any{
 		"name":          etf.Name,
 		"description":   etf.Description,
 		"category":      etf.Category,
@@ -305,7 +305,7 @@ func (s *SyncService) startOperationLog(totalCount int) uint {
 // failOperationLog 记录失败日志
 func (s *SyncService) failOperationLog(id uint, errorMsg string) {
 	now := time.Now()
-	models.DB.Model(&models.OperationLog{}).Where("id = ?", id).Updates(map[string]interface{}{
+	models.DB.Model(&models.OperationLog{}).Where("id = ?", id).Updates(map[string]any{
 		"status":        2, // 失败
 		"error_message": errorMsg,
 		"end_time":      &now,
@@ -315,7 +315,7 @@ func (s *SyncService) failOperationLog(id uint, errorMsg string) {
 // completeOperationLog 完成操作日志
 func (s *SyncService) completeOperationLog(id uint, result *SyncResult) {
 	now := time.Now()
-	details, _ := json.Marshal(map[string]interface{}{
+	details, _ := json.Marshal(map[string]any{
 		"total":      result.TotalCount,
 		"success":    result.SuccessCount,
 		"fail":       result.FailCount,
@@ -340,7 +340,7 @@ func (s *SyncService) completeOperationLog(id uint, result *SyncResult) {
 
 	durationMs := int(result.Duration.Milliseconds())
 
-	models.DB.Model(&models.OperationLog{}).Where("id = ?", id).Updates(map[string]interface{}{
+	models.DB.Model(&models.OperationLog{}).Where("id = ?", id).Updates(map[string]any{
 		"status":        status,
 		"end_time":      &now,
 		"duration_ms":   durationMs,

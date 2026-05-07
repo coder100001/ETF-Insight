@@ -167,10 +167,7 @@ func (m *FamaFrenchModel) performRegression(dependent []float64) (*RegressionRes
 	}
 
 	// 截断数据到相同长度
-	minLen := n
-	if len(m.MarketReturns) < minLen {
-		minLen = len(m.MarketReturns)
-	}
+	minLen := min(len(m.MarketReturns), n)
 	if len(m.SMBReturns) < minLen {
 		minLen = len(m.SMBReturns)
 	}
@@ -498,8 +495,8 @@ func (m *FamaFrenchModel) transpose(matrix [][]float64) [][]float64 {
 		result[i] = make([]float64, rows)
 	}
 
-	for i := 0; i < rows; i++ {
-		for j := 0; j < cols; j++ {
+	for i := range rows {
+		for j := range cols {
 			result[j][i] = matrix[i][j]
 		}
 	}
@@ -518,9 +515,9 @@ func (m *FamaFrenchModel) matrixMultiply(a, b [][]float64) [][]float64 {
 		result[i] = make([]float64, cols)
 	}
 
-	for i := 0; i < rows; i++ {
-		for j := 0; j < cols; j++ {
-			for k := 0; k < inner; k++ {
+	for i := range rows {
+		for j := range cols {
+			for k := range inner {
 				result[i][j] += a[i][k] * b[k][j]
 			}
 		}
@@ -534,8 +531,8 @@ func (m *FamaFrenchModel) matrixVectorMultiply(matrix [][]float64, vector []floa
 	rows := len(matrix)
 	result := make([]float64, rows)
 
-	for i := 0; i < rows; i++ {
-		for j := 0; j < len(vector); j++ {
+	for i := range rows {
+		for j := range vector {
 			result[i] += matrix[i][j] * vector[j]
 		}
 	}
@@ -556,7 +553,7 @@ func (m *FamaFrenchModel) solveLinearSystem(A [][]float64, b []float64) []float6
 	}
 
 	// 前向消元
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// 主元选择
 		maxRow := i
 		for k := i + 1; k < n; k++ {
@@ -627,7 +624,7 @@ func (m *FamaFrenchModel) matrixInverse(matrix [][]float64) [][]float64 {
 	}
 
 	// 单位矩阵
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i][i] = 1.0
 	}
 
@@ -640,7 +637,7 @@ func (m *FamaFrenchModel) matrixInverse(matrix [][]float64) [][]float64 {
 	}
 
 	// 高斯消元
-	for i := 0; i < n; i++ {
+	for i := range n {
 		maxRow := i
 		for k := i + 1; k < n; k++ {
 			if math.Abs(augmented[k][i]) > math.Abs(augmented[maxRow][i]) {
@@ -653,8 +650,8 @@ func (m *FamaFrenchModel) matrixInverse(matrix [][]float64) [][]float64 {
 		// 检查主元是否为0（奇异矩阵）
 		if math.Abs(pivot) < 1e-10 {
 			// 矩阵接近奇异，返回单位矩阵作为fallback
-			for ii := 0; ii < n; ii++ {
-				for jj := 0; jj < n; jj++ {
+			for ii := range n {
+				for jj := range n {
 					if ii == jj {
 						result[ii][jj] = 1.0
 					} else {
@@ -668,7 +665,7 @@ func (m *FamaFrenchModel) matrixInverse(matrix [][]float64) [][]float64 {
 			augmented[i][j] /= pivot
 		}
 
-		for k := 0; k < n; k++ {
+		for k := range n {
 			if k != i {
 				factor := augmented[k][i]
 				for j := 0; j < 2*n; j++ {
@@ -679,7 +676,7 @@ func (m *FamaFrenchModel) matrixInverse(matrix [][]float64) [][]float64 {
 	}
 
 	// 提取逆矩阵
-	for i := 0; i < n; i++ {
+	for i := range n {
 		copy(result[i], augmented[i][n:])
 	}
 
@@ -694,7 +691,7 @@ func (m *FamaFrenchModel) scalarMatrixMultiply(matrix [][]float64, scalar float6
 	result := make([][]float64, rows)
 	for i := range result {
 		result[i] = make([]float64, cols)
-		for j := 0; j < cols; j++ {
+		for j := range cols {
 			result[i][j] = matrix[i][j] * scalar
 		}
 	}
@@ -758,7 +755,7 @@ func GenerateSampleFactorData(periods int) (
 	// HML: ~0.3% /月
 	// 无风险利率: ~0.15% /月
 
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		marketReturns[i] = 0.005 + randNorm()*0.045 // 年化约6%，波动率约16%
 		smbReturns[i] = 0.002 + randNorm()*0.03     // 年化约2.4%，波动率约10%
 		hmlReturns[i] = 0.003 + randNorm()*0.03     // 年化约3.6%，波动率约10%
@@ -793,7 +790,7 @@ func GenerateSampleFiveFactorData(periods int) (
 	// CMA (投资因子): ~0.2% /月
 	// 无风险利率: ~0.15% /月
 
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		marketReturns[i] = 0.005 + randNorm()*0.045 // 年化约6%，波动率约16%
 		smbReturns[i] = 0.002 + randNorm()*0.03     // 年化约2.4%，波动率约10%
 		hmlReturns[i] = 0.003 + randNorm()*0.03     // 年化约3.6%，波动率约10%
@@ -811,7 +808,7 @@ func GenerateSamplePortfolioReturns(periods int) []float64 {
 
 	// 生成模拟的组合收益率
 	// 假设组合有适度的市场暴露和一定的超额收益
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		// 基于市场收益 + alpha + 噪声
 		marketReturn := 0.005 + randNorm()*0.045 // 市场收益
 		alpha := 0.001                           // 月度 alpha ~0.1%
@@ -1010,10 +1007,7 @@ func CalculateFactorFromETFs(
 	}
 
 	// 计算因子收益
-	minLen := len(marketRets)
-	if len(smallRets) < minLen {
-		minLen = len(smallRets)
-	}
+	minLen := min(len(smallRets), len(marketRets))
 	if len(largeRets) < minLen {
 		minLen = len(largeRets)
 	}
@@ -1044,7 +1038,7 @@ func randNorm() float64 {
 	// 简化实现，实际应使用更好的随机数生成器
 	// 这里使用近似方法
 	sum := 0.0
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		sum += randFloat()
 	}
 	return sum - 6.0

@@ -26,7 +26,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) Get(path string, params map[string]string) (interface{}, error) {
+func (c *Client) Get(path string, params map[string]string) (any, error) {
 	u, _ := url.Parse(c.baseURL + path)
 	q := u.Query()
 	for k, v := range params {
@@ -45,18 +45,18 @@ func (c *Client) Get(path string, params map[string]string) (interface{}, error)
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	var result interface{}
+	var result any
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
 	}
 	return result, nil
 }
 
-func (c *Client) Health() (interface{}, error) {
+func (c *Client) Health() (any, error) {
 	return c.Get("/health", nil)
 }
 
-func (c *Client) OptimizePortfolio(symbols []string, strategy string) (interface{}, error) {
+func (c *Client) OptimizePortfolio(symbols []string, strategy string) (any, error) {
 	params := map[string]string{
 		"strategy": strategy,
 	}
@@ -66,14 +66,14 @@ func (c *Client) OptimizePortfolio(symbols []string, strategy string) (interface
 	return c.Get("/api/optimization/optimize", params)
 }
 
-func (c *Client) CalculateVaR(returns []float64, confidence float64) (interface{}, error) {
+func (c *Client) CalculateVaR(returns []float64, confidence float64) (any, error) {
 	params := map[string]string{
 		"confidence": fmt.Sprintf("%f", confidence),
 	}
 	return c.Get("/api/risk/var", params)
 }
 
-func (c *Client) CalculateCAPM(riskFreeRate, marketReturn, beta float64) (interface{}, error) {
+func (c *Client) CalculateCAPM(riskFreeRate, marketReturn, beta float64) (any, error) {
 	params := map[string]string{
 		"risk_free_rate": fmt.Sprintf("%f", riskFreeRate),
 		"market_return":  fmt.Sprintf("%f", marketReturn),

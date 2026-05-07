@@ -34,10 +34,10 @@ func NewTuShareProvider(apiKey, baseURL string) *TuShareProvider {
 
 // TuShareRequest TuShare API请求
 type TuShareRequest struct {
-	APIName string                 `json:"api_name"`
-	Token   string                 `json:"token"`
-	Params  map[string]interface{} `json:"params"`
-	Fields  string                 `json:"fields,omitempty"`
+	APIName string         `json:"api_name"`
+	Token   string         `json:"token"`
+	Params  map[string]any `json:"params"`
+	Fields  string         `json:"fields,omitempty"`
 }
 
 // TuShareResponse TuShare API响应
@@ -50,8 +50,8 @@ type TuShareResponse struct {
 
 // TuShareData TuShare数据
 type TuShareData struct {
-	Fields []string        `json:"fields"`
-	Items  [][]interface{} `json:"items"`
+	Fields []string `json:"fields"`
+	Items  [][]any  `json:"items"`
 }
 
 // FundBasic 基金基础信息
@@ -92,7 +92,7 @@ type FundDaily struct {
 }
 
 // callAPI 调用TuShare API
-func (p *TuShareProvider) callAPI(apiName string, params map[string]interface{}) (*TuShareResponse, error) {
+func (p *TuShareProvider) callAPI(apiName string, params map[string]any) (*TuShareResponse, error) {
 	req := TuShareRequest{
 		APIName: apiName,
 		Token:   p.apiKey,
@@ -128,7 +128,7 @@ func (p *TuShareProvider) callAPI(apiName string, params map[string]interface{})
 
 // GetFundBasic 获取基金基础信息
 func (p *TuShareProvider) GetFundBasic(market string) ([]FundBasic, error) {
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	if market != "" {
 		params["market"] = market
 	}
@@ -160,7 +160,7 @@ func (p *TuShareProvider) GetFundBasic(market string) ([]FundBasic, error) {
 
 // GetFundNav 获取基金净值
 func (p *TuShareProvider) GetFundNav(tsCode string, startDate, endDate string) ([]FundNav, error) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"ts_code": tsCode,
 	}
 	if startDate != "" {
@@ -197,7 +197,7 @@ func (p *TuShareProvider) GetFundNav(tsCode string, startDate, endDate string) (
 
 // GetFundDaily 获取基金日线行情
 func (p *TuShareProvider) GetFundDaily(tsCode string, startDate, endDate string) ([]FundDaily, error) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"ts_code": tsCode,
 	}
 	if startDate != "" {
@@ -254,7 +254,7 @@ func (p *TuShareProvider) GetFundDaily(tsCode string, startDate, endDate string)
 }
 
 // getString 安全获取字符串
-func getString(item []interface{}, index int) string {
+func getString(item []any, index int) string {
 	if index < len(item) {
 		if val, ok := item[index].(string); ok {
 			return val

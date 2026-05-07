@@ -144,7 +144,7 @@ func (s *FactorDataService) GetFactorCount(factorName string) (int64, error) {
 
 func randNorm() float64 {
 	sum := 0.0
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		sum += rand.Float64()
 	}
 	return sum - 6.0

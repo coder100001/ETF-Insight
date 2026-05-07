@@ -233,13 +233,13 @@ const InvestmentStrategy: React.FC = () => {
       try {
         const response = await etfAPI.getList();
         if (response.success && response.data) {
-          setEtfData(response.data);
-          // 初始化自定义配置为平均分配
-          if (response.data.length > 0) {
-            const evenWeight = Math.floor(100 / response.data.length);
+          const data = response.data;
+          setEtfData(data);
+          if (data.length > 0) {
+            const evenWeight = Math.floor(100 / data.length);
             const initAlloc: Record<string, number> = {};
-            response.data.forEach((item: ETFApiItem, idx: number) => {
-              initAlloc[item.symbol] = idx === 0 ? 100 - evenWeight * (response.data.length - 1) : evenWeight;
+            data.forEach((item: ETFApiItem, idx: number) => {
+              initAlloc[item.symbol] = idx === 0 ? 100 - evenWeight * (data.length - 1) : evenWeight;
             });
             setCustomAllocation(initAlloc);
           }
@@ -554,7 +554,7 @@ const InvestmentStrategy: React.FC = () => {
                 <Text>初始投资金额：</Text>
                 <InputNumber
                   value={investmentAmount}
-                  onChange={setInvestmentAmount}
+                  onChange={(v) => setInvestmentAmount(v ?? 100000)}
                   formatter={v => `$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                   parser={v => Number(v?.replace(/\$\s?|(,*)/g, '') || '0')}
                   style={{ width: 180 }}

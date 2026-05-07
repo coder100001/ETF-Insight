@@ -200,7 +200,7 @@ func TestAlphaViewService_GetActiveAlphaViews(t *testing.T) {
 	factorService := NewFactorDataService(db)
 	service := NewAlphaViewService(db, factorService)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		view := &models.AlphaView{
 			PortfolioID: 1,
 			AssetSymbol: "SPY",

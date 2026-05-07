@@ -110,7 +110,7 @@ func TestCalculateMACD_InsufficientData(t *testing.T) {
 	ti := NewTechnicalIndicators()
 
 	prices := make([]decimal.Decimal, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		prices[i] = decimal.NewFromFloat(100 + float64(i))
 	}
 
@@ -144,7 +144,7 @@ func TestCalculateBollingerBands_InsufficientData(t *testing.T) {
 	ti := NewTechnicalIndicators()
 
 	prices := make([]decimal.Decimal, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		prices[i] = decimal.NewFromFloat(100)
 	}
 
@@ -182,7 +182,7 @@ func TestCalculateMovingAverages_InsufficientData(t *testing.T) {
 	ti := NewTechnicalIndicators()
 
 	prices := make([]decimal.Decimal, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		prices[i] = decimal.NewFromFloat(100)
 	}
 

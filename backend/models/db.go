@@ -153,7 +153,7 @@ func InitDefaultData() error {
 			}
 		} else {
 			// 记录已存在，更新关键字段（如 expense_ratio）
-			if err := DB.Model(&ETFConfig{}).Where("symbol = ?", etf.Symbol).Updates(map[string]interface{}{
+			if err := DB.Model(&ETFConfig{}).Where("symbol = ?", etf.Symbol).Updates(map[string]any{
 				"expense_ratio": etf.ExpenseRatio,
 				"name":          etf.Name,
 				"description":   etf.Description,

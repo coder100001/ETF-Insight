@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp } from 'antd';
 import { theme } from './styles/theme';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import ETFDashboard from './pages/ETFDashboard';
 import PortfolioAnalysis from './pages/PortfolioAnalysis';
@@ -52,36 +53,38 @@ const App: FC = () => {
     <ConfigProvider theme={antdTheme}>
       <AntdApp>
         <Router>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
 
-            <Route path="/etf-dashboard" element={<ETFDashboard />} />
-            <Route path="/etf-market" element={<ETFDashboard />} />
-            <Route path="/etf-comparison" element={<ETFComparison />} />
-            <Route path="/etf-detail/:symbol" element={<ETFDetail />} />
-            <Route path="/etf-config" element={<ETFConfig />} />
+              <Route path="/etf-dashboard" element={<ETFDashboard />} />
+              <Route path="/etf-market" element={<ETFDashboard />} />
+              <Route path="/etf-comparison" element={<ETFComparison />} />
+              <Route path="/etf-detail/:symbol" element={<ETFDetail />} />
+              <Route path="/etf-config" element={<ETFConfig />} />
 
-            <Route path="/portfolio-analysis" element={<PortfolioAnalysis />} />
-            <Route path="/portfolio-config" element={<PortfolioConfig />} />
-            <Route path="/a-share-portfolio" element={<ASharePortfolio />} />
+              <Route path="/portfolio-analysis" element={<PortfolioAnalysis />} />
+              <Route path="/portfolio-config" element={<PortfolioConfig />} />
+              <Route path="/a-share-portfolio" element={<ASharePortfolio />} />
 
-            <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
-            <Route path="/risk-analysis" element={<RiskAnalysis />} />
-            <Route path="/portfolio-optimization" element={<PortfolioOptimization />} />
-            <Route path="/factor-analysis" element={<FactorAnalysis />} />
-            <Route path="/factor-timing" element={<FactorTiming />} />
-            <Route path="/alpha-views" element={<AlphaViews />} />
-            <Route path="/black-litterman" element={<BlackLittermanConfig />} />
-            <Route path="/risk-budget" element={<RiskBudget />} />
-            <Route path="/quantlib" element={<QuantLibAnalysis />} />
-            <Route path="/ai-agents" element={<AIAgents />} />
+              <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
+              <Route path="/risk-analysis" element={<RiskAnalysis />} />
+              <Route path="/portfolio-optimization" element={<PortfolioOptimization />} />
+              <Route path="/factor-analysis" element={<FactorAnalysis />} />
+              <Route path="/factor-timing" element={<FactorTiming />} />
+              <Route path="/alpha-views" element={<AlphaViews />} />
+              <Route path="/black-litterman" element={<BlackLittermanConfig />} />
+              <Route path="/risk-budget" element={<RiskBudget />} />
+              <Route path="/quantlib" element={<QuantLibAnalysis />} />
+              <Route path="/ai-agents" element={<AIAgents />} />
 
-            <Route path="/operation-logs" element={<OperationLogs />} />
-            <Route path="/exchange-rate" element={<ExchangeRate />} />
+              <Route path="/operation-logs" element={<OperationLogs />} />
+              <Route path="/exchange-rate" element={<ExchangeRate />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </Router>
       </AntdApp>
     </ConfigProvider>

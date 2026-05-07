@@ -26,7 +26,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) Get(path string, params map[string]string) (interface{}, error) {
+func (c *Client) Get(path string, params map[string]string) (any, error) {
 	u, _ := url.Parse(c.baseURL + path)
 	q := u.Query()
 	for k, v := range params {
@@ -45,37 +45,37 @@ func (c *Client) Get(path string, params map[string]string) (interface{}, error)
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	var result interface{}
+	var result any
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
 	}
 	return result, nil
 }
 
-func (c *Client) Health() (interface{}, error) {
+func (c *Client) Health() (any, error) {
 	return c.Get("/health", nil)
 }
 
-func (c *Client) FredSeries(seriesID string, params map[string]string) (interface{}, error) {
+func (c *Client) FredSeries(seriesID string, params map[string]string) (any, error) {
 	return c.Get(fmt.Sprintf("/api/fred/series/%s", seriesID), params)
 }
 
-func (c *Client) WorldBankIndicators(country, indicator string, params map[string]string) (interface{}, error) {
+func (c *Client) WorldBankIndicators(country, indicator string, params map[string]string) (any, error) {
 	return c.Get(fmt.Sprintf("/api/worldbank/indicators/%s/%s", country, indicator), params)
 }
 
-func (c *Client) YFinanceQuote(symbol string) (interface{}, error) {
+func (c *Client) YFinanceQuote(symbol string) (any, error) {
 	return c.Get(fmt.Sprintf("/api/yfinance/quote/%s", symbol), nil)
 }
 
-func (c *Client) YFinanceHistorical(symbol string, params map[string]string) (interface{}, error) {
+func (c *Client) YFinanceHistorical(symbol string, params map[string]string) (any, error) {
 	return c.Get(fmt.Sprintf("/api/yfinance/historical/%s", symbol), params)
 }
 
-func (c *Client) AkShareStockSpot() (interface{}, error) {
+func (c *Client) AkShareStockSpot() (any, error) {
 	return c.Get("/api/akshare/stock/spot", nil)
 }
 
-func (c *Client) CoinGeckoPrice(ids, vsCurrencies string) (interface{}, error) {
+func (c *Client) CoinGeckoPrice(ids, vsCurrencies string) (any, error) {
 	return c.Get("/api/coingecko/price", map[string]string{"ids": ids, "vs_currencies": vsCurrencies})
 }

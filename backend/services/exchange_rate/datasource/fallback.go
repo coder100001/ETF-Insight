@@ -3,6 +3,7 @@ package datasource
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -241,12 +242,12 @@ func (p *FallbackProvider) BatchUpdateCache(baseCurrency string, rates map[strin
 }
 
 // GetCacheStats 获取缓存统计
-func (p *FallbackProvider) GetCacheStats() map[string]interface{} {
+func (p *FallbackProvider) GetCacheStats() map[string]any {
 	cacheCount := 0
 	expiredCount := 0
 	now := time.Now()
 
-	p.cache.Range(func(key, value interface{}) bool {
+	p.cache.Range(func(key, value any) bool {
 		cacheCount++
 		if cached, ok := value.(*CachedRate); ok {
 			if now.After(cached.ExpiresAt) {
@@ -256,7 +257,7 @@ func (p *FallbackProvider) GetCacheStats() map[string]interface{} {
 		return true
 	})
 
-	return map[string]interface{}{
+	return map[string]any{
 		"total_cached":   cacheCount,
 		"expired_cached": expiredCount,
 		"valid_cached":   cacheCount - expiredCount,
@@ -269,7 +270,7 @@ func (p *FallbackProvider) CleanExpiredCache() int {
 	now := time.Now()
 	cleaned := 0
 
-	p.cache.Range(func(key, value interface{}) bool {
+	p.cache.Range(func(key, value any) bool {
 		if cached, ok := value.(*CachedRate); ok {
 			if now.After(cached.ExpiresAt) {
 				p.cache.Delete(key)
@@ -328,12 +329,7 @@ func (p *FallbackProvider) getFromCacheOrDefault(from, to string) (decimal.Decim
 
 func (p *FallbackProvider) isCurrencySupported(currency string) bool {
 	currency = normalizeCurrency(currency)
-	for _, c := range p.supportedCurrencies {
-		if c == currency {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.supportedCurrencies, currency)
 }
 
 // normalizeCurrency 标准化货币代码（包级函数）

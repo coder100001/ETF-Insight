@@ -105,11 +105,15 @@ const FactorAnalysis: React.FC = () => {
         if (response.success && response.data) {
           setAvailableETFs(response.data);
           // 设置默认值：取列表前3个（如果不足3个则取全部）
-          if (response.data.length > 0 && selectedETFs.length === 0) {
-            const defaultCount = Math.min(3, response.data.length);
-            const defaultETFs = response.data.slice(0, defaultCount).map(etf => etf.symbol);
-            setSelectedETFs(defaultETFs);
-          }
+          // 使用函数式更新避免依赖 selectedETFs
+          setSelectedETFs(prev => {
+            const data = response.data;
+            if (data && data.length > 0 && prev.length === 0) {
+              const defaultCount = Math.min(3, data.length);
+              return data.slice(0, defaultCount).map(etf => etf.symbol);
+            }
+            return prev;
+          });
         }
       } catch {
         message.error('获取ETF列表失败');

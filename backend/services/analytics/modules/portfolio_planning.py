@@ -36,8 +36,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 
-from config import AssetClass, MathConstants
-from portfolio_management import InvestorType, InvestmentObjective, InvestorProfile
+from .config import AssetClass, MathConstants
+from .portfolio_management import InvestorType, InvestmentObjective, InvestorProfile
 
 class ConstraintType(Enum):
     """Types of investment constraints"""

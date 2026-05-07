@@ -98,10 +98,7 @@ func (ti *TechnicalIndicators) CalculateMACD(prices []decimal.Decimal, fastPerio
 	slowEMA := calculateEMA(prices, slowPeriod)
 
 	// 确保两个 EMA 数组长度相同，以对齐较短的为准
-	minLen := len(fastEMA)
-	if len(slowEMA) < minLen {
-		minLen = len(slowEMA)
-	}
+	minLen := min(len(slowEMA), len(fastEMA))
 
 	// 对齐 EMA 数组（取后 minLen 个元素）
 	fastEMA = fastEMA[len(fastEMA)-minLen:]

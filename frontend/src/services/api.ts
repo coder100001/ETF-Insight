@@ -30,6 +30,7 @@ interface RetryConfig {
   maxRetries?: number;
   baseDelay?: number;
   maxDelay?: number;
+  timeout?: number;
 }
 
 // 请求合并器 - 避免重复请求
@@ -60,6 +61,33 @@ class RequestCoalescer {
 
 const requestCoalescer = new RequestCoalescer();
 
+// 创建带超时的 fetch
+function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeout: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, {
+    ...options,
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId));
+}
+
+// 判断是否应该重试
+function shouldRetry(statusCode?: number): boolean {
+  // 429 Too Many Requests - 重试
+  if (statusCode === 429) return true;
+  // 5xx 服务器错误 - 重试
+  if (statusCode && statusCode >= 500 && statusCode < 600) return true;
+  // 网络错误 (statusCode undefined) - 重试
+  if (!statusCode) return true;
+  // 4xx 客户端错误 - 不重试
+  return false;
+}
+
 // 重试请求函数
 async function requestWithRetry<T>(
   url: string,
@@ -70,43 +98,48 @@ async function requestWithRetry<T>(
     maxRetries = 3,
     baseDelay = 1000,
     maxDelay = 10000,
+    timeout = 30000,
   } = config;
 
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(`${API_BASE_URL}${url}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${url}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
           ...options?.headers,
         },
-      });
+      }, timeout);
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        // 429错误使用特殊标记，让重试逻辑识别
-        if (response.status === 429) {
-          const err = new Error(error.error || 'Too many requests');
-          (err as Error & { statusCode: number }).statusCode = 429;
-          throw err;
-        }
-        throw new Error(error.error || `HTTP ${response.status}`);
+        const err = new Error(error.error || `HTTP ${response.status}`);
+        (err as Error & { statusCode: number }).statusCode = response.status;
+        throw err;
       }
 
       return await response.json();
     } catch (error) {
       lastError = error as Error;
 
-      const statusCode = (error as Error & { statusCode?: number }).statusCode;
-      const isRateLimit = statusCode === 429;
+      // 用户取消请求，直接抛出不再重试
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error;
+      }
 
-      if (attempt < maxRetries) {
+      const statusCode = (error as Error & { statusCode?: number }).statusCode;
+
+      if (attempt < maxRetries && shouldRetry(statusCode)) {
+        const isRateLimit = statusCode === 429;
         // 429错误使用更长的退避时间
         const multiplier = isRateLimit ? 4 : 2;
         const delay = Math.min(baseDelay * Math.pow(multiplier, attempt), maxDelay);
         await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        // 不可重试的错误，直接抛出
+        throw error;
       }
     }
   }

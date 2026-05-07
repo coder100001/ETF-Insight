@@ -247,11 +247,11 @@ func (h *HealthChecker) IsSourceAvailable(sourceName string) bool {
 }
 
 // GetAvailabilityStats 获取可用性统计
-func (h *HealthChecker) GetAvailabilityStats() map[string]interface{} {
+func (h *HealthChecker) GetAvailabilityStats() map[string]any {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	stats := make(map[string]interface{})
+	stats := make(map[string]any)
 	totalSources := len(h.healthStatus)
 	availableSources := 0
 
@@ -260,7 +260,7 @@ func (h *HealthChecker) GetAvailabilityStats() map[string]interface{} {
 			availableSources++
 		}
 
-		stats[name] = map[string]interface{}{
+		stats[name] = map[string]any{
 			"available":      status.IsAvailable,
 			"success_rate":   status.SuccessRate,
 			"response_time":  status.ResponseTime.String(),
@@ -272,7 +272,7 @@ func (h *HealthChecker) GetAvailabilityStats() map[string]interface{} {
 		}
 	}
 
-	stats["summary"] = map[string]interface{}{
+	stats["summary"] = map[string]any{
 		"total_sources":     totalSources,
 		"available_sources": availableSources,
 		"availability_rate": float64(availableSources) / float64(totalSources),

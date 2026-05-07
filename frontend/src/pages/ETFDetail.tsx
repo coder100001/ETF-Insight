@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Card, Button, Badge, Row, Col, Statistic, App } from 'antd';
@@ -124,14 +124,7 @@ const ETFDetail: React.FC = () => {
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (symbol) {
-      fetchETFData(symbol);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol]);
-
-  const fetchETFData = async (sym: string) => {
+  const fetchETFData = useCallback(async (sym: string) => {
     setLoading(true);
     try {
       // 同时获取实时数据、指标数据和历史数据
@@ -186,7 +179,13 @@ const ETFDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [message]);
+
+  useEffect(() => {
+    if (symbol) {
+      fetchETFData(symbol);
+    }
+  }, [symbol, fetchETFData]);
 
   if (!etf) {
     return (
@@ -223,7 +222,7 @@ const ETFDetail: React.FC = () => {
           <h1>{etf.symbol}</h1>
           <p>{etf.name}</p>
           <Badge
-            count={etf.info.focus}
+            count={etf.info?.focus ?? ''}
             style={{ backgroundColor: theme.colors.primary, marginTop: 8 }}
           />
         </ETFInfo>
@@ -259,7 +258,7 @@ const ETFDetail: React.FC = () => {
               </InfoItem>
               <InfoItem>
                 <span className="label">策略类型</span>
-                <span className="value">{etf.info.strategy}</span>
+                <span className="value">{etf.info?.strategy ?? ''}</span>
               </InfoItem>
               <InfoItem>
                 <span className="label">管理费率</span>
@@ -267,10 +266,10 @@ const ETFDetail: React.FC = () => {
               </InfoItem>
               <InfoItem>
                 <span className="label">投资焦点</span>
-                <span className="value">{etf.info.focus}</span>
+                <span className="value">{etf.info?.focus ?? ''}</span>
               </InfoItem>
             </InfoGrid>
-            {etf.info.description && (
+            {etf.info?.description && (
               <p style={{ marginTop: 16, color: theme.colors.textSecondary }}>
                 {etf.info.description}
               </p>
@@ -317,10 +316,10 @@ const ETFDetail: React.FC = () => {
               <Col span={12}>
                 <Statistic
                   title="年度收益"
-                  value={etf.total_return}
+                  value={etf.total_return ?? 0}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: etf.total_return >= 0 ? theme.colors.success : theme.colors.danger }}
+                  valueStyle={{ color: (etf.total_return ?? 0) >= 0 ? theme.colors.success : theme.colors.danger }}
                 />
               </Col>
               <Col span={12}>

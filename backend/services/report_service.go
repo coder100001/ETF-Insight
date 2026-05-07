@@ -144,7 +144,7 @@ func (s *ReportService) UpdateReportStatus(id uint, status models.ReportStatus, 
 	if s.db == nil {
 		return ErrDatabaseNotInitialized
 	}
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"status": status,
 	}
 
@@ -164,7 +164,7 @@ func (s *ReportService) UpdateReportFile(id uint, filePath string, fileSize int6
 	if s.db == nil {
 		return ErrDatabaseNotInitialized
 	}
-	return s.db.Model(&models.GeneratedReport{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return s.db.Model(&models.GeneratedReport{}).Where("id = ?", id).Updates(map[string]any{
 		"file_path": filePath,
 		"file_size": fileSize,
 	}).Error
@@ -179,7 +179,7 @@ func (s *ReportService) DeleteReport(id uint) error {
 
 // ===== 报告生成核心方法 =====
 
-func (s *ReportService) GenerateReport(templateID uint, title string, format models.ReportFormat, data map[string]interface{}) (*models.GeneratedReport, error) {
+func (s *ReportService) GenerateReport(templateID uint, title string, format models.ReportFormat, data map[string]any) (*models.GeneratedReport, error) {
 	// 1. 获取模板
 	template, err := s.GetTemplate(templateID)
 	if err != nil {
@@ -214,7 +214,7 @@ func (s *ReportService) GenerateReport(templateID uint, title string, format mod
 	return report, nil
 }
 
-func (s *ReportService) asyncGenerateReport(reportID uint, template *models.ReportTemplate, format models.ReportFormat, data map[string]interface{}) {
+func (s *ReportService) asyncGenerateReport(reportID uint, template *models.ReportTemplate, format models.ReportFormat, data map[string]any) {
 	defer func() {
 		if r := recover(); r != nil {
 			errMsg := fmt.Sprintf("panic during report generation: %v", r)

@@ -21,7 +21,7 @@ export default defineConfig([
     },
     rules: {
       // 允许在特定情况下使用 any
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       // 允许空的依赖数组
       'react-hooks/exhaustive-deps': 'warn',
     },

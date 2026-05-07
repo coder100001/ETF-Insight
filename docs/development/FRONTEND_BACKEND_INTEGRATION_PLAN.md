@@ -39,7 +39,7 @@
 - React Query（数据缓存）
 
 **后端**：
-- Go 1.21+
+- Go 1.26+
 - Gin Framework
 - GORM
 - PostgreSQL/SQLite

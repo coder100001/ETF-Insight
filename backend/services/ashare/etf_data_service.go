@@ -108,7 +108,7 @@ func (s *ETFDataService) SyncETFPrices(symbols []string) error {
 		}
 
 		// 更新价格信息
-		updates := map[string]interface{}{
+		updates := map[string]any{
 			"current_price":    quote.CurrentPrice,
 			"previous_close":   quote.PreviousClose,
 			"price_change":     quote.PriceChange,
@@ -147,7 +147,7 @@ func (s *ETFDataService) GetETFPrice(symbol string) (*models.AShareDividendETF, 
 			etf.PriceUpdatedAt = quote.UpdateTime
 
 			// 更新数据库
-			s.db.Model(&etf).Updates(map[string]interface{}{
+			s.db.Model(&etf).Updates(map[string]any{
 				"current_price":    quote.CurrentPrice,
 				"previous_close":   quote.PreviousClose,
 				"price_change":     quote.PriceChange,
@@ -180,10 +180,7 @@ func (s *ETFDataService) GetAllETFPrices() ([]models.AShareDividendETF, error) {
 		// 分批获取，每批50个
 		batchSize := 50
 		for i := 0; i < len(symbols); i += batchSize {
-			end := i + batchSize
-			if end > len(symbols) {
-				end = len(symbols)
-			}
+			end := min(i+batchSize, len(symbols))
 			batch := symbols[i:end]
 			s.SyncETFPrices(batch)
 		}

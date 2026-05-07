@@ -36,11 +36,11 @@ from dataclasses import dataclass
 from scipy import stats
 import warnings
 
-from config import (
+from .config import (
     RiskParameters, MathConstants, RiskMetric,
     DEFAULT_RISK_PARAMS, validate_returns, ERROR_MESSAGES
 )
-from math_engine import RiskCalculations, StatisticalCalculations
+from .math_engine import RiskCalculations, StatisticalCalculations
 
 
 @dataclass

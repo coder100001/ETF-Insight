@@ -503,10 +503,7 @@ func (s *Synchronizer) parallelBatchSave(ctx context.Context, results []*calcRes
 
 	// 并行写入不同批次
 	for i := 0; i < len(results); i += batchSize {
-		end := i + batchSize
-		if end > len(results) {
-			end = len(results)
-		}
+		end := min(i+batchSize, len(results))
 		batch := results[i:end]
 
 		wg.Add(1)

@@ -233,7 +233,7 @@ func TestCalculateMetrics_SharpeRatioValidation(t *testing.T) {
 				}
 			} else {
 				baseDate := time.Now().AddDate(0, 0, -10)
-				for i := 0; i < 11; i++ {
+				for i := range 11 {
 					progress := float64(i) / 10.0
 					price := tc.startPrice + (tc.endPrice-tc.startPrice)*progress
 					noise := (float64(i%3) - 1.0) * 0.5

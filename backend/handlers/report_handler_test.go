@@ -72,7 +72,7 @@ func TestReportHandler_GetTemplates(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if !response["success"].(bool) {
@@ -198,7 +198,7 @@ func TestReportHandler_GetDefaultTemplates(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if !response["success"].(bool) {
@@ -229,7 +229,7 @@ func TestReportHandler_GenerateReport(t *testing.T) {
 		TemplateID: template.ID,
 		Title:      "Test Report",
 		Format:     "html",
-		Data:       map[string]interface{}{"key": "value"},
+		Data:       map[string]any{"key": "value"},
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -251,7 +251,7 @@ func TestReportHandler_GetReports(t *testing.T) {
 	router, handler := setupReportRouter(db)
 
 	// Create test reports
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		report := &models.GeneratedReport{
 			TemplateID: 1,
 			Title:      "Report " + string(rune('A'+i)),
@@ -272,7 +272,7 @@ func TestReportHandler_GetReports(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if !response["success"].(bool) {
@@ -280,7 +280,7 @@ func TestReportHandler_GetReports(t *testing.T) {
 	}
 
 	// Check pagination
-	pagination := response["pagination"].(map[string]interface{})
+	pagination := response["pagination"].(map[string]any)
 	if pagination["total"].(float64) != 3 {
 		t.Errorf("Expected total 3, got %v", pagination["total"])
 	}

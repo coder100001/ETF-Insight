@@ -149,7 +149,7 @@ func (s *RiskBudgetService) calculateHistoricalCVaR(
 
 	var cvarSum decimal.Decimal
 	count := 0
-	for i := 0; i < index; i++ {
+	for i := range index {
 		cvarSum = cvarSum.Add(sortedReturns[i])
 		count++
 	}
@@ -193,8 +193,7 @@ func (s *RiskBudgetService) calculateMonteCarloCVaR(
 	numSimulations := 10000
 	simulatedReturns := make([]decimal.Decimal, numSimulations)
 
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < numSimulations; i++ {
+	for i := range numSimulations {
 		u1 := rand.Float64()
 		u2 := rand.Float64()
 		z := math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
@@ -211,12 +210,22 @@ func (s *RiskBudgetService) calculateMonteCarloCVaR(
 	varVaR := simulatedReturns[index]
 
 	var cvarSum decimal.Decimal
-	for i := 0; i < index; i++ {
+	for i := range index {
 		cvarSum = cvarSum.Add(simulatedReturns[i])
 	}
 	varCVaR := cvarSum.Div(decimal.NewFromInt(int64(index)))
 
 	return varVaR, varCVaR, nil
+}
+
+func (s *RiskBudgetService) CalculateMonteCarloCVaR(
+	returns []decimal.Decimal,
+	confidenceLevel decimal.Decimal,
+) (decimal.Decimal, decimal.Decimal, error) {
+	if len(returns) < 10 {
+		return decimal.Zero, decimal.Zero, ErrInsufficientReturns
+	}
+	return s.calculateMonteCarloCVaR(returns, confidenceLevel)
 }
 
 func (s *RiskBudgetService) CalculateRiskContributions(
@@ -234,7 +243,7 @@ func (s *RiskBudgetService) CalculateRiskContributions(
 	portfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
 	for i := range portfolioReturns {
 		portfolioReturns[i] = decimal.Zero
-		for j := 0; j < n; j++ {
+		for j := range n {
 			portfolioReturns[i] = portfolioReturns[i].Add(
 				weights[j].Mul(returnsMatrix[j][i]),
 			)
@@ -250,7 +259,7 @@ func (s *RiskBudgetService) CalculateRiskContributions(
 		return nil, err
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		delta := decimal.NewFromFloat(0.01)
 		newWeights := make([]decimal.Decimal, n)
 		copy(newWeights, weights)
@@ -267,7 +276,7 @@ func (s *RiskBudgetService) CalculateRiskContributions(
 		newPortfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
 		for k := range newPortfolioReturns {
 			newPortfolioReturns[k] = decimal.Zero
-			for j := 0; j < n; j++ {
+			for j := range n {
 				newPortfolioReturns[k] = newPortfolioReturns[k].Add(
 					newWeights[j].Mul(returnsMatrix[j][k]),
 				)
@@ -328,12 +337,11 @@ func (s *RiskBudgetService) RunMonteCarloSimulation(
 	drift := mean.Mul(dt)
 	diffusion := stdDev.Mul(decimalSqrt(dt))
 
-	rand.Seed(time.Now().UnixNano())
 	finalReturns := make([]decimal.Decimal, numSimulations)
 
-	for i := 0; i < numSimulations; i++ {
+	for i := range numSimulations {
 		price := decimal.NewFromInt(100)
-		for j := 0; j < timeSteps; j++ {
+		for range timeSteps {
 			u1 := rand.Float64()
 			u2 := rand.Float64()
 			z := math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
@@ -429,7 +437,7 @@ func (s *RiskBudgetService) OptimizeRiskBudget(
 	}
 
 	weights := make([]decimal.Decimal, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		weights[i] = decimal.NewFromFloat(1.0 / float64(n))
 	}
 
@@ -440,7 +448,7 @@ func (s *RiskBudgetService) OptimizeRiskBudget(
 
 	learningRate := decimal.NewFromFloat(0.01)
 
-	for iter := 0; iter < maxIterations; iter++ {
+	for range maxIterations {
 		contributions, err := s.CalculateRiskContributions(weights, returnsMatrix, confidenceLevel)
 		if err != nil {
 			return nil, nil, err
@@ -464,7 +472,7 @@ func (s *RiskBudgetService) OptimizeRiskBudget(
 		portfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
 		for i := range portfolioReturns {
 			portfolioReturns[i] = decimal.Zero
-			for j := 0; j < n; j++ {
+			for j := range n {
 				portfolioReturns[i] = portfolioReturns[i].Add(
 					weights[j].Mul(returnsMatrix[j][i]),
 				)
@@ -476,7 +484,7 @@ func (s *RiskBudgetService) OptimizeRiskBudget(
 			return nil, nil, err
 		}
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			delta := decimal.NewFromFloat(0.001)
 			newWeights := make([]decimal.Decimal, n)
 			copy(newWeights, weights)
@@ -493,7 +501,7 @@ func (s *RiskBudgetService) OptimizeRiskBudget(
 			newPortfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
 			for k := range newPortfolioReturns {
 				newPortfolioReturns[k] = decimal.Zero
-				for j := 0; j < n; j++ {
+				for j := range n {
 					newPortfolioReturns[k] = newPortfolioReturns[k].Add(
 						newWeights[j].Mul(returnsMatrix[j][k]),
 					)
@@ -545,7 +553,7 @@ func (s *RiskBudgetService) CalculatePortfolioSkewness(
 	portfolioReturns := make([]decimal.Decimal, len(returnsMatrix[0]))
 	for i := range portfolioReturns {
 		portfolioReturns[i] = decimal.Zero
-		for j := 0; j < n; j++ {
+		for j := range n {
 			portfolioReturns[i] = portfolioReturns[i].Add(
 				weights[j].Mul(returnsMatrix[j][i]),
 			)

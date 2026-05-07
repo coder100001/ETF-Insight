@@ -51,7 +51,7 @@ func (h *FactorTimingHandler) GetFactorTimingHistory(c *gin.Context) {
 		return
 	}
 
-	var signals []interface{}
+	var signals []any
 
 	if startDate != "" && endDate != "" {
 		start, err := time.Parse("2006-01-02", startDate)

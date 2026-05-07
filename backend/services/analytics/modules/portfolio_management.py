@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta
 
-from config import AssetClass, MathConstants
+from .config import AssetClass, MathConstants
 
 class InvestorType(Enum):
     """Types of investors and their characteristics"""

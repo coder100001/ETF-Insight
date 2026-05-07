@@ -351,9 +351,7 @@ func (f *FinageProvider) GetQuotes(ctx context.Context, symbols []string) ([]*Qu
 	errorChan := make(chan error, len(symbols))
 
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for symbol := range symbolChan {
 				quote, err := f.GetQuote(ctx, symbol)
 				if err != nil {
@@ -364,7 +362,7 @@ func (f *FinageProvider) GetQuotes(ctx context.Context, symbols []string) ([]*Qu
 				results = append(results, quote)
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 
 	for _, symbol := range symbols {

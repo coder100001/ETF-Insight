@@ -229,7 +229,7 @@ func (o *PortfolioOptimizer) minimizeVolatility(request PortfolioOptimizationReq
 		weights[i] = decimal.NewFromFloat(1.0 / float64(n))
 	}
 
-	for iteration := 0; iteration < maxIterations; iteration++ {
+	for range maxIterations {
 		gradients := o.calculateVolatilityGradients(weights, covMatrix)
 		norm := decimal.Zero
 		for _, g := range gradients {
@@ -305,7 +305,7 @@ func (o *PortfolioOptimizer) gradientDescentOptimization(meanReturns map[string]
 	tolerance := decimal.NewFromFloat(0.0001)
 	maxIterations := 500
 
-	for iteration := 0; iteration < maxIterations; iteration++ {
+	for range maxIterations {
 		negSharpeGradients := o.calculateNegativeSharpeGradients(weights, meanReturns, covMatrix, riskFreeRate)
 
 		norm := decimal.Zero
@@ -563,7 +563,7 @@ func (o *PortfolioOptimizer) minimizeVolatilityForTarget(request PortfolioOptimi
 	}
 	sort.Strings(symbols)
 
-	for iteration := 0; iteration < maxIterations; iteration++ {
+	for range maxIterations {
 		weightsMap := make(map[string]decimal.Decimal)
 		for i, symbol := range symbols {
 			weightsMap[symbol] = weights[i]

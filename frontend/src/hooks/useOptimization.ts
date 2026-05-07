@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { message } from 'antd';
 import { optimizationAPI } from '../services/api';
 import type { OptimizationResult, EfficientFrontierPoint, RiskParityResult, BlackLittermanResult } from '../types';
@@ -32,6 +32,22 @@ export const useOptimization = (): UseOptimizationReturn => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const cancelPreviousRequest = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+  }, []);
+
   const reset = useCallback(() => {
     setResult(null);
     setFrontier([]);
@@ -46,6 +62,7 @@ export const useOptimization = (): UseOptimizationReturn => {
       return;
     }
 
+    cancelPreviousRequest();
     setLoading(true);
     setError(null);
     try {
@@ -55,6 +72,8 @@ export const useOptimization = (): UseOptimizationReturn => {
         params.targetReturn,
         params.targetRisk
       );
+
+      if (!isMountedRef.current) return;
 
       if (response.success && response.data) {
         const optResult: OptimizationResult = {
@@ -75,13 +94,19 @@ export const useOptimization = (): UseOptimizationReturn => {
         message.error(errorMsg);
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : '优化请求失败';
       setError(errorMsg);
       message.error(errorMsg);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [cancelPreviousRequest]);
 
   const calculateFrontier = useCallback(async (symbols: string[], points: number = 20) => {
     if (symbols.length < 2) {
@@ -89,10 +114,13 @@ export const useOptimization = (): UseOptimizationReturn => {
       return;
     }
 
+    cancelPreviousRequest();
     setLoading(true);
     setError(null);
     try {
       const response = await optimizationAPI.efficientFrontier(symbols, points);
+
+      if (!isMountedRef.current) return;
 
       if (response.success && response.data) {
         const frontierData: EfficientFrontierPoint[] = response.data.map(point => ({
@@ -109,13 +137,19 @@ export const useOptimization = (): UseOptimizationReturn => {
         message.error(errorMsg);
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : '计算请求失败';
       setError(errorMsg);
       message.error(errorMsg);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [cancelPreviousRequest]);
 
   const calculateRiskParity = useCallback(async (symbols: string[]) => {
     if (symbols.length < 2) {
@@ -123,10 +157,13 @@ export const useOptimization = (): UseOptimizationReturn => {
       return;
     }
 
+    cancelPreviousRequest();
     setLoading(true);
     setError(null);
     try {
       const response = await optimizationAPI.riskParity(symbols);
+
+      if (!isMountedRef.current) return;
 
       if (response.success && response.data) {
         const rpData: RiskParityResult = {
@@ -143,13 +180,19 @@ export const useOptimization = (): UseOptimizationReturn => {
         message.error(errorMsg);
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : '计算请求失败';
       setError(errorMsg);
       message.error(errorMsg);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [cancelPreviousRequest]);
 
   const calculateBlackLitterman = useCallback(async (
     symbols: string[],
@@ -160,10 +203,13 @@ export const useOptimization = (): UseOptimizationReturn => {
       return;
     }
 
+    cancelPreviousRequest();
     setLoading(true);
     setError(null);
     try {
       const response = await optimizationAPI.blackLitterman(symbols, views);
+
+      if (!isMountedRef.current) return;
 
       if (response.success && response.data) {
         const blData: BlackLittermanResult = {
@@ -181,13 +227,19 @@ export const useOptimization = (): UseOptimizationReturn => {
         message.error(errorMsg);
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : '计算请求失败';
       setError(errorMsg);
       message.error(errorMsg);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [cancelPreviousRequest]);
 
   return {
     result,

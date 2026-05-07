@@ -319,15 +319,15 @@ func (o *BlackLittermanOptimizer) calculatePosteriorReturns(
 
 	// 1. 计算 P * Π
 	P_Pi := make([]float64, k)
-	for i := 0; i < k; i++ {
-		for j := 0; j < n; j++ {
+	for i := range k {
+		for j := range n {
 			P_Pi[i] += P[i][j] * Pi[j]
 		}
 	}
 
 	// 2. 计算 Q - P * Π
 	residual := make([]float64, k)
-	for i := 0; i < k; i++ {
+	for i := range k {
 		residual[i] = Q[i] - P_Pi[i]
 	}
 
@@ -359,10 +359,10 @@ func (o *BlackLittermanOptimizer) calculatePosteriorReturns(
 // viewsFromMatrices 从矩阵还原观点（简化）
 func viewsFromMatrices(P [][]float64, Q []float64, symbols []string) []*InvestorView {
 	views := make([]*InvestorView, 0)
-	for i := 0; i < len(P); i++ {
+	for i := range P {
 		assets := make([]string, 0)
 		weights := make([]float64, 0)
-		for j := 0; j < len(symbols); j++ {
+		for j := range symbols {
 			if P[i][j] != 0 {
 				assets = append(assets, symbols[j])
 				weights = append(weights, P[i][j])
@@ -407,7 +407,7 @@ func (o *BlackLittermanOptimizer) optimizeWeights(
 	// 使用softmax风格的调整
 	expReturns := make([]float64, n)
 	sumExp := 0.0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		expReturns[i] = math.Exp(mu[i] * 10) // 缩放因子
 		sumExp += expReturns[i]
 	}

@@ -13,6 +13,13 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	DaysPerYear            = 365.0
+	DefaultRiskFreeRate    = 0.045
+	DefaultSMBFactorReturn = 0.02
+	DefaultHMLFactorReturn = 0.03
+)
+
 // BacktestHandler 回测处理器
 type BacktestHandler struct{}
 
@@ -23,15 +30,15 @@ func NewBacktestHandler() *BacktestHandler {
 
 // BacktestRequest 回测请求
 type BacktestRequest struct {
-	InitialCapital float64                `json:"initial_capital" binding:"required,min=1000"`
-	StartDate      string                 `json:"start_date" binding:"required"`
-	EndDate        string                 `json:"end_date" binding:"required"`
-	Symbols        []string               `json:"symbols" binding:"required,min=1"`
-	StrategyType   string                 `json:"strategy_type" binding:"required"`
-	StrategyParams map[string]interface{} `json:"strategy_params"`
-	SlippageRate   float64                `json:"slippage_rate"`   // 滑点率
-	CommissionRate float64                `json:"commission_rate"` // 手续费率
-	DividendTax    float64                `json:"dividend_tax"`    // 股息税率
+	InitialCapital float64        `json:"initial_capital" binding:"required,min=1000"`
+	StartDate      string         `json:"start_date" binding:"required"`
+	EndDate        string         `json:"end_date" binding:"required"`
+	Symbols        []string       `json:"symbols" binding:"required,min=1"`
+	StrategyType   string         `json:"strategy_type" binding:"required"`
+	StrategyParams map[string]any `json:"strategy_params"`
+	SlippageRate   float64        `json:"slippage_rate"`   // 滑点率
+	CommissionRate float64        `json:"commission_rate"` // 手续费率
+	DividendTax    float64        `json:"dividend_tax"`    // 股息税率
 }
 
 // BacktestResponse 回测响应
@@ -300,15 +307,15 @@ func (h *BacktestHandler) AnalyzeFactors(c *gin.Context) {
 			days := endDate.Sub(startDate).Hours() / 24
 			annualizedMarketReturn := 0.0
 			if days > 0 {
-				annualizedMarketReturn = math.Pow(1+marketReturn, 365.0/days) - 1
+				annualizedMarketReturn = math.Pow(1+marketReturn, DaysPerYear/days) - 1
 			}
 
-			// 无风险利率（年化4.5%）
-			riskFreeRate := 0.045
+			// 无风险利率
+			riskFreeRate := DefaultRiskFreeRate
 
 			factorReturns[string(backtest.FactorMarket)] = annualizedMarketReturn - riskFreeRate
-			factorReturns[string(backtest.FactorSMB)] = 0.02 // 规模因子收益（历史长期均值）
-			factorReturns[string(backtest.FactorHML)] = 0.03 // 价值因子收益（历史长期均值）
+			factorReturns[string(backtest.FactorSMB)] = DefaultSMBFactorReturn
+			factorReturns[string(backtest.FactorHML)] = DefaultHMLFactorReturn
 			factorReturns[string(backtest.FactorMomentum)] = avgMomentum / float64(count)
 			factorReturns[string(backtest.FactorLowVol)] = avgLowVol / float64(count)
 		}
@@ -340,10 +347,10 @@ type StrategyInfo struct {
 
 // ParamInfo 参数信息
 type ParamInfo struct {
-	Name        string      `json:"name"`
-	Type        string      `json:"type"`
-	Default     interface{} `json:"default"`
-	Description string      `json:"description"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Default     any    `json:"default"`
+	Description string `json:"description"`
 }
 
 // ListStrategies 列出可用策略
@@ -410,7 +417,7 @@ func (h *BacktestHandler) ListStrategies(c *gin.Context) {
 }
 
 // createStrategy 创建策略
-func (h *BacktestHandler) createStrategy(strategyType string, params map[string]interface{}) (backtest.Strategy, error) {
+func (h *BacktestHandler) createStrategy(strategyType string, params map[string]any) (backtest.Strategy, error) {
 	switch strategyType {
 	case "ma_cross":
 		shortPeriod := getIntParam(params, "short_period", 5)
@@ -447,7 +454,7 @@ func (h *BacktestHandler) createStrategy(strategyType string, params map[string]
 
 // 辅助函数
 
-func getIntParam(params map[string]interface{}, key string, defaultValue int) int {
+func getIntParam(params map[string]any, key string, defaultValue int) int {
 	if val, ok := params[key]; ok {
 		switch v := val.(type) {
 		case int:
@@ -459,7 +466,7 @@ func getIntParam(params map[string]interface{}, key string, defaultValue int) in
 	return defaultValue
 }
 
-func getFloatParam(params map[string]interface{}, key string, defaultValue float64) float64 {
+func getFloatParam(params map[string]any, key string, defaultValue float64) float64 {
 	if val, ok := params[key]; ok {
 		if v, ok := val.(float64); ok {
 			return v
@@ -470,21 +477,21 @@ func getFloatParam(params map[string]interface{}, key string, defaultValue float
 
 // EventDrivenBacktestRequest 事件驱动回测请求
 type EventDrivenBacktestRequest struct {
-	InitialCapital    float64                `json:"initial_capital" binding:"required,min=1000"`
-	StartDate         string                 `json:"start_date" binding:"required"`
-	EndDate           string                 `json:"end_date" binding:"required"`
-	Symbols           []string               `json:"symbols" binding:"required,min=1"`
-	StrategyType      string                 `json:"strategy_type" binding:"required"`
-	StrategyParams    map[string]interface{} `json:"strategy_params"`
-	SlippageRate      float64                `json:"slippage_rate"`       // 滑点率
-	CommissionRate    float64                `json:"commission_rate"`     // 手续费率
-	DividendTax       float64                `json:"dividend_tax"`        // 股息税率
-	StopLossEnabled   bool                   `json:"stop_loss_enabled"`   // 是否启用止损
-	StopLossPercent   float64                `json:"stop_loss_percent"`   // 止损百分比
-	TakeProfitEnabled bool                   `json:"take_profit_enabled"` // 是否启用止盈
-	TakeProfitPercent float64                `json:"take_profit_percent"` // 止盈百分比
-	RebalanceEnabled  bool                   `json:"rebalance_enabled"`   // 是否启用再平衡
-	RebalanceInterval int                    `json:"rebalance_interval"`  // 再平衡间隔天数
+	InitialCapital    float64        `json:"initial_capital" binding:"required,min=1000"`
+	StartDate         string         `json:"start_date" binding:"required"`
+	EndDate           string         `json:"end_date" binding:"required"`
+	Symbols           []string       `json:"symbols" binding:"required,min=1"`
+	StrategyType      string         `json:"strategy_type" binding:"required"`
+	StrategyParams    map[string]any `json:"strategy_params"`
+	SlippageRate      float64        `json:"slippage_rate"`       // 滑点率
+	CommissionRate    float64        `json:"commission_rate"`     // 手续费率
+	DividendTax       float64        `json:"dividend_tax"`        // 股息税率
+	StopLossEnabled   bool           `json:"stop_loss_enabled"`   // 是否启用止损
+	StopLossPercent   float64        `json:"stop_loss_percent"`   // 止损百分比
+	TakeProfitEnabled bool           `json:"take_profit_enabled"` // 是否启用止盈
+	TakeProfitPercent float64        `json:"take_profit_percent"` // 止盈百分比
+	RebalanceEnabled  bool           `json:"rebalance_enabled"`   // 是否启用再平衡
+	RebalanceInterval int            `json:"rebalance_interval"`  // 再平衡间隔天数
 }
 
 // EventDrivenBacktestResponse 事件驱动回测响应

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { etfAPI, optimizationAPI } from '../services/api';
 import type { ETFInfo, ETFStatistics } from '../types';
 
@@ -40,11 +40,29 @@ export const useETFData = (): UseETFDataReturn => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const statsAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+      statsAbortControllerRef.current?.abort();
+    };
+  }, []);
+
   const refreshETFList = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+
     setLoading(true);
     setError(null);
     try {
       const response = await etfAPI.getList();
+      if (!isMountedRef.current) return;
+
       if (response.success && response.data && response.data.length > 0) {
         const etfList = response.data.map(etf => ({
           symbol: etf.symbol,
@@ -54,20 +72,30 @@ export const useETFData = (): UseETFDataReturn => {
       } else {
         setAvailableETFs(DEFAULT_ETFS);
       }
-    } catch {
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       console.log('获取ETF列表失败，使用默认列表');
       setAvailableETFs(DEFAULT_ETFS);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   const refreshStatistics = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
 
+    statsAbortControllerRef.current?.abort();
+    statsAbortControllerRef.current = new AbortController();
+
     setStatsLoading(true);
     try {
       const response = await optimizationAPI.etfStatistics(symbols);
+      if (!isMountedRef.current) return;
 
       if (response.success && response.data) {
         const validatedData: Record<string, ETFStatistics> = {};
@@ -88,10 +116,16 @@ export const useETFData = (): UseETFDataReturn => {
         });
         setEtfStatistics(validatedData);
       }
-    } catch {
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       console.log('获取ETF统计数据失败');
     } finally {
-      setStatsLoading(false);
+      if (isMountedRef.current) {
+        setStatsLoading(false);
+      }
     }
   }, []);
 

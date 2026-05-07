@@ -75,7 +75,7 @@ func TestFactorTimingHandler_GetFactorTimingHistory(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if !response["success"].(bool) {
@@ -133,7 +133,7 @@ func TestFactorTimingHandler_GetLatestSignal(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	if !response["success"].(bool) {

@@ -167,7 +167,7 @@ func (rm *RiskModels) CalculatePortfolioVaR(
 	// 假设所有资产有相同数量的收益率观测值
 	numObservations := len(returns[getFirstKey(returns)])
 
-	for i := 0; i < numObservations; i++ {
+	for i := range numObservations {
 		portfolioReturn := decimal.Zero
 		for asset, assetReturns := range returns {
 			if i < len(assetReturns) {
@@ -403,7 +403,7 @@ func calculateBetaAlpha(returns, benchmarkReturns []decimal.Decimal, riskFreeRat
 	assetExcess := make([]decimal.Decimal, len(returns))
 	benchmarkExcess := make([]decimal.Decimal, len(benchmarkReturns))
 
-	for i := 0; i < len(returns); i++ {
+	for i := range returns {
 		assetExcess[i] = returns[i].Sub(riskFreeRate)
 		benchmarkExcess[i] = benchmarkReturns[i].Sub(riskFreeRate)
 	}
@@ -415,7 +415,7 @@ func calculateBetaAlpha(returns, benchmarkReturns []decimal.Decimal, riskFreeRat
 	covariance := decimal.Zero
 	variance := decimal.Zero
 
-	for i := 0; i < len(returns); i++ {
+	for i := range returns {
 		diffAsset := assetExcess[i].Sub(meanAsset)
 		diffBenchmark := benchmarkExcess[i].Sub(meanBenchmark)
 		covariance = covariance.Add(diffAsset.Mul(diffBenchmark))
@@ -442,7 +442,7 @@ func calculateTrackingError(returns, benchmarkReturns []decimal.Decimal) decimal
 	}
 
 	differences := make([]decimal.Decimal, len(returns))
-	for i := 0; i < len(returns); i++ {
+	for i := range returns {
 		differences[i] = returns[i].Sub(benchmarkReturns[i])
 	}
 

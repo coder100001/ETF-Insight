@@ -25,7 +25,8 @@ def test_capm_analysis():
     market_return = 0.10
     beta = 1.2
 
-    expected_return = capm.calculate_expected_return(risk_free_rate, market_return, beta)
+    # CAPMAnalysis.expected_return is a static method
+    expected_return = CAPMAnalysis.expected_return(beta, risk_free_rate, market_return)
     assert expected_return is not None
     # CAPM: E(R) = Rf + β(Rm - Rf)
     expected = risk_free_rate + beta * (market_return - risk_free_rate)

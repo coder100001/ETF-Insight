@@ -105,7 +105,7 @@ func TestFactorDataService_CalculateTimingSignal(t *testing.T) {
 	service := NewFactorDataService(db)
 
 	now := time.Now()
-	for i := 0; i < 120; i++ {
+	for i := range 120 {
 		data := &models.FactorData{
 			FactorName: "Mkt-RF",
 			Date:       now.AddDate(0, 0, -i),
@@ -131,7 +131,7 @@ func TestFactorDataService_CalculateTimingSignal_InsufficientData(t *testing.T) 
 	service := NewFactorDataService(db)
 
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		data := &models.FactorData{
 			FactorName: "Mkt-RF",
 			Date:       now.AddDate(0, 0, -i),
@@ -149,7 +149,7 @@ func TestFactorDataService_CalculateTimingSignal_InsufficientData(t *testing.T) 
 
 func TestCalculateMASlope(t *testing.T) {
 	values := make([]decimal.Decimal, 61)
-	for i := 0; i < 61; i++ {
+	for i := range 61 {
 		values[i] = decimal.NewFromFloat(float64(i))
 	}
 

@@ -36,8 +36,8 @@ from dataclasses import dataclass
 from enum import Enum
 import warnings
 
-from config import MathConstants, validate_returns, ERROR_MESSAGES
-from math_engine import StatisticalCalculations, PerformanceCalculations
+from .config import MathConstants, validate_returns, ERROR_MESSAGES
+from .math_engine import StatisticalCalculations, PerformanceCalculations
 
 
 class ActiveStrategy(Enum):

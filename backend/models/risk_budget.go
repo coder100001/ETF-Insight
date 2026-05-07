@@ -31,7 +31,7 @@ type RiskBudgetConfig struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Portfolio Portfolio `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
+	Portfolio Portfolio `json:"portfolio" gorm:"foreignKey:PortfolioID"`
 }
 
 func (RiskBudgetConfig) TableName() string {
@@ -63,7 +63,7 @@ type MonteCarloSimulation struct {
 
 	CreatedAt time.Time `json:"created_at"`
 
-	Portfolio Portfolio `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
+	Portfolio Portfolio `json:"portfolio" gorm:"foreignKey:PortfolioID"`
 }
 
 func (MonteCarloSimulation) TableName() string {
@@ -88,8 +88,8 @@ type RiskContribution struct {
 	CalculationDate time.Time `json:"calculation_date"`
 	CreatedAt       time.Time `json:"created_at"`
 
-	Simulation MonteCarloSimulation `json:"simulation,omitempty" gorm:"foreignKey:SimulationID"`
-	Asset      Asset                `json:"asset,omitempty" gorm:"foreignKey:AssetID"`
+	Simulation MonteCarloSimulation `json:"simulation" gorm:"foreignKey:SimulationID"`
+	Asset      Asset                `json:"asset" gorm:"foreignKey:AssetID"`
 }
 
 func (RiskContribution) TableName() string {
@@ -113,7 +113,7 @@ type RiskBudgetExecution struct {
 
 	CreatedAt time.Time `json:"created_at"`
 
-	Portfolio Portfolio `json:"portfolio,omitempty" gorm:"foreignKey:PortfolioID"`
+	Portfolio Portfolio `json:"portfolio" gorm:"foreignKey:PortfolioID"`
 }
 
 func (RiskBudgetExecution) TableName() string {

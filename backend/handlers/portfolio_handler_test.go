@@ -51,7 +51,7 @@ func TestAnalyzePortfolio(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -102,7 +102,7 @@ func TestAnalyzePortfolio_DefaultValues(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -143,7 +143,7 @@ func TestAnalyzePortfolio_MultipleETFs(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -154,7 +154,7 @@ func TestGetPortfolioConfigs(t *testing.T) {
 	setupTestDB(t)
 
 	// 创建测试投资组合配置
-	allocation := map[string]interface{}{"SPY": 100}
+	allocation := map[string]any{"SPY": 100}
 	allocationJSON, _ := json.Marshal(allocation)
 
 	config := models.PortfolioConfig{
@@ -175,7 +175,7 @@ func TestGetPortfolioConfigs(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -205,7 +205,7 @@ func TestCreatePortfolioConfig(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -253,7 +253,7 @@ func TestGetPortfolioConfig(t *testing.T) {
 	setupTestDB(t)
 
 	// 创建测试投资组合配置
-	allocation := map[string]interface{}{"SPY": 100}
+	allocation := map[string]any{"SPY": 100}
 	allocationJSON, _ := json.Marshal(allocation)
 
 	config := models.PortfolioConfig{
@@ -274,7 +274,7 @@ func TestGetPortfolioConfig(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -301,7 +301,7 @@ func TestUpdatePortfolioConfig(t *testing.T) {
 	setupTestDB(t)
 
 	// 创建测试投资组合配置
-	allocation := map[string]interface{}{"SPY": 100}
+	allocation := map[string]any{"SPY": 100}
 	allocationJSON, _ := json.Marshal(allocation)
 
 	config := models.PortfolioConfig{
@@ -327,7 +327,7 @@ func TestUpdatePortfolioConfig(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
@@ -338,7 +338,7 @@ func TestDeletePortfolioConfig(t *testing.T) {
 	setupTestDB(t)
 
 	// 创建测试投资组合配置
-	allocation := map[string]interface{}{"SPY": 100}
+	allocation := map[string]any{"SPY": 100}
 	allocationJSON, _ := json.Marshal(allocation)
 
 	config := models.PortfolioConfig{
@@ -359,7 +359,7 @@ func TestDeletePortfolioConfig(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])

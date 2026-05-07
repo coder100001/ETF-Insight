@@ -28,32 +28,32 @@ type Price struct {
 	PriceType PriceType `json:"price_type" gorm:"size:20;index:idx_asset_price"` // 价格类型
 
 	// OHLCV数据
-	Open     decimal.Decimal `json:"open" gorm:"type:decimal(20,8)"`               // 开盘价
-	High     decimal.Decimal `json:"high" gorm:"type:decimal(20,8)"`               // 最高价
-	Low      decimal.Decimal `json:"low" gorm:"type:decimal(20,8)"`                // 最低价
-	Close    decimal.Decimal `json:"close" gorm:"type:decimal(20,8)"`              // 收盘价
-	Volume   int64           `json:"volume"`                                       // 成交量
-	Turnover decimal.Decimal `json:"turnover,omitempty" gorm:"type:decimal(20,2)"` // 成交额
-	VWAP     decimal.Decimal `json:"vwap,omitempty" gorm:"type:decimal(20,8)"`     // 成交量加权平均价
+	Open     decimal.Decimal `json:"open" gorm:"type:decimal(20,8)"`     // 开盘价
+	High     decimal.Decimal `json:"high" gorm:"type:decimal(20,8)"`     // 最高价
+	Low      decimal.Decimal `json:"low" gorm:"type:decimal(20,8)"`      // 最低价
+	Close    decimal.Decimal `json:"close" gorm:"type:decimal(20,8)"`    // 收盘价
+	Volume   int64           `json:"volume"`                             // 成交量
+	Turnover decimal.Decimal `json:"turnover" gorm:"type:decimal(20,2)"` // 成交额
+	VWAP     decimal.Decimal `json:"vwap" gorm:"type:decimal(20,8)"`     // 成交量加权平均价
 
 	// 调整后价格（用于计算收益率）
-	AdjOpen     decimal.Decimal `json:"adj_open,omitempty" gorm:"type:decimal(20,8)"`     // 调整后开盘价
-	AdjHigh     decimal.Decimal `json:"adj_high,omitempty" gorm:"type:decimal(20,8)"`     // 调整后最高价
-	AdjLow      decimal.Decimal `json:"adj_low,omitempty" gorm:"type:decimal(20,8)"`      // 调整后最低价
-	AdjClose    decimal.Decimal `json:"adj_close,omitempty" gorm:"type:decimal(20,8)"`    // 调整后收盘价
-	AdjVolume   int64           `json:"adj_volume,omitempty"`                             // 调整后成交量
-	SplitFactor decimal.Decimal `json:"split_factor,omitempty" gorm:"type:decimal(10,6)"` // 拆股因子
+	AdjOpen     decimal.Decimal `json:"adj_open" gorm:"type:decimal(20,8)"`     // 调整后开盘价
+	AdjHigh     decimal.Decimal `json:"adj_high" gorm:"type:decimal(20,8)"`     // 调整后最高价
+	AdjLow      decimal.Decimal `json:"adj_low" gorm:"type:decimal(20,8)"`      // 调整后最低价
+	AdjClose    decimal.Decimal `json:"adj_close" gorm:"type:decimal(20,8)"`    // 调整后收盘价
+	AdjVolume   int64           `json:"adj_volume,omitempty"`                   // 调整后成交量
+	SplitFactor decimal.Decimal `json:"split_factor" gorm:"type:decimal(10,6)"` // 拆股因子
 
 	// ETF特有字段
-	NAV         decimal.Decimal `json:"nav,omitempty" gorm:"type:decimal(20,8)"`         // 净值（仅ETF）
-	PremiumRate decimal.Decimal `json:"premium_rate,omitempty" gorm:"type:decimal(5,2)"` // 溢价率（仅ETF）
+	NAV         decimal.Decimal `json:"nav" gorm:"type:decimal(20,8)"`         // 净值（仅ETF）
+	PremiumRate decimal.Decimal `json:"premium_rate" gorm:"type:decimal(5,2)"` // 溢价率（仅ETF）
 
 	// 衍生指标（可实时计算或缓存）
-	ReturnDaily  decimal.Decimal `json:"return_daily,omitempty" gorm:"type:decimal(10,6)"`  // 日收益率
-	Volatility20 decimal.Decimal `json:"volatility_20,omitempty" gorm:"type:decimal(10,6)"` // 20日波动率
-	MA20         decimal.Decimal `json:"ma_20,omitempty" gorm:"type:decimal(20,8)"`         // 20日移动平均
-	MA50         decimal.Decimal `json:"ma_50,omitempty" gorm:"type:decimal(20,8)"`         // 50日移动平均
-	MA200        decimal.Decimal `json:"ma_200,omitempty" gorm:"type:decimal(20,8)"`        // 200日移动平均
+	ReturnDaily  decimal.Decimal `json:"return_daily" gorm:"type:decimal(10,6)"`  // 日收益率
+	Volatility20 decimal.Decimal `json:"volatility_20" gorm:"type:decimal(10,6)"` // 20日波动率
+	MA20         decimal.Decimal `json:"ma_20" gorm:"type:decimal(20,8)"`         // 20日移动平均
+	MA50         decimal.Decimal `json:"ma_50" gorm:"type:decimal(20,8)"`         // 50日移动平均
+	MA200        decimal.Decimal `json:"ma_200" gorm:"type:decimal(20,8)"`        // 200日移动平均
 
 	// 数据质量
 	DataSource   string `json:"data_source" gorm:"size:50"`       // 数据来源
@@ -65,7 +65,7 @@ type Price struct {
 	CreatedAt time.Time `json:"created_at"`
 
 	// 关联
-	Asset Asset `json:"asset,omitempty" gorm:"foreignKey:AssetID"`
+	Asset Asset `json:"asset" gorm:"foreignKey:AssetID"`
 }
 
 // TableName 指定表名
@@ -84,7 +84,7 @@ type PriceGap struct {
 	PriceType   PriceType `json:"price_type" gorm:"size:20"`               // 价格类型
 	Status      string    `json:"status" gorm:"size:20;default:'pending'"` // 状态：pending/filled/ignored
 	FillMethod  string    `json:"fill_method,omitempty" gorm:"size:20"`    // 填充方法：interpolation/forward/backward
-	FillDate    time.Time `json:"fill_date,omitempty"`                     // 填充日期
+	FillDate    time.Time `json:"fill_date"`                               // 填充日期
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

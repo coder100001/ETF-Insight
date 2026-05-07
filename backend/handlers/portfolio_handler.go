@@ -6,6 +6,7 @@ import (
 
 	"etf-insight/models"
 	"etf-insight/services"
+	"etf-insight/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -166,7 +167,7 @@ func (h *PortfolioHandler) AnalyzePortfolio(c *gin.Context) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"total_value":                        result.TotalValue.InexactFloat64(),
 		"total_return":                       result.TotalReturn.InexactFloat64(),
 		"total_return_pct":                   result.TotalReturnPercent.InexactFloat64(),
@@ -258,14 +259,14 @@ func (h *PortfolioHandler) GetPortfolioConfigs(c *gin.Context) {
 		return
 	}
 
-	var response []map[string]interface{}
+	var response []map[string]any
 	for _, config := range configs {
 		var allocation map[string]float64
 		if err := json.Unmarshal([]byte(config.Allocation), &allocation); err != nil {
 			allocation = make(map[string]float64)
 		}
 
-		response = append(response, map[string]interface{}{
+		response = append(response, map[string]any{
 			"id":               config.ID,
 			"name":             config.Name,
 			"description":      config.Description,
@@ -305,7 +306,7 @@ func (h *PortfolioHandler) GetPortfolioConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"id":               config.ID,
 			"name":             config.Name,
 			"description":      config.Description,
@@ -354,7 +355,9 @@ func (h *PortfolioHandler) CreatePortfolioConfig(c *gin.Context) {
 
 	// 如果设置为默认组合，取消其他默认组合
 	if req.IsDefault {
-		models.DB.Model(&models.PortfolioConfig{}).Update("is_default", false)
+		if err := models.DB.Model(&models.PortfolioConfig{}).Update("is_default", false).Error; err != nil {
+			utils.Error("Failed to clear default flag", err)
+		}
 	}
 
 	config := models.PortfolioConfig{
@@ -377,7 +380,7 @@ func (h *PortfolioHandler) CreatePortfolioConfig(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"id":               config.ID,
 			"name":             config.Name,
 			"description":      config.Description,
@@ -441,7 +444,9 @@ func (h *PortfolioHandler) UpdatePortfolioConfig(c *gin.Context) {
 
 	// 如果设置为默认组合，取消其他默认组合
 	if req.IsDefault && !config.IsDefault {
-		models.DB.Model(&models.PortfolioConfig{}).Where("id != ?", config.ID).Update("is_default", false)
+		if err := models.DB.Model(&models.PortfolioConfig{}).Where("id != ?", config.ID).Update("is_default", false).Error; err != nil {
+			utils.Error("Failed to clear default flag for other configs", err, "config_id", config.ID)
+		}
 		config.IsDefault = true
 	} else if req.IsDefault != config.IsDefault {
 		config.IsDefault = req.IsDefault
@@ -456,11 +461,14 @@ func (h *PortfolioHandler) UpdatePortfolioConfig(c *gin.Context) {
 	}
 
 	var allocation map[string]float64
-	json.Unmarshal([]byte(config.Allocation), &allocation)
+	if err := json.Unmarshal([]byte(config.Allocation), &allocation); err != nil {
+		utils.Error("Failed to unmarshal allocation", err, "config_id", config.ID)
+		allocation = make(map[string]float64)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"id":               config.ID,
 			"name":             config.Name,
 			"description":      config.Description,
@@ -531,11 +539,14 @@ func (h *PortfolioHandler) TogglePortfolioConfigStatus(c *gin.Context) {
 	}
 
 	var allocation map[string]float64
-	json.Unmarshal([]byte(config.Allocation), &allocation)
+	if err := json.Unmarshal([]byte(config.Allocation), &allocation); err != nil {
+		utils.Error("Failed to unmarshal allocation", err, "config_id", config.ID)
+		allocation = make(map[string]float64)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"id":               config.ID,
 			"name":             config.Name,
 			"allocation":       allocation,
@@ -592,7 +603,7 @@ func (h *PortfolioHandler) AnalyzePortfolioConfig(c *gin.Context) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"config_id":                          config.ID,
 		"config_name":                        config.Name,
 		"total_value":                        result.TotalValue.InexactFloat64(),

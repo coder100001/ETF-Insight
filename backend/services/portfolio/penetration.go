@@ -177,10 +177,7 @@ func (s *PortfolioPenetrationService) AnalyzePortfolio(ctx context.Context, port
 	concentration := s.calculateConcentration(underlyingList)
 
 	// 获取前十大持仓
-	topN := 10
-	if len(underlyingList) < topN {
-		topN = len(underlyingList)
-	}
+	topN := min(len(underlyingList), 10)
 	topHoldings := make([]UnderlyingHolding, topN)
 	for i := 0; i < topN; i++ {
 		topHoldings[i] = *underlyingList[i]
@@ -212,19 +209,13 @@ func (s *PortfolioPenetrationService) calculateConcentration(holdings []*Underly
 	var top10Weight, top20Weight, herfindahlIndex decimal.Decimal
 
 	// 前10大权重
-	n := 10
-	if len(holdings) < n {
-		n = len(holdings)
-	}
+	n := min(len(holdings), 10)
 	for i := 0; i < n; i++ {
 		top10Weight = top10Weight.Add(holdings[i].Weight)
 	}
 
 	// 前20大权重
-	n = 20
-	if len(holdings) < n {
-		n = len(holdings)
-	}
+	n = min(len(holdings), 20)
 	for i := 0; i < n; i++ {
 		top20Weight = top20Weight.Add(holdings[i].Weight)
 	}

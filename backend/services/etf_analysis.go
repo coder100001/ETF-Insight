@@ -556,7 +556,7 @@ func (s *ETFAnalysisService) convertToUSD(amount decimal.Decimal, currency strin
 }
 
 // GetComparisonData 获取ETF对比数据
-func (s *ETFAnalysisService) GetComparisonData(symbols []string, period string) ([]map[string]interface{}, error) {
+func (s *ETFAnalysisService) GetComparisonData(symbols []string, period string) ([]map[string]any, error) {
 	// 批量获取ETF配置
 	var etfConfigs []models.ETFConfig
 	models.DB.Where("symbol IN ?", symbols).Find(&etfConfigs)
@@ -608,7 +608,7 @@ func (s *ETFAnalysisService) GetComparisonData(symbols []string, period string) 
 	}
 
 	// 构建结果
-	var results []map[string]interface{}
+	var results []map[string]any
 	for _, symbol := range symbols {
 		// 获取ETF配置
 		cfg, ok := configMap[symbol]
@@ -656,7 +656,7 @@ func (s *ETFAnalysisService) GetComparisonData(symbols []string, period string) 
 		}
 
 		// 构建结果
-		result := map[string]interface{}{
+		result := map[string]any{
 			"symbol":         symbol,
 			"name":           cfg.Name,
 			"current_price":  data.ClosePrice.InexactFloat64(),

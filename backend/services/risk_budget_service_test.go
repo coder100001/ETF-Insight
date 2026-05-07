@@ -97,7 +97,7 @@ func TestRiskBudgetService_CalculateHistoricalCVaR(t *testing.T) {
 	service := NewRiskBudgetService(db)
 
 	returns := []decimal.Decimal{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
 		returns = append(returns, ret)
 	}
@@ -127,7 +127,7 @@ func TestRiskBudgetService_CalculateParametricCVaR(t *testing.T) {
 	service := NewRiskBudgetService(db)
 
 	returns := []decimal.Decimal{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
 		returns = append(returns, ret)
 	}
@@ -187,9 +187,9 @@ func TestRiskBudgetService_CalculateRiskContributions(t *testing.T) {
 	}
 
 	returnsMatrix := make([][]decimal.Decimal, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		returnsMatrix[i] = make([]decimal.Decimal, 100)
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			returnsMatrix[i][j] = decimal.NewFromFloat(0.001 * float64((j+i*10)%20-10))
 		}
 	}
@@ -222,7 +222,7 @@ func TestRiskBudgetService_RunMonteCarloSimulation(t *testing.T) {
 	service := NewRiskBudgetService(db)
 
 	returns := []decimal.Decimal{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
 		returns = append(returns, ret)
 	}
@@ -259,7 +259,7 @@ func TestRiskBudgetService_GetSimulation(t *testing.T) {
 	service := NewRiskBudgetService(db)
 
 	returns := []decimal.Decimal{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
 		returns = append(returns, ret)
 	}
@@ -356,9 +356,9 @@ func TestRiskBudgetService_OptimizeRiskBudget(t *testing.T) {
 	service := NewRiskBudgetService(db)
 
 	returnsMatrix := make([][]decimal.Decimal, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		returnsMatrix[i] = make([]decimal.Decimal, 100)
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			returnsMatrix[i][j] = decimal.NewFromFloat(0.001 * float64((j+i*10)%20-10))
 		}
 	}
@@ -427,9 +427,9 @@ func TestRiskBudgetService_CalculatePortfolioSkewness(t *testing.T) {
 	service := NewRiskBudgetService(db)
 
 	returnsMatrix := make([][]decimal.Decimal, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		returnsMatrix[i] = make([]decimal.Decimal, 100)
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			returnsMatrix[i][j] = decimal.NewFromFloat(0.001 * float64((j+i*10)%20-10))
 		}
 	}

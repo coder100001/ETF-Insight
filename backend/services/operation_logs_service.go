@@ -87,10 +87,7 @@ func (s *OperationLogsService) QueryLogs(params LogFilterParams) (*LogQueryResul
 		}, nil
 	}
 
-	end := offset + limit
-	if end > len(allLogs) {
-		end = len(allLogs)
-	}
+	end := min(offset+limit, len(allLogs))
 
 	pagedLogs := allLogs[offset:end]
 
@@ -282,7 +279,7 @@ func (s *OperationLogsService) queryOperationLogs(params LogFilterParams) ([]Uni
 // sortLogsByTimestampDesc 按时间戳降序排序
 func (s *OperationLogsService) sortLogsByTimestampDesc(logs []UnifiedLog) {
 	// 使用简单的冒泡排序（数量不会太大）
-	for i := 0; i < len(logs); i++ {
+	for i := range logs {
 		for j := i + 1; j < len(logs); j++ {
 			if logs[i].Timestamp.Before(logs[j].Timestamp) {
 				logs[i], logs[j] = logs[j], logs[i]

@@ -28,7 +28,7 @@
 ## 2. 调研与现状分析
 
 ### 2.1 现有实现
-- **后端**: Go 1.24, Gin框架, GORM, 148个文件
+- **后端**: Go 1.26, Gin框架, GORM, 148个文件
 - **前端**: React 19, TypeScript 5.9, Vite 8
 - **测试**: `go test`, `vitest`
 - **代码格式**: `gofmt` 通过，格式统一
@@ -43,7 +43,7 @@
 | 日志规范 | 结构化日志 | fmt.Println | 🔴 不规范 |
 
 ### 2.3 技术约束
-- Go 1.24 的 GOPROXY 需要配置（`https://goproxy.cn,direct`）
+- Go 1.26 的 GOPROXY 需要配置（`https://goproxy.cn,direct`）
 - 前端 `antd` 包名可能错误（应为 `antd` 而非 `antd`）
 - SQLite/PostgreSQL 双数据库支持
 

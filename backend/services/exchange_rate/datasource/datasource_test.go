@@ -238,7 +238,7 @@ func TestHealthChecker_FailureThreshold(t *testing.T) {
 	status.IsAvailable = true
 
 	// 连续3次失败，应该标记为不可用
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		checker.RecordFailure("test_source")
 	}
 

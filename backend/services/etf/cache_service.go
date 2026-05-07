@@ -107,7 +107,7 @@ func (s *OverlapCacheService) SaveOverlapCache(ctx context.Context, etfA, etfB s
 	if err := s.db.Where(
 		"((etf_a_symbol = ? AND etf_b_symbol = ?) OR (etf_a_symbol = ? AND etf_b_symbol = ?))",
 		sym1, sym2, sym2, sym1,
-	).Assign(map[string]interface{}{
+	).Assign(map[string]any{
 		"overlap_score":   result.OverlapScore,
 		"common_holdings": result.CommonHoldings,
 		"total_weight_a":  result.TotalWeightA,
@@ -166,7 +166,7 @@ func (s *OverlapCacheService) InvalidateAllOverlapCache(ctx context.Context) err
 }
 
 // GetCacheStats 获取缓存统计信息
-func (s *OverlapCacheService) GetCacheStats(ctx context.Context) (map[string]interface{}, error) {
+func (s *OverlapCacheService) GetCacheStats(ctx context.Context) (map[string]any, error) {
 	var totalCount int64
 	var validCount int64
 	var expiredCount int64
@@ -183,7 +183,7 @@ func (s *OverlapCacheService) GetCacheStats(ctx context.Context) (map[string]int
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"total":   totalCount,
 		"valid":   validCount,
 		"expired": expiredCount,

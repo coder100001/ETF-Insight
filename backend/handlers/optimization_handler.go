@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"net/http"
 	"time"
@@ -317,10 +318,7 @@ func calculateCovarianceMatrix(returns map[string][]float64) map[string]map[stri
 			data1 := returns[s1]
 			data2 := returns[s2]
 
-			minLen := len(data1)
-			if len(data2) < minLen {
-				minLen = len(data2)
-			}
+			minLen := min(len(data2), len(data1))
 
 			if minLen == 0 {
 				covMatrix[s1][s2] = 0
@@ -398,14 +396,10 @@ func (h *OptimizationHandler) RiskParityOptimize(c *gin.Context) {
 	constraint := optimization.NewRiskParityConstraint(req.Symbols)
 	if req.Constraints != nil {
 		if req.Constraints.MinWeights != nil {
-			for symbol, weight := range req.Constraints.MinWeights {
-				constraint.MinWeight[symbol] = weight
-			}
+			maps.Copy(constraint.MinWeight, req.Constraints.MinWeights)
 		}
 		if req.Constraints.MaxWeights != nil {
-			for symbol, weight := range req.Constraints.MaxWeights {
-				constraint.MaxWeight[symbol] = weight
-			}
+			maps.Copy(constraint.MaxWeight, req.Constraints.MaxWeights)
 		}
 		constraint.TargetVolatility = req.Constraints.TargetVolatility
 		constraint.UseLeverage = req.Constraints.UseLeverage
@@ -628,14 +622,10 @@ func (h *OptimizationHandler) BlackLittermanOptimize(c *gin.Context) {
 	constraint := optimization.NewBlackLittermanConstraint(symbols)
 	if req.Constraints != nil {
 		if req.Constraints.MinWeights != nil {
-			for symbol, weight := range req.Constraints.MinWeights {
-				constraint.MinWeight[symbol] = weight
-			}
+			maps.Copy(constraint.MinWeight, req.Constraints.MinWeights)
 		}
 		if req.Constraints.MaxWeights != nil {
-			for symbol, weight := range req.Constraints.MaxWeights {
-				constraint.MaxWeight[symbol] = weight
-			}
+			maps.Copy(constraint.MaxWeight, req.Constraints.MaxWeights)
 		}
 	}
 
