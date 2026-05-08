@@ -406,3 +406,235 @@ func TestDecimalSerializationVaRResult(t *testing.T) {
 	assert.Contains(t, jsonStr, `"holding_period":10`, "HoldingPeriod (int) should remain number")
 	assert.Contains(t, jsonStr, `"method":"historical"`, "Method (string) should remain string")
 }
+
+func TestPriceAmericanOption(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/options/american", r.URL.Path)
+
+		var req models.AmericanOptionRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.True(t, req.Spot.Equal(decimal.NewFromFloat(100)))
+		assert.Equal(t, 200, req.Steps)
+
+		resp := models.QuantLibAPIResponse{
+			Success: true,
+			Message: "ok",
+			Data: map[string]any{
+				"price": "11.2345",
+				"delta": "0.6123",
+				"gamma": "0.0210",
+				"theta": "-0.0145",
+				"vega":  "0.3890",
+				"rho":   "0.4890",
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		baseURL:    server.URL,
+		httpClient: server.Client(),
+	}
+
+	req := models.AmericanOptionRequest{
+		Spot:         decimal.NewFromFloat(100),
+		Strike:       decimal.NewFromFloat(105),
+		Rate:         decimal.NewFromFloat(0.05),
+		Volatility:   decimal.NewFromFloat(0.25),
+		TimeToExpiry: decimal.NewFromFloat(1.0),
+		OptionType:   models.OptionTypeCall,
+		Steps:        200,
+	}
+
+	result, err := client.PriceAmericanOption(req)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.Price.Equal(decimal.NewFromFloat(11.2345)))
+	assert.True(t, result.Delta.Equal(decimal.NewFromFloat(0.6123)))
+}
+
+func TestPriceAmericanOptionValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     models.AmericanOptionRequest
+		wantErr bool
+	}{
+		{
+			name: "steps below minimum",
+			req: models.AmericanOptionRequest{
+				Spot: decimal.NewFromFloat(100), Strike: decimal.NewFromFloat(100),
+				Rate: decimal.NewFromFloat(0.05), Volatility: decimal.NewFromFloat(0.2),
+				TimeToExpiry: decimal.NewFromFloat(1), OptionType: models.OptionTypeCall,
+				Steps: 5,
+			},
+			wantErr: true,
+		},
+		{
+			name: "steps above maximum",
+			req: models.AmericanOptionRequest{
+				Spot: decimal.NewFromFloat(100), Strike: decimal.NewFromFloat(100),
+				Rate: decimal.NewFromFloat(0.05), Volatility: decimal.NewFromFloat(0.2),
+				TimeToExpiry: decimal.NewFromFloat(1), OptionType: models.OptionTypeCall,
+				Steps: 1500,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := models.ValidateAmericanOptionRequest(tt.req)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCalculateGreeks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/options/greeks", r.URL.Path)
+
+		resp := models.QuantLibAPIResponse{
+			Success: true,
+			Message: "ok",
+			Data: map[string]any{
+				"price": "10.4506",
+				"delta": "0.5948",
+				"gamma": "0.0188",
+				"theta": "-0.0128",
+				"vega":  "0.3756",
+				"rho":   "0.4502",
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		baseURL:    server.URL,
+		httpClient: server.Client(),
+	}
+
+	req := models.GreeksRequest{
+		Spot:         decimal.NewFromFloat(100),
+		Strike:       decimal.NewFromFloat(105),
+		Rate:         decimal.NewFromFloat(0.05),
+		Volatility:   decimal.NewFromFloat(0.2),
+		TimeToExpiry: decimal.NewFromFloat(1.0),
+		OptionType:   models.OptionTypeCall,
+	}
+
+	result, err := client.CalculateGreeks(req)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.Price.Equal(decimal.NewFromFloat(10.4506)))
+	assert.True(t, result.Delta.Equal(decimal.NewFromFloat(0.5948)))
+}
+
+func TestBuildYieldCurve(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/yield-curve/build", r.URL.Path)
+
+		var req models.YieldCurveRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.Equal(t, "USD", req.Currency)
+		assert.Len(t, req.Tenors, 8)
+
+		resp := models.QuantLibAPIResponse{
+			Success: true,
+			Message: "ok",
+			Data: map[string]any{
+				"currency":         "USD",
+				"tenors":           []any{"1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "30Y"},
+				"rates":            []any{"0.043", "0.044", "0.045", "0.046", "0.047", "0.048", "0.049", "0.05"},
+				"zero_rates":       []any{"0.0425", "0.0435", "0.0445", "0.0455", "0.0465", "0.0475", "0.0485", "0.0495"},
+				"forward_rates":    []any{"0.0435", "0.0445", "0.0465", "0.0475", "0.0495", "0.0515", "0.0535", "0.0555"},
+				"discount_factors": []any{"0.9965", "0.9891", "0.9780", "0.9558", "0.9137", "0.7896", "0.6139", "0.2237"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		baseURL:    server.URL,
+		httpClient: server.Client(),
+	}
+
+	req := models.YieldCurveRequest{
+		Currency: "USD",
+		Tenors:   []string{"1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "30Y"},
+		Rates: []decimal.Decimal{
+			decimal.NewFromFloat(0.043),
+			decimal.NewFromFloat(0.044),
+			decimal.NewFromFloat(0.045),
+			decimal.NewFromFloat(0.046),
+			decimal.NewFromFloat(0.047),
+			decimal.NewFromFloat(0.048),
+			decimal.NewFromFloat(0.049),
+			decimal.NewFromFloat(0.05),
+		},
+	}
+
+	result, err := client.BuildYieldCurve(req)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "USD", result.Currency)
+	assert.Len(t, result.Tenors, 8)
+	assert.Len(t, result.Rates, 8)
+	assert.Len(t, result.ZeroRates, 8)
+	assert.Len(t, result.ForwardRates, 8)
+	assert.Len(t, result.DiscountFactors, 8)
+}
+
+func TestGetSupportedCurrencies(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/core/types/currencies", r.URL.Path)
+
+		resp := map[string]any{
+			"currencies": []any{"USD", "EUR", "GBP", "JPY", "CNY", "AUD", "CAD", "CHF"},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		baseURL:    server.URL,
+		httpClient: server.Client(),
+		cache:      newCache(),
+	}
+
+	result, err := client.GetSupportedCurrencies()
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	resultMap, ok := result.(map[string]any)
+	require.True(t, ok, "Result should be a map")
+	currencies, exists := resultMap["currencies"]
+	require.True(t, exists, "Result should contain 'currencies' key")
+	currencyList, ok := currencies.([]any)
+	require.True(t, ok, "Currencies should be a slice")
+	assert.Len(t, currencyList, 8)
+
+	result2, err := client.GetSupportedCurrencies()
+	require.NoError(t, err)
+	assert.Equal(t, result, result2)
+}

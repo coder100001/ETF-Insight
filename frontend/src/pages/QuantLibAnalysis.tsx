@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Tabs,
@@ -13,7 +13,9 @@ import {
   message,
   Spin,
   Input,
+  Alert,
 } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import {
   LineChart,
   Line,
@@ -36,17 +38,90 @@ const { TabPane } = Tabs;
 const { Option } = Select;
 const { TextArea } = Input;
 
+interface ReferenceDataCache<T> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
+function useReferenceData<T>(
+  fetchFn: () => Promise<unknown>,
+  cacheKey: string,
+  ttlMinutes: number = 5
+): { data: T[] | null; loading: boolean; refresh: () => void } {
+  const [data, setData] = useState<T[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadData = async (forceRefresh: boolean = false) => {
+    if (!forceRefresh) {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed: ReferenceDataCache<T[]> = JSON.parse(cached);
+          const now = Date.now();
+          if (now - parsed.timestamp < parsed.ttl) {
+            setData(parsed.data);
+            return;
+          }
+        }
+      } catch {
+        console.warn(`Failed to parse cache for ${cacheKey}`);
+      }
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetchFn();
+      if (response && Array.isArray(response)) {
+        const result = response as T[];
+        setData(result);
+
+        const cacheEntry: ReferenceDataCache<T[]> = {
+          data: result,
+          timestamp: Date.now(),
+          ttl: ttlMinutes * 60 * 1000,
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+      }
+    } catch (error) {
+      console.error(`Failed to load reference data for ${cacheKey}:`, error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  return { data, loading, refresh: () => loadData(true) };
+}
+
 const QuantLibAnalysis: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [optionResult, setOptionResult] = useState<OptionResult | null>(null);
   const [bondResult, setBondResult] = useState<BondResult | null>(null);
   const [yieldCurveData, setYieldCurveData] = useState<YieldCurveResult | null>(null);
   const [varResult, setVarResult] = useState<VaRResult | null>(null);
+  const [americanOptionResult, setAmericanOptionResult] = useState<OptionResult | null>(null);
+  const [greeksResult, setGreeksResult] = useState<OptionResult | null>(null);
+  const [activeGreeksTab, setActiveGreeksTab] = useState(false);
 
   const [optionForm] = Form.useForm();
   const [bondForm] = Form.useForm();
   const [yieldCurveForm] = Form.useForm();
   const [varForm] = Form.useForm();
+  const [americanOptionForm] = Form.useForm();
+
+  const { data: currencies, loading: loadingCurrencies, refresh: refreshCurrencies } =
+    useReferenceData<string>(
+      async () => {
+        const response = await quantlibAPI.getReferenceData('currencies');
+        return response.success ? response.data : null;
+      },
+      'quantlib_currencies',
+      5
+    );
 
   const handleOptionPrice = async (values: {
     spot: number;
@@ -162,6 +237,55 @@ const QuantLibAnalysis: React.FC = () => {
     }
   };
 
+  const handleAmericanOptionPrice = async (values: {
+    spot: number;
+    strike: number;
+    rate: number;
+    volatility: number;
+    time_to_expiry: number;
+    option_type: 'call' | 'put';
+    steps: number;
+  }) => {
+    setLoading(true);
+    try {
+      const response = await quantlibAPI.priceAmericanOption(values);
+      if (response.success && response.data) {
+        setAmericanOptionResult(response.data);
+        message.success('美式期权定价完成');
+      } else {
+        message.error(response.error || '美式期权定价失败');
+      }
+    } catch {
+      message.error('请求失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGreeksCalculate = async (values: {
+    spot: number;
+    strike: number;
+    rate: number;
+    volatility: number;
+    time_to_expiry: number;
+    option_type: 'call' | 'put';
+  }) => {
+    setLoading(true);
+    try {
+      const response = await quantlibAPI.calculateGreeks(values);
+      if (response.success && response.data) {
+        setGreeksResult(response.data);
+        message.success('Greeks 计算完成');
+      } else {
+        message.error(response.error || 'Greeks 计算失败');
+      }
+    } catch {
+      message.error('请求失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const optionColumns = [
     { title: '指标', dataIndex: 'label', key: 'label' },
     { title: '值', dataIndex: 'value', key: 'value' },
@@ -245,10 +369,134 @@ const QuantLibAnalysis: React.FC = () => {
                 </Card>
               </Col>
               <Col span={14}>
-                <Card title="定价结果与希腊字母">
-                  {optionResult ? (
+                <Card title="定价结果与希腊字母" extra={
+                  <Button size="small" onClick={() => setActiveGreeksTab(!activeGreeksTab)}>
+                    {activeGreeksTab ? '返回定价结果' : 'Greeks 敏感性分析'}
+                  </Button>
+                }>
+                  {activeGreeksTab ? (
+                    greeksResult ? (
+                      <div>
+                        <Alert
+                          message="Greeks 敏感性分析"
+                          description="展示各希腊字母对期权价格的影响"
+                          type="info"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                        />
+                        <Table
+                          dataSource={[
+                            { key: 'delta', label: 'Delta (Δ)', value: parseFloat(greeksResult.delta).toFixed(6), desc: '价格对标的价格敏感度' },
+                            { key: 'gamma', label: 'Gamma (Γ)', value: parseFloat(greeksResult.gamma).toFixed(6), desc: 'Delta 对标的价格变化率' },
+                            { key: 'theta', label: 'Theta (Θ)', value: parseFloat(greeksResult.theta).toFixed(6), desc: '时间衰减率' },
+                            { key: 'vega', label: 'Vega (ν)', value: parseFloat(greeksResult.vega).toFixed(6), desc: '对波动率的敏感度' },
+                            { key: 'rho', label: 'Rho (ρ)', value: parseFloat(greeksResult.rho).toFixed(6), desc: '对利率的敏感度' },
+                          ]}
+                          columns={[
+                            { title: '指标', dataIndex: 'label', key: 'label' },
+                            { title: '数值', dataIndex: 'value', key: 'value' },
+                            { title: '解释', dataIndex: 'desc', key: 'desc' },
+                          ]}
+                          pagination={false}
+                          size="small"
+                        />
+                        <Button
+                          type="link"
+                          onClick={() => {
+                            const formValues = optionForm.getFieldsValue();
+                            handleGreeksCalculate(formValues);
+                          }}
+                          style={{ marginTop: 12 }}
+                        >
+                          使用当前参数重新计算 Greeks
+                        </Button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>
+                        请先计算期权价格，然后查看 Greeks 分析
+                      </div>
+                    )
+                  ) : (
+                    optionResult ? (
+                      <Table
+                        dataSource={getOptionTableData()}
+                        columns={optionColumns}
+                        pagination={false}
+                        size="small"
+                      />
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>
+                        请填写参数并点击计算
+                      </div>
+                    )
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          <TabPane tab="美式期权" key="americanOption">
+            <Row gutter={24}>
+              <Col span={10}>
+                <Card title="美式期权参数（二叉树法）">
+                  <Form
+                    form={americanOptionForm}
+                    layout="vertical"
+                    onFinish={handleAmericanOptionPrice}
+                    initialValues={{
+                      spot: 100,
+                      strike: 100,
+                      rate: 0.05,
+                      volatility: 0.25,
+                      time_to_expiry: 1.0,
+                      option_type: 'call',
+                      steps: 200,
+                    }}
+                  >
+                    <Form.Item label="标的价格" name="spot" rules={[{ required: true }]}>
+                      <InputNumber style={{ width: '100%' }} min={0} step={1} />
+                    </Form.Item>
+                    <Form.Item label="行权价" name="strike" rules={[{ required: true }]}>
+                      <InputNumber style={{ width: '100%' }} min={0} step={1} />
+                    </Form.Item>
+                    <Form.Item label="无风险利率" name="rate" rules={[{ required: true }]}>
+                      <InputNumber style={{ width: '100%' }} min={0} max={1} step={0.01} />
+                    </Form.Item>
+                    <Form.Item label="波动率" name="volatility" rules={[{ required: true }]}>
+                      <InputNumber style={{ width: '100%' }} min={0} max={5} step={0.01} />
+                    </Form.Item>
+                    <Form.Item label="到期时间(年)" name="time_to_expiry" rules={[{ required: true }]}>
+                      <InputNumber style={{ width: '100%' }} min={0.01} step={0.1} />
+                    </Form.Item>
+                    <Form.Item label="期权类型" name="option_type" rules={[{ required: true }]}>
+                      <Select>
+                        <Option value="call">看涨 (Call)</Option>
+                        <Option value="put">看跌 (Put)</Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="二叉树步数" name="steps" rules={[{ required: true }]}>
+                      <InputNumber style={{ width: '100%' }} min={10} max={1000} step={10} />
+                    </Form.Item>
+                    <Form.Item>
+                      <Button type="primary" htmlType="submit" block>
+                        计算美式期权价格
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                </Card>
+              </Col>
+              <Col span={14}>
+                <Card title="美式期权定价结果">
+                  {americanOptionResult ? (
                     <Table
-                      dataSource={getOptionTableData()}
+                      dataSource={[
+                        { key: 'price', label: '期权价格', value: parseFloat(americanOptionResult.price).toFixed(4) },
+                        { key: 'delta', label: 'Delta', value: parseFloat(americanOptionResult.delta).toFixed(4) },
+                        { key: 'gamma', label: 'Gamma', value: parseFloat(americanOptionResult.gamma).toFixed(4) },
+                        { key: 'theta', label: 'Theta', value: parseFloat(americanOptionResult.theta).toFixed(4) },
+                        { key: 'vega', label: 'Vega', value: parseFloat(americanOptionResult.vega).toFixed(4) },
+                        { key: 'rho', label: 'Rho', value: parseFloat(americanOptionResult.rho).toFixed(4) },
+                      ]}
                       columns={optionColumns}
                       pagination={false}
                       size="small"
@@ -350,13 +598,27 @@ const QuantLibAnalysis: React.FC = () => {
                     }}
                   >
                     <Form.Item label="货币" name="currency" rules={[{ required: true }]}>
-                      <Select>
-                        <Option value="USD">USD</Option>
-                        <Option value="EUR">EUR</Option>
-                        <Option value="CNY">CNY</Option>
-                        <Option value="GBP">GBP</Option>
-                        <Option value="JPY">JPY</Option>
-                      </Select>
+                      <Input.Group compact>
+                        <Select
+                          style={{ width: 'calc(100% - 32px)' }}
+                          loading={loadingCurrencies}
+                          showSearch
+                          optionFilterProp="children"
+                          notFoundContent={loadingCurrencies ? <Spin size="small" /> : '暂无数据'}
+                        >
+                          {(currencies || ['USD', 'EUR', 'CNY', 'GBP', 'JPY']).map((currency) => (
+                            <Option key={currency} value={currency}>{currency}</Option>
+                          ))}
+                        </Select>
+                        <Button
+                          icon={<ReloadOutlined />}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            refreshCurrencies();
+                          }}
+                          title="刷新货币列表"
+                        />
+                      </Input.Group>
                     </Form.Item>
                     <Form.Item label="期限 (逗号分隔)" name="tenors" rules={[{ required: true }]}>
                       <TextArea rows={2} placeholder="1M,3M,6M,1Y,2Y,5Y,10Y,30Y" />
