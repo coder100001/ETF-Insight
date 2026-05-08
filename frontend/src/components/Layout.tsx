@@ -4,8 +4,6 @@ import styled from 'styled-components';
 import { theme } from '../styles/theme';
 import {
   DashboardOutlined,
-  ProjectOutlined,
-  HistoryOutlined,
   BarChartOutlined,
   WalletOutlined,
   PieChartOutlined,
@@ -193,14 +191,6 @@ const Layout = ({ children }: LayoutProps) => {
           <NavLink to="/" data-active={isActive('/')} onClick={closeSidebar}>
             <BarChartOutlined />
             仪表板
-          </NavLink>
-          <NavLink to="/workflows" data-active={isActive('/workflows')} onClick={closeSidebar}>
-            <ProjectOutlined />
-            工作流
-          </NavLink>
-          <NavLink to="/instances" data-active={isActive('/instances')} onClick={closeSidebar}>
-            <HistoryOutlined />
-            执行记录
           </NavLink>
           <Divider />
           <NavLink to="/etf-dashboard" data-active={isActive('/etf')} onClick={closeSidebar}>

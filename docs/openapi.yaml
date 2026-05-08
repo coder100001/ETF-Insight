@@ -1,8 +1,15 @@
 openapi: 3.0.3
 info:
   title: ETF-Insight API
-  description: ETF 数据管理与分析平台 API
-  version: 2.6.0
+  description: |
+    ETF 数据管理与分析平台 API
+
+    注意：此文档仅包含核心 API 端点定义。
+    完整的 API 列表请参考：
+    - 后端路由定义：backend/router/router.go
+    - API 文档：访问 /swagger/index.html
+
+  version: 2.11.0
   contact:
     name: ETF-Insight Team
     email: coder100001@gmail.com

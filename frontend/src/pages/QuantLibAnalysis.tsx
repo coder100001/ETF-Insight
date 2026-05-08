@@ -26,6 +26,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import Layout from '../components/Layout';
 import { quantlibAPI } from '../services/api';
 import type {
   OptionResult,
@@ -314,12 +315,13 @@ const QuantLibAnalysis: React.FC = () => {
   };
 
   return (
-    <Spin spinning={loading}>
-      <div style={{ padding: 24 }}>
-        <h2>QuantLib 量化分析</h2>
-        <p style={{ color: '#888', marginBottom: 24 }}>
-          基于 QuantLib 的期权定价、债券分析、收益率曲线和风险度量
-        </p>
+    <Layout>
+      <Spin spinning={loading}>
+        <div style={{ padding: 24 }}>
+          <h2>QuantLib 量化分析</h2>
+          <p style={{ color: '#888', marginBottom: 24 }}>
+            基于 QuantLib 的期权定价、债券分析、收益率曲线和风险度量
+          </p>
 
         <Tabs defaultActiveKey="option">
           <TabPane tab="期权定价" key="option">
@@ -786,8 +788,9 @@ const QuantLibAnalysis: React.FC = () => {
             </Row>
           </TabPane>
         </Tabs>
-      </div>
-    </Spin>
+        </div>
+      </Spin>
+    </Layout>
   );
 };
 

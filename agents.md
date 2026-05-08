@@ -49,12 +49,6 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 SERVER_PORT=8080
 SERVER_HOST=localhost
 
-# ========== 缓存配置 ==========
-REDIS_ENABLED=false
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
 # ========== 日志级别 ==========
 LOG_LEVEL=info
 ```

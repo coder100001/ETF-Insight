@@ -112,9 +112,14 @@ func (rm *RiskModels) CalculateParametricVaR(returns []decimal.Decimal, confiden
 	zDecimal := decimal.NewFromFloat(zScore)
 	varValue := mean.Sub(zDecimal.Mul(stdDev)).Neg()
 
-	// CVaR 对于正态分布 = -(均值 - (phi(z)/Phi(z)) * 标准差)
-	// 其中 phi 是标准正态密度函数，Phi 是累积分布函数
-	// 简化计算：CVaR ≈ VaR 在正态分布假设下
+	// CVaR 计算说明：
+	// 当前使用近似值 VaR * 1.2，适用于正态分布假设下的快速估算。
+	//
+	// 精确计算公式（未来可优化）：
+	// CVaR = μ - σ * φ(z) / (1 - α)
+	// 其中 φ(z) 是标准正态密度函数，α 是置信水平
+	//
+	// 参考：https://en.wikipedia.org/wiki/Expected_shortfall
 	cvarValue := varValue.Mul(decimal.NewFromFloat(1.2)) // 近似值
 
 	// 年化

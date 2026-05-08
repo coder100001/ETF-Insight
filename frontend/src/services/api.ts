@@ -835,18 +835,25 @@ export const factorTimingAPI = {
     });
   },
 
-  getSignalHistory: async (factorName: string, startDate: string, endDate: string): Promise<ApiResponse<FactorTimingSignal[]>> => {
-    return request<ApiResponse<FactorTimingSignal[]>>(
-      `/factor/timing/history?factor_name=${factorName}&start_date=${startDate}&end_date=${endDate}`
-    );
+  getSignalHistory: async (factorName: string, startDate?: string, endDate?: string): Promise<ApiResponse<FactorTimingSignal[]>> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `/factor/timing/history/${encodeURIComponent(factorName)}?${queryString}`
+      : `/factor/timing/history/${encodeURIComponent(factorName)}`;
+
+    return request<ApiResponse<FactorTimingSignal[]>>(url);
   },
 
   generateView: async (signal: FactorTimingSignal, targetAsset: string): Promise<ApiResponse<AlphaView>> => {
-    return request<ApiResponse<AlphaView>>('/alpha-views/generate-from-signal', {
+    return request<ApiResponse<AlphaView>>('/alpha-views/generate-from-factor', {
       method: 'POST',
       body: JSON.stringify({
-        signal_id: signal.id,
-        target_asset: targetAsset,
+        factor_name: signal.factor_name,
+        asset_symbol: targetAsset,
       }),
     });
   },

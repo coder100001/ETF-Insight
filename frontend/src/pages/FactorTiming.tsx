@@ -90,7 +90,7 @@ const FactorTiming: React.FC = () => {
   const [selectedFactor, setSelectedFactor] = useState('Mkt-RF');
   const [lookbackDays, setLookbackDays] = useState(60);
   const [signal, setSignal] = useState<FactorTimingSignal | null>(null);
-  const [signalHistory] = useState<FactorTimingSignal[]>([]);
+  const [signalHistory, setSignalHistory] = useState<FactorTimingSignal[]>([]);
   const [loading, setLoading] = useState(false);
   const [targetAsset, setTargetAsset] = useState('SPY');
   const [generatedView, setGeneratedView] = useState<AlphaView | null>(null);
@@ -104,6 +104,11 @@ const FactorTiming: React.FC = () => {
       if (result.success && result.data) {
         setSignal(result.data);
         message.success('信号计算成功');
+
+        const historyResult = await factorTimingAPI.getSignalHistory(selectedFactor);
+        if (historyResult.success && historyResult.data) {
+          setSignalHistory(historyResult.data);
+        }
       } else {
         message.error(result.error || '信号计算失败');
       }
@@ -136,14 +141,16 @@ const FactorTiming: React.FC = () => {
     }
   };
 
-  // 模拟历史数据（实际应从API获取）
-  const mockHistoryData = signal ? [
-    { date: '2026-01-01', zScore: 0.5, percentile: 60, signal: 0.2 },
-    { date: '2026-02-01', zScore: 0.8, percentile: 65, signal: 0.3 },
-    { date: '2026-03-01', zScore: 1.2, percentile: 72, signal: 0.5 },
-    { date: '2026-04-01', zScore: 1.5, percentile: 80, signal: 0.7 },
-    { date: '2026-04-25', zScore: signal.z_score, percentile: signal.percentile, signal: signal.signal_score },
-  ] : [];
+  const chartData = signalHistory.length > 0
+    ? signalHistory.map(s => ({
+        date: s.signal_date,
+        zScore: s.z_score,
+        percentile: s.percentile,
+        signal: s.signal_score,
+      }))
+    : signal
+      ? [{ date: signal.signal_date, zScore: signal.z_score, percentile: signal.percentile, signal: signal.signal_score }]
+      : [];
 
   const historyColumns = [
     { title: '日期', dataIndex: 'signal_date', key: 'date' },
@@ -296,7 +303,7 @@ const FactorTiming: React.FC = () => {
               <TabPane tab="趋势图表" key="3">
                 <Card>
                   <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={mockHistoryData}>
+                    <AreaChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />

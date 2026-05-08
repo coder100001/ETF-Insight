@@ -24,6 +24,13 @@ func NewPortfolioHandler(analysisService *services.ETFAnalysisService) *Portfoli
 	}
 }
 
+// PortfolioRequest 投资组合请求
+//
+// 注意：Allocation 和金额字段使用 float64 而非 decimal.Decimal
+// 原因：
+// 1. 与前端 JSON 序列化兼容（前端使用 number 类型）
+// 2. 输入精度要求不高（用户输入的分配比例）
+// 3. 内部计算会转换为 decimal.Decimal 保证精度
 type PortfolioRequest struct {
 	Allocation      map[string]float64 `json:"allocation"`
 	TotalInvestment float64            `json:"total_investment"`
