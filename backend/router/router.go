@@ -105,6 +105,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerETFRoutes()
 	r.registerPortfolioRoutes()
 	r.registerOptimizationRoutes()
+	r.registerRiskBudgetRoutes()
 	r.registerFactorRoutes()
 	r.registerFactorTimingRoutes()
 	r.registerAlphaViewRoutes()
@@ -189,6 +190,14 @@ func (r *Router) registerOptimizationRoutes() {
 		opt.POST("/risk-parity", r.handlers.Optimization.RiskParityOptimize)
 		opt.POST("/black-litterman", r.handlers.Optimization.BlackLittermanOptimize)
 		opt.POST("/market-implied-returns", r.handlers.Optimization.MarketImpliedReturns)
+	}
+}
+
+func (r *Router) registerRiskBudgetRoutes() {
+	rb := r.engine.Group("/api/risk-budget")
+	{
+		rb.GET("/configs", r.handlers.Optimization.GetRiskBudgetConfigs)
+		rb.POST("/configs", r.handlers.Optimization.CreateRiskBudgetConfig)
 	}
 }
 
