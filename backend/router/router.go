@@ -198,6 +198,8 @@ func (r *Router) registerRiskBudgetRoutes() {
 	{
 		rb.GET("/configs", r.handlers.Optimization.GetRiskBudgetConfigs)
 		rb.POST("/configs", r.handlers.Optimization.CreateRiskBudgetConfig)
+		rb.POST("/calculate-cvar", r.handlers.Optimization.CalculateCVaR)
+		rb.POST("/monte-carlo", r.handlers.Optimization.RunMonteCarlo)
 	}
 }
 
