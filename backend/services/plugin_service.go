@@ -1,5 +1,10 @@
 package services
 
+// EXPERIMENTAL: This service is fully implemented but not yet wired to any API routes.
+// It provides plugin registration, configuration, execution, and benchmarking.
+// To activate: create handlers/plugin_handler.go and register routes in router.go.
+// See models/plugin.go for the data models.
+
 import (
 	"encoding/json"
 	"errors"
