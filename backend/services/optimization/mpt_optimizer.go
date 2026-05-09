@@ -594,24 +594,34 @@ func (o *MPTOptimizer) calculateDownsideVolatility(
 	weights []float64,
 	symbols []string,
 ) float64 {
-	// 简化实现：使用预期收益率作为目标
-	portfolioReturn := 0.0
+	// 计算组合预期收益率作为目标收益率
+	targetReturn := 0.0
 	for i, symbol := range symbols {
-		portfolioReturn += returns[symbol] * weights[i]
+		targetReturn += returns[symbol] * weights[i]
 	}
 
-	// 计算各资产的下行风险贡献
-	downsideVar := 0.0
-	for i, s1 := range symbols {
-		for j, s2 := range symbols {
-			// 简化：假设收益率低于无风险利率为下行
-			if returns[s1] < o.RiskFreeRate && returns[s2] < o.RiskFreeRate {
-				downsideVar += weights[i] * weights[j] * 0.01 // 假设协方差
-			}
+	// 计算下行偏差
+	// 只考虑低于目标收益率的资产
+	downsideReturns := make([]float64, 0)
+	for i, symbol := range symbols {
+		if returns[symbol] < targetReturn {
+			// 下行偏差 = 权重 * (收益率 - 目标收益率)
+			downsideReturns = append(downsideReturns, weights[i]*(returns[symbol]-targetReturn))
 		}
 	}
 
-	return math.Sqrt(downsideVar)
+	if len(downsideReturns) == 0 {
+		return 0
+	}
+
+	// 计算下行方差
+	sum := 0.0
+	for _, r := range downsideReturns {
+		sum += r * r
+	}
+
+	// 下行波动率 = sqrt(下行方差)
+	return math.Sqrt(sum / float64(len(symbols)))
 }
 
 // calculateRiskContribution 计算各资产的风险贡献
