@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"etf-insight/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -66,7 +69,15 @@ func getCORSAllowedOrigins() []string {
 // LoggerMiddleware 日志中间件
 func LoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		start := time.Now()
 		c.Next()
-		// Gin 默认会记录日志
+		latency := time.Since(start)
+		utils.Info("HTTP request",
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", c.Writer.Status(),
+			"latency", latency.String(),
+			"client_ip", c.ClientIP(),
+		)
 	}
 }
