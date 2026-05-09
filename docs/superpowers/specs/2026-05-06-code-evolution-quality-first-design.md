@@ -27,7 +27,7 @@ ETF-Insight 经过 v2.4 → v2.10 的快速功能迭代，已从单一的 ETF �
 | 架构 | v2.10 | Go 单体 + 3 个 Python 微服务（Agent/Data/Analytics） | 混合架构 |
 | 功能 | v2.10 | 量化分析、AI Agent、数据服务、回测引擎 | 功能丰富 |
 | 测试 | — | 整体 ~55%，核心算法较高，前端 0% | 需提升 |
-| 文档 | v2.9 | agents.md、DOCUMENT_INDEX.md、路线图 | 较完善 |
+| 文档 | v2.9 | agents.md、docs/README.md、路线图 | 较完善 |
 | 质量 | — | pre-commit 钩子完整、JSONMap 类型安全重构完成 | 改进中 |
 
 ### 1.3 业务/技术驱动因素

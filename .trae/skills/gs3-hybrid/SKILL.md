@@ -93,7 +93,7 @@ project:
   backend_path: "./backend"
   frontend_path: "./frontend"
   docs_path: "./docs"
-  design_docs_path: "./design-docs"
+  design_docs_path: "./docs/superpowers/specs"
 ```
 
 ---
