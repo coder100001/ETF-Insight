@@ -120,6 +120,7 @@ func AutoMigrate() error {
 		&PriceStats{},
 		&ETFOverlapCache{},
 		&CacheInvalidationLog{},
+		&ExchangeRateSyncLog{},
 	)
 }
 

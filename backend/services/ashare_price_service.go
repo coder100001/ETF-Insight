@@ -12,10 +12,12 @@ import (
 	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // ASharePriceService A股ETF价格获取服务
 type ASharePriceService struct {
+	db        *gorm.DB
 	client    *http.Client
 	baseURL   string
 	providers []PriceProvider
@@ -43,10 +45,11 @@ type PriceData struct {
 }
 
 // NewASharePriceService 创建A股价格服务
-func NewASharePriceService() *ASharePriceService {
+func NewASharePriceService(db *gorm.DB) *ASharePriceService {
 	return &ASharePriceService{
-		client:  &http.Client{Timeout: 30 * time.Second},
-		baseURL: "",
+		db:       db,
+		client:   &http.Client{Timeout: 30 * time.Second},
+		baseURL:  "",
 		providers: []PriceProvider{
 			NewSinaProvider(),         // 新浪财经（主数据源）
 			NewEastMoneyProvider(),    // 东方财富（备份1）
@@ -59,7 +62,7 @@ func NewASharePriceService() *ASharePriceService {
 // UpdateAllETFPrices 更新所有A股ETF价格
 func (s *ASharePriceService) UpdateAllETFPrices() error {
 	var etfs []models.AShareDividendETF
-	if err := models.DB.Where("status = ?", 1).Find(&etfs).Error; err != nil {
+	if err := s.db.Where("status = ?", 1).Find(&etfs).Error; err != nil {
 		return fmt.Errorf("获取ETF列表失败: %w", err)
 	}
 
@@ -122,7 +125,7 @@ func (s *ASharePriceService) UpdateETFPrice(etf *models.AShareDividendETF) error
 	etf.PremiumRate = decimal.NewFromFloat(priceData.PremiumRate)
 	etf.PriceUpdatedAt = priceData.UpdateTime
 
-	if err := models.DB.Save(etf).Error; err != nil {
+	if err := s.db.Save(etf).Error; err != nil {
 		return fmt.Errorf("保存价格数据失败: %w", err)
 	}
 

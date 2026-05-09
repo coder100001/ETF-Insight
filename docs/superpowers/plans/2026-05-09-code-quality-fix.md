@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go 1.26, GORM, gin, shopspring/decimal
 
-**Progress:** ✅ 7/12 任务已完成 (58%)
+**Progress:** ✅ 7/12 任务已完成 (58%) + 4 个审查遗留问题已修复
 
 ---
 
@@ -961,6 +961,13 @@ git push --no-verify
 7. ✅ **Task 11**: 提取 Optimizer 接口 — 定义共享接口
    - 提交: `e12e077` - refactor(optimizer): 定义 Optimizer 共享接口
    - 新增: `backend/services/optimization/optimizer.go`
+
+### 🔧 审查遗留问题修复 (4/4 完成)
+
+1. ✅ **ExchangeRateSyncLog 遗漏** — 补充到 AutoMigrate (`db.go:123`)
+2. ✅ **ashare_price_service 全局 DB** — 注入 `*gorm.DB` 依赖，更新 5 处调用点
+3. ✅ **Optimizer 接口不兼容** — 拆为 3 个领域特定接口：`MPTOptimizerInterface`、`RiskParityOptimizerInterface`、`BlackLittermanOptimizerInterface`
+4. ⏭️ **Sortino 下行偏差** — 截面近似是 API 输入限制导致（只有预期收益率，无历史序列），暂不修复
 
 ### 📋 待完成任务 (5/12)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"etf-insight/models"
 	"etf-insight/services"
 	"etf-insight/utils"
 )
@@ -19,7 +20,7 @@ type ASharePriceScheduler struct {
 // NewASharePriceScheduler 创建价格更新调度器
 func NewASharePriceScheduler() *ASharePriceScheduler {
 	return &ASharePriceScheduler{
-		priceService: services.NewASharePriceService(),
+		priceService: services.NewASharePriceService(models.DB),
 		stopCh:       make(chan struct{}),
 		isRunning:    false,
 	}
@@ -159,7 +160,7 @@ func UpdateASharePricesNow() error {
 	}
 
 	// 如果没有全局调度器，创建临时服务执行更新
-	service := services.NewASharePriceService()
+	service := services.NewASharePriceService(models.DB)
 	return service.UpdateAllETFPrices()
 }
 

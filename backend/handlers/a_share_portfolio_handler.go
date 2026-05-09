@@ -482,7 +482,7 @@ func (h *ASharePortfolioHandler) GetETFPriceBySymbol(c *gin.Context) {
 
 // RefreshETFPrices 刷新ETF价格
 func (h *ASharePortfolioHandler) RefreshETFPrices(c *gin.Context) {
-	priceService := services.NewASharePriceService()
+	priceService := services.NewASharePriceService(models.DB)
 	if err := priceService.UpdateAllETFPrices(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -499,7 +499,7 @@ func (h *ASharePortfolioHandler) RefreshETFPrices(c *gin.Context) {
 
 // GetProviderStatus 获取数据源状态
 func (h *ASharePortfolioHandler) GetProviderStatus(c *gin.Context) {
-	priceService := services.NewASharePriceService()
+	priceService := services.NewASharePriceService(models.DB)
 	statuses := priceService.GetProviderStatus()
 
 	c.JSON(http.StatusOK, gin.H{

@@ -49,7 +49,7 @@ func main() {
 
 // updateETFPrices 更新ETF价格
 func updateETFPrices() {
-	priceService := services.NewASharePriceService()
+	priceService := services.NewASharePriceService(models.DB)
 	if err := priceService.UpdateAllETFPrices(); err != nil {
 		log.Printf("更新价格失败: %v", err)
 	}
