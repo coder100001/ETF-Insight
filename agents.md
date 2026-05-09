@@ -411,10 +411,10 @@ git push origin feature/your-feature-name
   - 后验收益分布
   - 模型参数配置（`SetTau` 设置不确定性参数，`SetRiskFreeRate` 设置无风险利率）
 - ✅ **API端点**:
-  - `POST /api/portfolio/mpt-optimize` - MPT优化
-  - `POST /api/portfolio/efficient-frontier` - 有效前沿
-  - `POST /api/portfolio/risk-parity` - 风险平价
-  - `POST /api/portfolio/black-litterman` - Black-Litterman优化
+  - `POST /api/optimization/mpt` - MPT优化
+  - `POST /api/optimization/efficient-frontier` - 有效前沿
+  - `POST /api/optimization/risk-parity` - 风险平价
+  - `POST /api/optimization/black-litterman` - Black-Litterman优化
 
 #### 因子分析模块 (v2.5 新增)
 - ✅ **Fama-French模型**: `services/factor/fama_french.go`
