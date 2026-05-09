@@ -79,11 +79,8 @@ py_project/
 | [AGENTS.md](./AGENTS.md) | Architecture, data models, coding standards, financial algorithms (**required reading**) |
 | [CHANGELOG.md](./CHANGELOG.md) | Version change history |
 | [README.md](./README.md) | 中文文档 |
-| [docs/roadmap/](./docs/roadmap/) | Evolution roadmap |
-| [docs/security/](./docs/security/) | Security audit and improvements |
-| [docs/reviews/](./docs/reviews/) | Code review reports |
-| [docs/development/](./docs/development/) | Development implementation docs |
-| [design-docs/](./design-docs/) | Design documents |
+| [docs/](./docs/) | Documentation index | [docs/reference/](./docs/reference/) | Reference docs (roadmap, dev guides) |
+| [docs/superpowers/](./docs/superpowers/) | Design docs & implementation plans | [docs/archive/](./docs/archive/) | Archived docs (reviews, security) |
 | API Docs | `http://localhost:8080/swagger` (interactive) |
 
 ## Contributing
