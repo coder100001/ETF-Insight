@@ -6,7 +6,7 @@ import { ConfigProvider, App as AntdApp } from 'antd'
 import RiskBudget from '../RiskBudget'
 
 vi.mock('recharts', () => {
-  const PassThrough = (props: any) => props.children
+  const PassThrough = (props: { children?: React.ReactNode }) => props.children
   return {
     ResponsiveContainer: PassThrough,
     PieChart: PassThrough,
