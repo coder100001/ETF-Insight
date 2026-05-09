@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 
+	"etf-insight/services/mathutil"
 	"github.com/shopspring/decimal"
 )
 
@@ -178,8 +179,8 @@ func (o *MPTOptimizer) Optimize(
 	}
 
 	// 计算组合指标
-	portfolioReturn := o.calculatePortfolioReturn(mu, weights)
-	portfolioVolatility := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioReturn := mathutil.PortfolioReturn(weights, mu)
+	portfolioVolatility := mathutil.PortfolioVolatility(weights, Sigma)
 	sharpeRatio := (portfolioReturn - o.RiskFreeRate) / portfolioVolatility
 
 	// 计算索提诺比率（使用下行波动率）
@@ -199,7 +200,11 @@ func (o *MPTOptimizer) Optimize(
 	}
 
 	// 计算分散化比率
-	diversificationRatio := o.calculateDiversificationRatio(Sigma, weights)
+	vols := make([]float64, n)
+	for i := range n {
+		vols[i] = math.Sqrt(Sigma[i][i])
+	}
+	diversificationRatio := mathutil.DiversificationRatio(weights, vols, portfolioVolatility)
 
 	return &PortfolioResult{
 		Weights:              weightMap,
@@ -322,8 +327,8 @@ func (o *MPTOptimizer) OptimizeForTargetReturn(
 		weightMap[symbol] = weights[i]
 	}
 
-	portfolioReturn := o.calculatePortfolioReturn(mu, weights)
-	portfolioVolatility := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioReturn := mathutil.PortfolioReturn(weights, mu)
+	portfolioVolatility := mathutil.PortfolioVolatility(weights, Sigma)
 	sharpeRatio := (portfolioReturn - o.RiskFreeRate) / portfolioVolatility
 
 	downsideVolatility := o.calculateDownsideVolatility(returns, weights, symbols)
@@ -339,7 +344,11 @@ func (o *MPTOptimizer) OptimizeForTargetReturn(
 		herfindahlIndex += w * w
 	}
 
-	diversificationRatio := o.calculateDiversificationRatio(Sigma, weights)
+	vols := make([]float64, n)
+	for i := range n {
+		vols[i] = math.Sqrt(Sigma[i][i])
+	}
+	diversificationRatio := mathutil.DiversificationRatio(weights, vols, portfolioVolatility)
 
 	return &PortfolioResult{
 		Weights:              weightMap,
@@ -579,26 +588,6 @@ func (o *MPTOptimizer) projectToConstraints(
 	return result
 }
 
-// calculatePortfolioReturn 计算组合收益率
-func (o *MPTOptimizer) calculatePortfolioReturn(mu []float64, weights []float64) float64 {
-	result := 0.0
-	for i := range mu {
-		result += mu[i] * weights[i]
-	}
-	return result
-}
-
-// calculatePortfolioVolatility 计算组合波动率
-func (o *MPTOptimizer) calculatePortfolioVolatility(Sigma [][]float64, weights []float64) float64 {
-	variance := 0.0
-	for i := range weights {
-		for j := range weights {
-			variance += weights[i] * Sigma[i][j] * weights[j]
-		}
-	}
-	return math.Sqrt(variance)
-}
-
 // calculateDownsideVolatility 计算下行波动率
 func (o *MPTOptimizer) calculateDownsideVolatility(
 	returns map[string]float64,
@@ -632,7 +621,7 @@ func (o *MPTOptimizer) calculateRiskContribution(
 	symbols []string,
 ) map[string]float64 {
 	n := len(weights)
-	portfolioVol := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioVol := mathutil.PortfolioVolatility(weights, Sigma)
 
 	if portfolioVol == 0 {
 		result := make(map[string]float64)
@@ -658,26 +647,6 @@ func (o *MPTOptimizer) calculateRiskContribution(
 	}
 
 	return result
-}
-
-// calculateDiversificationRatio 计算分散化比率
-func (o *MPTOptimizer) calculateDiversificationRatio(Sigma [][]float64, weights []float64) float64 {
-	// 分散化比率 = 加权平均波动率 / 组合波动率
-	// 比率 > 1 表示有分散化效益
-
-	weightedAvgVol := 0.0
-	for i := range weights {
-		individualVol := math.Sqrt(Sigma[i][i])
-		weightedAvgVol += weights[i] * individualVol
-	}
-
-	portfolioVol := o.calculatePortfolioVolatility(Sigma, weights)
-
-	if portfolioVol == 0 {
-		return 1.0
-	}
-
-	return weightedAvgVol / portfolioVol
 }
 
 // DecimalToFloat64 decimal.Decimal 转换为 float64

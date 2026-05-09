@@ -3,6 +3,8 @@ package optimization
 import (
 	"math"
 	"testing"
+
+	"etf-insight/services/mathutil"
 )
 
 func TestNewMPTOptimizer(t *testing.T) {
@@ -557,15 +559,10 @@ func TestCalculateRiskContribution_ZeroVolatility(t *testing.T) {
 }
 
 func TestCalculateDiversificationRatio_ZeroVolatility(t *testing.T) {
-	optimizer := NewMPTOptimizer()
-
-	Sigma := [][]float64{
-		{0.0, 0.0},
-		{0.0, 0.0},
-	}
 	weights := []float64{0.5, 0.5}
+	vols := []float64{0, 0}
 
-	ratio := optimizer.calculateDiversificationRatio(Sigma, weights)
+	ratio := mathutil.DiversificationRatio(weights, vols, 0)
 
 	if ratio != 1.0 {
 		t.Errorf("DiversificationRatio should be 1.0 for zero volatility, got %f", ratio)

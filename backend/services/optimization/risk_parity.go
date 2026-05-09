@@ -3,6 +3,8 @@ package optimization
 import (
 	"fmt"
 	"math"
+
+	"etf-insight/services/mathutil"
 )
 
 // RiskParityOptimizer 风险平价优化器
@@ -98,7 +100,7 @@ func (o *RiskParityOptimizer) Optimize(
 	// 如果设置了目标波动率，调整杠杆
 	leverage := 1.0
 	if constraint.TargetVolatility > 0 && constraint.UseLeverage {
-		currentVol := o.calculatePortfolioVolatility(Sigma, weights)
+		currentVol := mathutil.PortfolioVolatility(weights, Sigma)
 		if currentVol > 0 {
 			leverage = constraint.TargetVolatility / currentVol
 			if leverage > constraint.MaxLeverage {
@@ -124,10 +126,14 @@ func (o *RiskParityOptimizer) Optimize(
 	for i, symbol := range symbols {
 		portfolioReturn += returns[symbol] * weights[i]
 	}
-	portfolioVolatility := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioVolatility := mathutil.PortfolioVolatility(weights, Sigma)
 
 	// 计算分散化比率
-	diversificationRatio := o.calculateDiversificationRatio(Sigma, weights)
+	vols := make([]float64, n)
+	for i := range n {
+		vols[i] = math.Sqrt(Sigma[i][i])
+	}
+	diversificationRatio := mathutil.DiversificationRatio(weights, vols, portfolioVolatility)
 
 	return &RiskParityResult{
 		Weights:              weightMap,
@@ -198,6 +204,12 @@ func (o *RiskParityOptimizer) OptimizeInverseVol(
 		}
 	}
 
+	// 计算各资产波动率
+	vols := make([]float64, n)
+	for i := range n {
+		vols[i] = math.Sqrt(Sigma[i][i])
+	}
+
 	// 构建结果
 	weightMap := make(map[string]float64)
 	for i, symbol := range symbols {
@@ -210,7 +222,7 @@ func (o *RiskParityOptimizer) OptimizeInverseVol(
 	for i, symbol := range symbols {
 		portfolioReturn += returns[symbol] * weights[i]
 	}
-	portfolioVolatility := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioVolatility := mathutil.PortfolioVolatility(weights, Sigma)
 
 	return &RiskParityResult{
 		Weights:              weightMap,
@@ -219,7 +231,7 @@ func (o *RiskParityOptimizer) OptimizeInverseVol(
 		Volatility:           portfolioVolatility,
 		Leverage:             1.0,
 		TargetVolatility:     0,
-		DiversificationRatio: o.calculateDiversificationRatio(Sigma, weights),
+		DiversificationRatio: mathutil.DiversificationRatio(weights, vols, portfolioVolatility),
 	}, nil
 }
 
@@ -241,7 +253,7 @@ func (o *RiskParityOptimizer) solveRiskParity(
 	// 迭代求解
 	for iter := 0; iter < o.MaxIter; iter++ {
 		// 计算风险贡献
-		portfolioVol := o.calculatePortfolioVolatility(Sigma, weights)
+		portfolioVol := mathutil.PortfolioVolatility(weights, Sigma)
 		if portfolioVol == 0 {
 			return weights, nil
 		}
@@ -338,7 +350,7 @@ func (o *RiskParityOptimizer) calculateRiskContributions(
 	symbols []string,
 ) map[string]float64 {
 	n := len(weights)
-	portfolioVol := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioVol := mathutil.PortfolioVolatility(weights, Sigma)
 
 	if portfolioVol == 0 {
 		result := make(map[string]float64)
@@ -371,34 +383,6 @@ func (o *RiskParityOptimizer) calculateRiskContributions(
 	}
 
 	return result
-}
-
-// calculatePortfolioVolatility 计算组合波动率
-func (o *RiskParityOptimizer) calculatePortfolioVolatility(Sigma [][]float64, weights []float64) float64 {
-	variance := 0.0
-	for i := range weights {
-		for j := range weights {
-			variance += weights[i] * Sigma[i][j] * weights[j]
-		}
-	}
-	return math.Sqrt(variance)
-}
-
-// calculateDiversificationRatio 计算分散化比率
-func (o *RiskParityOptimizer) calculateDiversificationRatio(Sigma [][]float64, weights []float64) float64 {
-	weightedAvgVol := 0.0
-	for i := range weights {
-		individualVol := math.Sqrt(Sigma[i][i])
-		weightedAvgVol += weights[i] * individualVol
-	}
-
-	portfolioVol := o.calculatePortfolioVolatility(Sigma, weights)
-
-	if portfolioVol == 0 {
-		return 1.0
-	}
-
-	return weightedAvgVol / portfolioVol
 }
 
 // CalculateRiskBudget 计算风险预算
@@ -459,7 +443,13 @@ func (o *RiskParityOptimizer) CalculateRiskBudget(
 	for i, symbol := range symbols {
 		portfolioReturn += returns[symbol] * weights[i]
 	}
-	portfolioVolatility := o.calculatePortfolioVolatility(Sigma, weights)
+	portfolioVolatility := mathutil.PortfolioVolatility(weights, Sigma)
+
+	// 计算各资产波动率
+	vols := make([]float64, n)
+	for i := range n {
+		vols[i] = math.Sqrt(Sigma[i][i])
+	}
 
 	return &RiskParityResult{
 		Weights:              weightMap,
@@ -468,7 +458,7 @@ func (o *RiskParityOptimizer) CalculateRiskBudget(
 		Volatility:           portfolioVolatility,
 		Leverage:             1.0,
 		TargetVolatility:     0,
-		DiversificationRatio: o.calculateDiversificationRatio(Sigma, weights),
+		DiversificationRatio: mathutil.DiversificationRatio(weights, vols, portfolioVolatility),
 	}, nil
 }
 
@@ -488,7 +478,7 @@ func (o *RiskParityOptimizer) solveRiskBudget(
 	}
 
 	for iter := 0; iter < o.MaxIter; iter++ {
-		portfolioVol := o.calculatePortfolioVolatility(Sigma, weights)
+		portfolioVol := mathutil.PortfolioVolatility(weights, Sigma)
 		if portfolioVol == 0 {
 			return weights, nil
 		}

@@ -3,6 +3,8 @@ package optimization
 import (
 	"math"
 	"testing"
+
+	"etf-insight/services/mathutil"
 )
 
 func TestNewRiskParityOptimizer(t *testing.T) {
@@ -494,15 +496,13 @@ func TestCalculateRiskContributions_ZeroVolatility(t *testing.T) {
 }
 
 func TestCalculatePortfolioVolatility(t *testing.T) {
-	optimizer := NewRiskParityOptimizer()
-
 	Sigma := [][]float64{
 		{0.04, 0.02},
 		{0.02, 0.03},
 	}
 	weights := []float64{0.5, 0.5}
 
-	vol := optimizer.calculatePortfolioVolatility(Sigma, weights)
+	vol := mathutil.PortfolioVolatility(weights, Sigma)
 
 	if vol <= 0 {
 		t.Errorf("Volatility should be positive, got %f", vol)
@@ -510,15 +510,14 @@ func TestCalculatePortfolioVolatility(t *testing.T) {
 }
 
 func TestCalculateDiversificationRatio(t *testing.T) {
-	optimizer := NewRiskParityOptimizer()
-
 	Sigma := [][]float64{
 		{0.04, 0.02},
 		{0.02, 0.03},
 	}
 	weights := []float64{0.5, 0.5}
 
-	ratio := optimizer.calculateDiversificationRatio(Sigma, weights)
+	vols := []float64{math.Sqrt(Sigma[0][0]), math.Sqrt(Sigma[1][1])}
+	ratio := mathutil.DiversificationRatio(weights, vols, mathutil.PortfolioVolatility(weights, Sigma))
 
 	if ratio < 1.0 {
 		t.Errorf("DiversificationRatio should be >= 1.0 for diversified portfolio, got %f", ratio)
@@ -526,15 +525,14 @@ func TestCalculateDiversificationRatio(t *testing.T) {
 }
 
 func TestRiskParity_CalculateDiversificationRatio_ZeroVolatility(t *testing.T) {
-	optimizer := NewRiskParityOptimizer()
-
 	Sigma := [][]float64{
 		{0.0, 0.0},
 		{0.0, 0.0},
 	}
 	weights := []float64{0.5, 0.5}
 
-	ratio := optimizer.calculateDiversificationRatio(Sigma, weights)
+	vols := []float64{math.Sqrt(Sigma[0][0]), math.Sqrt(Sigma[1][1])}
+	ratio := mathutil.DiversificationRatio(weights, vols, mathutil.PortfolioVolatility(weights, Sigma))
 
 	if ratio != 1.0 {
 		t.Errorf("DiversificationRatio should be 1.0 for zero volatility, got %f", ratio)
