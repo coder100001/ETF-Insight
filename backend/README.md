@@ -1,6 +1,6 @@
 # ETF-Insight Go Backend
 
-[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.26-blue)](https://golang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 开源专业的 ETF 量化分析平台后端服务，基于 Go/Gin 框架构建，提供高性能、可扩展的 RESTful API。

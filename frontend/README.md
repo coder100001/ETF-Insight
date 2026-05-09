@@ -144,8 +144,6 @@ frontend/
 │   │   ├── InvestmentStrategy.tsx  # 投资策略
 │   │   ├── ExchangeRate.tsx        # 汇率管理
 │   │   ├── OperationLogs.tsx       # 操作日志
-│   │   ├── WorkflowList.tsx        # 工作流列表
-│   │   ├── InstanceList.tsx        # 实例列表
 │   │   └── ...
 │   ├── components/         # 公共组件
 │   │   ├── Layout.tsx             # 布局组件（含侧边栏展开/收起、closeSidebar）
@@ -176,13 +174,23 @@ frontend/
 | 路径 | 页面 | 说明 |
 |------|------|------|
 | `/` | Dashboard | 仪表盘 |
-| `/etf` | ETFDashboard | ETF市场总览 |
-| `/portfolio/analysis` | PortfolioAnalysis | 投资组合情景分析 |
-| `/portfolio/optimization` | PortfolioOptimization | 组合优化 |
+| `/etf-dashboard` | ETFDashboard | ETF市场总览 |
+| `/etf-comparison` | ETFComparison | ETF对比分析 |
+| `/etf-detail/:symbol` | ETFDetail | ETF详情 |
+| `/etf-config` | ETFConfig | ETF配置管理 |
+| `/portfolio-analysis` | PortfolioAnalysis | 投资组合情景分析 |
+| `/portfolio-config` | PortfolioConfig | 投资组合配置 |
+| `/portfolio-optimization` | PortfolioOptimization | 组合优化 |
+| `/a-share-portfolio` | ASharePortfolio | A股红利ETF组合 |
+| `/technical-analysis` | TechnicalAnalysis | 技术分析 |
+| `/risk-analysis` | RiskAnalysis | 风险分析 |
+| `/factor-analysis` | FactorAnalysis | 因子分析 |
+| `/factor-timing` | FactorTiming | 因子择时 |
+| `/alpha-views` | AlphaViews | Alpha观点管理 |
+| `/black-litterman` | BlackLittermanConfig | Black-Litterman配置 |
+| `/risk-budget` | RiskBudget | 风险预算 |
 | `/quantlib` | QuantLibAnalysis | QuantLib 量化分析 |
 | `/ai-agents` | AIAgents | AI Agent 分析页面 |
-| `/factor` | FactorAnalysis | 因子分析 |
-| `/risk` | RiskAnalysis | 风险分析 |
 
 ### 侧边栏导航
 
