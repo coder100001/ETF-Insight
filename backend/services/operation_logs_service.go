@@ -73,26 +73,11 @@ func (s *OperationLogsService) QueryLogs(params LogFilterParams) (*LogQueryResul
 	// 根据时间戳排序（新到旧）
 	s.sortLogsByTimestampDesc(allLogs)
 
-	// 应用分页
-	offset := params.GetOffset()
-	limit := params.GetLimit()
+	// queryAuditLogs 和 queryOperationLogs 已经做了分页，直接返回
 	total := auditTotal + opTotal
 
-	if offset >= len(allLogs) {
-		return &LogQueryResult{
-			Logs:       []UnifiedLog{},
-			TotalAudit: auditTotal,
-			TotalOp:    opTotal,
-			Total:      total,
-		}, nil
-	}
-
-	end := min(offset+limit, len(allLogs))
-
-	pagedLogs := allLogs[offset:end]
-
 	return &LogQueryResult{
-		Logs:       pagedLogs,
+		Logs:       allLogs,
 		TotalAudit: auditTotal,
 		TotalOp:    opTotal,
 		Total:      total,
