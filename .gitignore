@@ -63,3 +63,4 @@ OPTIMIZATION_SUMMARY.md
 DEPLOYMENT_GUIDE.md
 .gstack/
 frontend/.eslintcache
+trash_rm_scripts/
