@@ -5,10 +5,10 @@
 | 文档 | 描述 | 适用人群 |
 |------|------|----------|
 | [README.md](../README.md) | 项目总览和快速开始 | 所有人 |
-| [EVOLUTION_ROADMAP_2026.md](./roadmap/EVOLUTION_ROADMAP_2026.md) | 2026年演进路线图 | 项目管理者 |
-| [TEST_COVERAGE_PLAN.md](./TEST_COVERAGE_PLAN.md) | 测试覆盖提升计划 | 开发者 |
-| [MONITORING_ALERTING_PLAN.md](./MONITORING_ALERTING_PLAN.md) | 监控告警方案 | DevOps |
-| [DOCUMENT_INDEX.md](./DOCUMENT_INDEX.md) | 完整文档索引 | 所有人 |
+| [docs/README.md](./docs/README.md) | 文档入口与索引 | 所有人 |
+| [EVOLUTION_ROADMAP_2026.md](./docs/reference/EVOLUTION_ROADMAP_2026.md) | 2026年演进路线图 | 项目管理者 |
+| [TEST_COVERAGE_PLAN.md](./docs/TEST_COVERAGE_PLAN.md) | 测试覆盖提升计划 | 开发者 |
+| [MONITORING_ALERTING_PLAN.md](./docs/MONITORING_ALERTING_PLAN.md) | 监控告警方案 | DevOps |
 
 ---
 
@@ -604,7 +604,7 @@ git push origin feature/your-feature-name
 #### 前端实施方案（已完成文档）
 
 ##### 完整实施方案文档
-- ✅ `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md` - 前后端一体化实施方案
+- ✅ `docs/reference/FRONTEND_BACKEND_INTEGRATION_PLAN.md` - 前后端一体化实施方案
   - **前端页面改造方案**：4个新页面 + 2个现有页面增强
     - `FactorTiming.tsx` - 因子择时信号分析页面
     - `AlphaViews.tsx` - Alpha观点管理页面
@@ -730,10 +730,10 @@ git push origin feature/your-feature-name
 - 开始前端页面开发（Kimi负责）
 
 #### 文档更新
-- ✅ `docs/DOCUMENT_INDEX.md` - 添加前后端实施方案文档
-- ✅ `docs/roadmap/EVOLUTION_ROADMAP_2026.md` - 标记v2.7进度
-- ✅ `docs/development/v2.7_phase1_progress.md` - Phase 1进度文档
-- ✅ `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md` - 前后端实施方案
+- ✅ `docs/README.md` - 文档入口（替代旧 DOCUMENT_INDEX.md）
+- ✅ `docs/reference/EVOLUTION_ROADMAP_2026.md` - 标记v2.7进度
+- ✅ `docs/reference/v2.7_phase1_progress.md` - Phase 1进度文档
+- ✅ `docs/reference/FRONTEND_BACKEND_INTEGRATION_PLAN.md` - 前后端实施方案
 
 ### v2.6.1 更新内容 (2026-04-25)
 
