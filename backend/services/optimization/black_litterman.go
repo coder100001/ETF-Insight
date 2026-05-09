@@ -10,26 +10,26 @@ import (
 // BlackLittermanOptimizer Black-Litterman模型优化器
 // 融合市场均衡收益和投资者观点，生成后验收益估计
 type BlackLittermanOptimizer struct {
-	Tau          float64 // 缩放参数，通常取0.025-0.05
-	RiskFreeRate float64
+	Tau          decimal.Decimal // 缩放参数，通常取0.025-0.05
+	RiskFreeRate decimal.Decimal // 无风险利率
 }
 
 // NewBlackLittermanOptimizer 创建Black-Litterman优化器
 func NewBlackLittermanOptimizer() *BlackLittermanOptimizer {
 	return &BlackLittermanOptimizer{
-		Tau:          0.025,
-		RiskFreeRate: 0.045,
+		Tau:          decimal.NewFromFloat(0.025),
+		RiskFreeRate: decimal.NewFromFloat(0.045),
 	}
 }
 
 // SetTau 设置缩放参数
 func (o *BlackLittermanOptimizer) SetTau(tau float64) {
-	o.Tau = tau
+	o.Tau = decimal.NewFromFloat(tau)
 }
 
 // SetRiskFreeRate 设置无风险利率
 func (o *BlackLittermanOptimizer) SetRiskFreeRate(rate float64) {
-	o.RiskFreeRate = rate
+	o.RiskFreeRate = decimal.NewFromFloat(rate)
 }
 
 // BlackLittermanResult Black-Litterman优化结果
@@ -133,7 +133,7 @@ func (o *BlackLittermanOptimizer) Optimize(
 		}
 	}
 	portfolioVolatility := math.Sqrt(portfolioVariance)
-	sharpeRatio := (portfolioReturn - o.RiskFreeRate) / portfolioVolatility
+	sharpeRatio := (portfolioReturn - o.RiskFreeRate.InexactFloat64()) / portfolioVolatility
 
 	// 计算隐含收益（如果按市场权重持有）
 	impliedReturns := o.calculateImpliedReturns(Sigma, marketWeights, symbols, delta)
@@ -308,12 +308,11 @@ func (o *BlackLittermanOptimizer) calculatePosteriorReturns(
 	}
 
 	// 计算 τΣ (使用 decimal.Decimal)
-	tauDecimal := decimal.NewFromFloat(o.Tau)
 	tauSigma := make([][]decimal.Decimal, n)
 	for i := range tauSigma {
 		tauSigma[i] = make([]decimal.Decimal, n)
 		for j := range tauSigma[i] {
-			tauSigma[i][j] = tauDecimal.Mul(decimal.NewFromFloat(Sigma[i][j]))
+			tauSigma[i][j] = o.Tau.Mul(decimal.NewFromFloat(Sigma[i][j]))
 		}
 	}
 

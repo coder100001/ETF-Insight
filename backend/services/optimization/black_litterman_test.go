@@ -3,6 +3,8 @@ package optimization
 import (
 	"math"
 	"testing"
+
+	"github.com/shopspring/decimal"
 )
 
 func TestNewBlackLittermanOptimizer(t *testing.T) {
@@ -12,12 +14,12 @@ func TestNewBlackLittermanOptimizer(t *testing.T) {
 		t.Fatal("NewBlackLittermanOptimizer() returned nil")
 	}
 
-	if optimizer.Tau != 0.025 {
-		t.Errorf("Expected default Tau 0.025, got %f", optimizer.Tau)
+	if !optimizer.Tau.Equal(decimal.NewFromFloat(0.025)) {
+		t.Errorf("Expected default Tau 0.025, got %s", optimizer.Tau.String())
 	}
 
-	if optimizer.RiskFreeRate != 0.045 {
-		t.Errorf("Expected default RiskFreeRate 0.045, got %f", optimizer.RiskFreeRate)
+	if !optimizer.RiskFreeRate.Equal(decimal.NewFromFloat(0.045)) {
+		t.Errorf("Expected default RiskFreeRate 0.045, got %s", optimizer.RiskFreeRate.String())
 	}
 }
 
@@ -26,8 +28,8 @@ func TestSetTau(t *testing.T) {
 	newTau := 0.05
 	optimizer.SetTau(newTau)
 
-	if optimizer.Tau != newTau {
-		t.Errorf("Expected Tau %f, got %f", newTau, optimizer.Tau)
+	if !optimizer.Tau.Equal(decimal.NewFromFloat(newTau)) {
+		t.Errorf("Expected Tau %f, got %s", newTau, optimizer.Tau.String())
 	}
 }
 
@@ -36,8 +38,8 @@ func TestBlackLitterman_SetRiskFreeRate(t *testing.T) {
 	newRate := 0.05
 	optimizer.SetRiskFreeRate(newRate)
 
-	if optimizer.RiskFreeRate != newRate {
-		t.Errorf("Expected RiskFreeRate %f, got %f", newRate, optimizer.RiskFreeRate)
+	if !optimizer.RiskFreeRate.Equal(decimal.NewFromFloat(newRate)) {
+		t.Errorf("Expected RiskFreeRate %f, got %s", newRate, optimizer.RiskFreeRate.String())
 	}
 }
 
