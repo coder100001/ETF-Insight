@@ -187,13 +187,14 @@ func (h *ETFHandler) getETFDetailData(cfg models.ETFConfig) (map[string]any, err
 		utils.Warn("Failed to fetch price history", "symbol", cfg.Symbol, "error", err)
 		prices = []models.ETFData{}
 	}
-	metrics := calculateMetricsFromPrices(prices, "1y")
+	metricsService := services.NewETFMetricsService()
+	metrics := metricsService.CalculateFromPrices(prices, "1y")
 
 	return h.buildETFResult(cfg, etfData, realtimeData, metrics, err == nil && etfData.ID > 0), nil
 }
 
 // buildETFResult 构建 ETF 结果数据
-func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData, realtimeData *SimpleRealtimeData, metrics *HandlerMetrics, hasData bool) map[string]any {
+func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData, realtimeData *SimpleRealtimeData, metrics *services.HandlerMetrics, hasData bool) map[string]any {
 	if hasData {
 		// 涨跌计算：基于前一日收盘价
 		// 优先从 realtimeData 获取 previousClose
@@ -477,7 +478,8 @@ func (h *ETFHandler) GetETFMetrics(c *gin.Context) {
 		return
 	}
 
-	metrics := calculateMetricsFromPrices(prices, period)
+	metricsService := services.NewETFMetricsService()
+	metrics := metricsService.CalculateFromPrices(prices, period)
 
 	data := map[string]any{
 		"symbol":         symbol,
@@ -502,117 +504,6 @@ func (h *ETFHandler) GetETFMetrics(c *gin.Context) {
 		"success": true,
 		"data":    data,
 	})
-}
-
-// HandlerMetrics 指标数据结构（用于 handlers 包）
-type HandlerMetrics struct {
-	Volatility  float64
-	TotalReturn float64
-	MaxDrawdown float64
-	SharpeRatio float64
-}
-
-// calculateMetricsFromPrices 从历史价格计算指标
-func calculateMetricsFromPrices(prices []models.ETFData, period string) *HandlerMetrics {
-	if len(prices) < 2 {
-		return &HandlerMetrics{}
-	}
-
-	returns := make([]float64, len(prices)-1)
-	for i := 1; i < len(prices); i++ {
-		prevPrice := prices[i].ClosePrice.InexactFloat64()
-		currPrice := prices[i-1].ClosePrice.InexactFloat64()
-		if prevPrice > 0 {
-			returns[i-1] = (currPrice - prevPrice) / prevPrice
-		}
-	}
-
-	firstPrice := prices[len(prices)-1].ClosePrice.InexactFloat64()
-	lastPrice := prices[0].ClosePrice.InexactFloat64()
-	totalReturn := 0.0
-	if firstPrice > 0 {
-		totalReturn = (lastPrice - firstPrice) / firstPrice * 100
-	}
-
-	volatility := calculateVolatility(returns)
-	maxDrawdown := calculateMaxDrawdown(prices)
-	sharpeRatio := calculateSharpeRatio(returns, 0.02)
-
-	return &HandlerMetrics{
-		Volatility:  volatility,
-		TotalReturn: totalReturn,
-		MaxDrawdown: maxDrawdown,
-		SharpeRatio: sharpeRatio,
-	}
-}
-
-func calculateVolatility(returns []float64) float64 {
-	if len(returns) < 10 {
-		return 0
-	}
-
-	var sum float64
-	for _, r := range returns {
-		sum += r
-	}
-	mean := sum / float64(len(returns))
-
-	var variance float64
-	for _, r := range returns {
-		variance += math.Pow(r-mean, 2)
-	}
-	stdDev := math.Sqrt(variance / float64(len(returns)))
-
-	return stdDev * math.Sqrt(252) * 100
-}
-
-func calculateMaxDrawdown(prices []models.ETFData) float64 {
-	if len(prices) < 10 {
-		return 0
-	}
-
-	maxDrawdown := 0.0
-	peak := prices[len(prices)-1].ClosePrice.InexactFloat64()
-
-	for i := len(prices) - 1; i >= 0; i-- {
-		price := prices[i].ClosePrice.InexactFloat64()
-		if price > peak {
-			peak = price
-		}
-		drawdown := (peak - price) / peak
-		if drawdown > maxDrawdown {
-			maxDrawdown = drawdown
-		}
-	}
-
-	return maxDrawdown * 100
-}
-
-func calculateSharpeRatio(returns []float64, riskFreeRate float64) float64 {
-	if len(returns) < 10 {
-		return 0
-	}
-
-	var sum float64
-	for _, r := range returns {
-		sum += r
-	}
-	meanReturn := sum / float64(len(returns))
-
-	annualizedReturn := meanReturn * 252
-
-	var variance float64
-	for _, r := range returns {
-		variance += math.Pow(r-meanReturn, 2)
-	}
-	stdDev := math.Sqrt(variance / float64(len(returns)))
-	annualizedStdDev := stdDev * math.Sqrt(252)
-
-	if annualizedStdDev == 0 {
-		return 0
-	}
-
-	return (annualizedReturn - riskFreeRate) / annualizedStdDev
 }
 
 // GetETFForecast 获取 ETF 收益预测
