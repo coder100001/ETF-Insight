@@ -255,7 +255,7 @@ func TestPluginService_CreateConfiguration(t *testing.T) {
 	config := &models.PluginConfiguration{
 		PluginID:   plugin.ID,
 		ConfigName: "default-config",
-		Parameters: `{"param1": "value1"}`,
+		Parameters: models.JSONMap{"param1": "value1"},
 		IsActive:   true,
 		IsDefault:  true,
 	}
@@ -292,13 +292,13 @@ func TestPluginService_ListConfigurations(t *testing.T) {
 		{
 			PluginID:   plugin.ID,
 			ConfigName: "config-1",
-			Parameters: `{"param1": "value1"}`,
+			Parameters: models.JSONMap{"param1": "value1"},
 			IsActive:   true,
 		},
 		{
 			PluginID:   plugin.ID,
 			ConfigName: "config-2",
-			Parameters: `{"param2": "value2"}`,
+			Parameters: models.JSONMap{"param2": "value2"},
 			IsActive:   true,
 		},
 	}

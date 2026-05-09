@@ -115,16 +115,18 @@ func (s *PluginService) validatePlugin(plugin *models.PluginRegistry) error {
 		return errors.New("invalid plugin type")
 	}
 
-	if plugin.InputSchema != "" {
+	if len(plugin.InputSchema) > 0 {
+		b, _ := json.Marshal(plugin.InputSchema)
 		var schema map[string]any
-		if err := json.Unmarshal([]byte(plugin.InputSchema), &schema); err != nil {
+		if err := json.Unmarshal(b, &schema); err != nil {
 			return errors.New("invalid input schema JSON")
 		}
 	}
 
-	if plugin.OutputSchema != "" {
+	if len(plugin.OutputSchema) > 0 {
+		b, _ := json.Marshal(plugin.OutputSchema)
 		var schema map[string]any
-		if err := json.Unmarshal([]byte(plugin.OutputSchema), &schema); err != nil {
+		if err := json.Unmarshal(b, &schema); err != nil {
 			return errors.New("invalid output schema JSON")
 		}
 	}
@@ -182,9 +184,10 @@ func (s *PluginService) DeleteConfiguration(id uint) error {
 }
 
 func (s *PluginService) validateConfiguration(config *models.PluginConfiguration, plugin *models.PluginRegistry) error {
-	if config.Parameters != "" {
+	if len(config.Parameters) > 0 {
+		b, _ := json.Marshal(config.Parameters)
 		var params map[string]any
-		if err := json.Unmarshal([]byte(config.Parameters), &params); err != nil {
+		if err := json.Unmarshal(b, &params); err != nil {
 			return errors.New("invalid parameters JSON")
 		}
 	}
@@ -203,14 +206,19 @@ func (s *PluginService) ExecutePlugin(pluginID uint, input any) (*models.PluginE
 	}
 
 	startTime := time.Now()
-	inputJSON, _ := json.Marshal(input)
+
+	var inputData models.JSONMap
+	if input != nil {
+		b, _ := json.Marshal(input)
+		_ = json.Unmarshal(b, &inputData)
+	}
 
 	executionID := fmt.Sprintf("exec-%d-%d", pluginID, startTime.UnixNano())
 
 	log := &models.PluginExecutionLog{
 		PluginID:    pluginID,
 		ExecutionID: executionID,
-		InputData:   string(inputJSON),
+		InputData:   inputData,
 		Status:      models.ExecutionStatusSuccess,
 		StartTime:   startTime,
 		CreatedAt:   startTime,
@@ -227,8 +235,10 @@ func (s *PluginService) ExecutePlugin(pluginID uint, input any) (*models.PluginE
 		log.Status = models.ExecutionStatusFailed
 		log.ErrorMessage = err.Error()
 	} else {
-		outputJSON, _ := json.Marshal(output)
-		log.OutputData = string(outputJSON)
+		var outputData models.JSONMap
+		b, _ := json.Marshal(output)
+		_ = json.Unmarshal(b, &outputData)
+		log.OutputData = outputData
 	}
 
 	if err := s.db.Create(log).Error; err != nil {

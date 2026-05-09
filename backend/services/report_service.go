@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -192,16 +191,12 @@ func (s *ReportService) GenerateReport(templateID uint, title string, format mod
 	}
 
 	// 3. 创建报告记录
-	dataJSON, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal report data: %w", err)
-	}
 	report := &models.GeneratedReport{
 		TemplateID: templateID,
 		Title:      title,
 		Format:     format,
 		Status:     models.ReportStatusPending,
-		Data:       string(dataJSON),
+		Data:       models.JSONMap(data),
 	}
 
 	if err := s.CreateReport(report); err != nil {

@@ -66,7 +66,7 @@ type Portfolio struct {
 	NextRebalance      time.Time         `json:"next_rebalance"`                               // 下次再平衡时间
 
 	// 目标配置
-	TargetAllocation string `json:"target_allocation,omitempty" gorm:"type:json"` // 目标配置（JSON格式）
+	TargetAllocation JSONMap `json:"target_allocation,omitempty" gorm:"type:json"` // 目标配置（JSON格式）
 	RiskTolerance    string `json:"risk_tolerance,omitempty" gorm:"size:20"`      // 风险承受能力：conservative/moderate/aggressive
 	TimeHorizon      string `json:"time_horizon,omitempty" gorm:"size:20"`        // 投资期限：short/medium/long
 
@@ -196,7 +196,7 @@ type PortfolioRebalance struct {
 	TaxImpact     decimal.Decimal `json:"tax_impact" gorm:"type:decimal(15,2)"` // 税务影响
 
 	// 变更明细（JSON存储）
-	Changes string `json:"changes" gorm:"type:json"` // 持仓变更明细
+	Changes JSONMap `json:"changes" gorm:"type:json"` // 持仓变更明细
 
 	// 时间戳
 	CreatedAt time.Time `json:"created_at"`

@@ -28,10 +28,10 @@ type PluginRegistry struct {
 	PluginType PluginType `json:"plugin_type" gorm:"size:50;index"`
 	Version    string     `json:"version" gorm:"size:20"`
 
-	InputSchema  string `json:"input_schema" gorm:"type:json"`
-	OutputSchema string `json:"output_schema" gorm:"type:json"`
+	InputSchema  JSONMap `json:"input_schema" gorm:"type:json"`
+	OutputSchema JSONMap `json:"output_schema" gorm:"type:json"`
 
-	Dependencies string `json:"dependencies" gorm:"type:json"`
+	Dependencies JSONMap `json:"dependencies" gorm:"type:json"`
 
 	Description   string `json:"description" gorm:"size:500"`
 	Author        string `json:"author" gorm:"size:100"`
@@ -53,7 +53,7 @@ type PluginConfiguration struct {
 	PortfolioID uint `json:"portfolio_id" gorm:"index"`
 
 	ConfigName string `json:"config_name" gorm:"size:100"`
-	Parameters string `json:"parameters" gorm:"type:json"`
+	Parameters JSONMap `json:"parameters" gorm:"type:json"`
 
 	IsActive  bool `json:"is_active" gorm:"default:true"`
 	IsDefault bool `json:"is_default" gorm:"default:false"`
@@ -87,8 +87,8 @@ type PluginExecutionLog struct {
 	EndTime     time.Time `json:"end_time"`
 	Duration    int       `json:"duration"`
 
-	InputData  string `json:"input_data" gorm:"type:json"`
-	OutputData string `json:"output_data" gorm:"type:json"`
+	InputData  JSONMap `json:"input_data" gorm:"type:json"`
+	OutputData JSONMap `json:"output_data" gorm:"type:json"`
 
 	Status       ExecutionStatus `json:"status" gorm:"size:20"`
 	ErrorMessage string          `json:"error_message" gorm:"type:text"`
@@ -127,7 +127,7 @@ type ModelBenchmarkMatrix struct {
 	Rolling1YWinRate    decimal.Decimal `json:"rolling_1y_win_rate" gorm:"type:decimal(5,2)"`
 	TailDependencyIndex decimal.Decimal `json:"tail_dependency_index" gorm:"type:decimal(10,6)"`
 
-	DetailedMetrics string `json:"detailed_metrics" gorm:"type:json"`
+	DetailedMetrics JSONMap `json:"detailed_metrics" gorm:"type:json"`
 
 	ComparisonDate time.Time `json:"comparison_date"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -157,9 +157,9 @@ type StrategyExperiment struct {
 	BenchmarkMatrixID uint            `json:"benchmark_matrix_id" gorm:"index"`
 	AllocationRatio   decimal.Decimal `json:"allocation_ratio" gorm:"type:decimal(5,2)"`
 
-	ExperimentResult string `json:"experiment_result" gorm:"type:json"`
-	IsSuccessful     bool   `json:"is_successful"`
-	SuccessCriteria  string `json:"success_criteria" gorm:"type:json"`
+	ExperimentResult JSONMap `json:"experiment_result" gorm:"type:json"`
+	IsSuccessful     bool    `json:"is_successful"`
+	SuccessCriteria  JSONMap `json:"success_criteria" gorm:"type:json"`
 
 	StartDate time.Time        `json:"start_date"`
 	EndDate   time.Time        `json:"end_date"`

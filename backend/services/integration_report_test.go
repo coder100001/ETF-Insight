@@ -171,7 +171,7 @@ func TestReportService_Sections_CRUD(t *testing.T) {
 		TemplateID: 1,
 		Title:      "Executive Summary",
 		Order:      1,
-		Content:    "This report provides a comprehensive analysis...",
+		Content:    models.JSONMap{"text": "This report provides a comprehensive analysis..."},
 		Type:       "text",
 		Required:   true,
 		CreatedAt:  time.Now(),

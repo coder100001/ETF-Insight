@@ -43,7 +43,7 @@ type ReportTemplate struct {
 	IsDefault   bool           `json:"is_default" gorm:"default:false"`
 
 	// 模板配置
-	Config string `json:"config" gorm:"type:json"` // 模板配置JSON
+	Config JSONMap `json:"config" gorm:"type:json"` // 模板配置JSON
 	// 章节定义
 	Sections []ReportSection `json:"sections" gorm:"foreignKey:TemplateID"`
 	// 参数定义
@@ -67,7 +67,7 @@ type ReportSection struct {
 	Type       string `json:"type" gorm:"size:50"` // text/chart/table/metric/executive_summary
 
 	// 章节配置
-	Content  string `json:"content" gorm:"type:json"` // 章节内容配置
+	Content  JSONMap `json:"content" gorm:"type:json"` // 章节内容配置
 	Order    int    `json:"order" gorm:"default:0"`   // 排序
 	Required bool   `json:"required" gorm:"default:true"`
 
@@ -96,7 +96,7 @@ type GeneratedReport struct {
 	ErrorMessage string       `json:"error_message" gorm:"type:text"`
 
 	// 报告数据
-	Data string `json:"data" gorm:"type:json"` // 生成报告使用的数据
+	Data JSONMap `json:"data" gorm:"type:json"` // 生成报告使用的数据
 
 	// 时间戳
 	CreatedAt   time.Time  `json:"created_at"`
@@ -120,7 +120,7 @@ type ReportParameter struct {
 	Type        string `json:"type" gorm:"size:50"` // string/number/date/select/multi_select
 	Required    bool   `json:"required" gorm:"default:true"`
 	Default     string `json:"default" gorm:"type:text"`
-	Options     string `json:"options" gorm:"type:json"` // 选项JSON
+	Options     JSONMap `json:"options" gorm:"type:json"` // 选项JSON
 	Description string `json:"description" gorm:"type:text"`
 	Order       int    `json:"order" gorm:"default:0"`
 

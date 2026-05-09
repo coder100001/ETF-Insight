@@ -106,7 +106,7 @@ type RiskBudgetExecution struct {
 	BondCVaRUsage  decimal.Decimal `json:"bond_cvar_usage" gorm:"type:decimal(5,2)"`
 
 	IsBudgetSatisfied bool   `json:"is_budget_satisfied"`
-	ViolationDetails  string `json:"violation_details" gorm:"type:json"`
+	ViolationDetails  JSONMap `json:"violation_details" gorm:"type:json"`
 
 	OptimizationMethod string `json:"optimization_method" gorm:"size:50"`
 	Iterations         int    `json:"iterations"`

@@ -128,7 +128,7 @@ type PriceStats struct {
 	MaxDrawdown  decimal.Decimal `json:"max_drawdown" gorm:"type:decimal(10,6)"`  // 最大回撤
 
 	// 相关性统计（JSON存储）
-	Correlations string `json:"correlations,omitempty" gorm:"type:json"` // 与其他资产的相关性
+	Correlations JSONMap `json:"correlations,omitempty" gorm:"type:json"` // 与其他资产的相关性
 
 	// 时间戳
 	CreatedAt time.Time `json:"created_at"`
