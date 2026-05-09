@@ -52,7 +52,7 @@ type PluginConfiguration struct {
 	PluginID    uint `json:"plugin_id" gorm:"index"`
 	PortfolioID uint `json:"portfolio_id" gorm:"index"`
 
-	ConfigName string `json:"config_name" gorm:"size:100"`
+	ConfigName string  `json:"config_name" gorm:"size:100"`
 	Parameters JSONMap `json:"parameters" gorm:"type:json"`
 
 	IsActive  bool `json:"is_active" gorm:"default:true"`

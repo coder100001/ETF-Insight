@@ -47,9 +47,9 @@ type PriceData struct {
 // NewASharePriceService 创建A股价格服务
 func NewASharePriceService(db *gorm.DB) *ASharePriceService {
 	return &ASharePriceService{
-		db:       db,
-		client:   &http.Client{Timeout: 30 * time.Second},
-		baseURL:  "",
+		db:      db,
+		client:  &http.Client{Timeout: 30 * time.Second},
+		baseURL: "",
 		providers: []PriceProvider{
 			NewSinaProvider(),         // 新浪财经（主数据源）
 			NewEastMoneyProvider(),    // 东方财富（备份1）

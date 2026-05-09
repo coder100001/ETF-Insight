@@ -67,8 +67,8 @@ type Portfolio struct {
 
 	// 目标配置
 	TargetAllocation JSONMap `json:"target_allocation,omitempty" gorm:"type:json"` // 目标配置（JSON格式）
-	RiskTolerance    string `json:"risk_tolerance,omitempty" gorm:"size:20"`      // 风险承受能力：conservative/moderate/aggressive
-	TimeHorizon      string `json:"time_horizon,omitempty" gorm:"size:20"`        // 投资期限：short/medium/long
+	RiskTolerance    string  `json:"risk_tolerance,omitempty" gorm:"size:20"`      // 风险承受能力：conservative/moderate/aggressive
+	TimeHorizon      string  `json:"time_horizon,omitempty" gorm:"size:20"`        // 投资期限：short/medium/long
 
 	// 表现指标（缓存）
 	TotalReturn  decimal.Decimal `json:"total_return" gorm:"type:decimal(10,6)"`  // 总收益率

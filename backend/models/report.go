@@ -68,8 +68,8 @@ type ReportSection struct {
 
 	// 章节配置
 	Content  JSONMap `json:"content" gorm:"type:json"` // 章节内容配置
-	Order    int    `json:"order" gorm:"default:0"`   // 排序
-	Required bool   `json:"required" gorm:"default:true"`
+	Order    int     `json:"order" gorm:"default:0"`   // 排序
+	Required bool    `json:"required" gorm:"default:true"`
 
 	// 时间戳
 	CreatedAt time.Time `json:"created_at"`
@@ -113,16 +113,16 @@ func (GeneratedReport) TableName() string {
 
 // ReportParameter 报告参数定义
 type ReportParameter struct {
-	ID          uint   `json:"id" gorm:"primaryKey"`
-	TemplateID  uint   `json:"template_id" gorm:"index;not null"`
-	Name        string `json:"name" gorm:"size:100"`
-	Label       string `json:"label" gorm:"size:255"`
-	Type        string `json:"type" gorm:"size:50"` // string/number/date/select/multi_select
-	Required    bool   `json:"required" gorm:"default:true"`
-	Default     string `json:"default" gorm:"type:text"`
+	ID          uint    `json:"id" gorm:"primaryKey"`
+	TemplateID  uint    `json:"template_id" gorm:"index;not null"`
+	Name        string  `json:"name" gorm:"size:100"`
+	Label       string  `json:"label" gorm:"size:255"`
+	Type        string  `json:"type" gorm:"size:50"` // string/number/date/select/multi_select
+	Required    bool    `json:"required" gorm:"default:true"`
+	Default     string  `json:"default" gorm:"type:text"`
 	Options     JSONMap `json:"options" gorm:"type:json"` // 选项JSON
-	Description string `json:"description" gorm:"type:text"`
-	Order       int    `json:"order" gorm:"default:0"`
+	Description string  `json:"description" gorm:"type:text"`
+	Order       int     `json:"order" gorm:"default:0"`
 
 	// 时间戳
 	CreatedAt time.Time `json:"created_at"`

@@ -379,5 +379,3 @@ func calculateReturnsAndCovMatrix(symbols []string) (map[string]float64, map[str
 
 	return expectedReturns, covMatrix, nil
 }
-
-
