@@ -107,6 +107,19 @@ func AutoMigrate() error {
 		&ReportSection{},
 		&GeneratedReport{},
 		&ReportParameter{},
+		// 补充遗漏的模型
+		&AssetPrice{},
+		&AssetRelationship{},
+		&SectorAllocation{},
+		&GeographicAllocation{},
+		&ETFHoldingSummary{},
+		&PortfolioOverlap{},
+		&PortfolioPerformance{},
+		&PortfolioRebalance{},
+		&PriceGap{},
+		&PriceStats{},
+		&ETFOverlapCache{},
+		&CacheInvalidationLog{},
 	)
 }
 
