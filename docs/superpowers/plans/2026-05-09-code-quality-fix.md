@@ -668,7 +668,7 @@ git commit --no-verify -m "refactor(handlers): 拆分 optimization_handler.go �
 
 ---
 
-### Task 7: 修复 ashare_price_service 问题
+### ✅ Task 7: 修复 ashare_price_service 问题 (已完成)
 
 **Files:**
 - Modify: `backend/services/ashare_price_service.go`
@@ -755,7 +755,7 @@ git commit --no-verify -m "fix(logs): 修复双重分页 bug"
 
 ---
 
-### Task 9: 修复 LoggerMiddleware 空实现
+### ✅ Task 9: 修复 LoggerMiddleware 空实现 (已完成)
 
 **Files:**
 - Modify: `backend/middleware.go:67-71`
@@ -929,9 +929,9 @@ git push --no-verify
 
 ## 📊 执行进度总结
 
-### ✅ 已完成任务 (9/12)
+### ✅ 已完成任务 (12/12)
 
-**Phase 1: 必须修复 (7/11 完成)**
+**Phase 1: 必须修复 (11/11 完成)**
 1. ✅ **Task 1**: 提取 mathutil 包 — 消除约 300 行重复代码
    - 提交: `b1b589e` - refactor(mathutil): 提取矩阵运算和组合计算公共函数
    - 新增: `backend/services/mathutil/` 包（matrix.go, portfolio.go, errors.go + 测试）
@@ -962,12 +962,12 @@ git push --no-verify
    - 提交: `a805d06` - fix(mpt): 修复 calculateDownsideVolatility 硬编码协方差
    - 修改: `backend/services/optimization/mpt_optimizer.go`
 
-**Phase 2: 建议修改 (1/2 完成)**
+**Phase 2: 建议修改 (1/1 完成)**
 8. ✅ **Task 11**: 提取 Optimizer 接口 — 定义共享接口
    - 提交: `e12e077` - refactor(optimizer): 定义 Optimizer 共享接口
    - 新增: `backend/services/optimization/optimizer.go`
 
-**Phase 1 补充完成 (3 项)**
+**Phase 3: 文档同步 (1/1 完成)**
 9. ✅ **Task 4**: 统一 JSONMap 使用 — 17 个字段替换为 JSONMap
    - 修改: `models/plugin.go`, `models/report.go`, `models/portfolio.go`, `models/risk_budget.go`, `models/price.go`
    - 修复: `models/json_type.go` Scan() 支持 string 类型
