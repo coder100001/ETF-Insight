@@ -164,9 +164,9 @@ run:
 ### Task 6: 更新文档中的 Go 版本引用
 
 **Files:**
-- Modify: `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md:42`
+- Modify: `docs/reference/FRONTEND_BACKEND_INTEGRATION_PLAN.md:42`
 - Modify: `docs/superpowers/plans/2026-05-06-quality-first-p0-plan.md:9`
-- Modify: `design-docs/001-code-quality-analysis-and-improvement.md:31,46`
+- Modify: `docs/superpowers/legacy/001-code-quality-analysis-and-improvement.md:31,46`
 
 - [ ] **Step 1: 修改 FRONTEND_BACKEND_INTEGRATION_PLAN.md**
 

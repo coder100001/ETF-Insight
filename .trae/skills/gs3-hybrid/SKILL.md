@@ -102,7 +102,7 @@ project:
 
 | 概念 | 定义 |
 |-----|------|
-| **Design Doc** | 编号设计文档，存储在 `design-docs/` 目录，记录重大功能/改动的调研、设计决策和演进理由 |
+| **Design Doc** | 编号设计文档，存储在 `docs/superpowers/specs/` 目录，记录重大功能/改动的调研、设计决策和演进理由 |
 | **变更文件数** | 新增、修改、删除的文件总数（不含自动生成文件） |
 | **新增代码行** | 不含空行和注释的净增代码行数 |
 | **架构影响** | 涉及模块间接口、数据流、部署方式的变更 |
@@ -218,21 +218,21 @@ project:
 |-----|------|
 | **思考留痕** | 记录调研过程、方案对比、决策理由 |
 | **可追溯性** | 编号递增 + Git 提交，可回溯设计决策 |
-| **知识传承** | 新成员通过 design-docs/ 快速理解项目演进 |
+| **知识传承** | 新成员通过 docs/superpowers/specs/ 快速理解项目演进 |
 | **减少返工** | 先思考后编码，避免方向性错误 |
 | **评审依据** | Phase 2-5 评审的基础材料 |
 
 ### 文件命名规范
 
 ```
-design-docs/
+docs/superpowers/specs/
 ├── 001-feature-name.md
 ├── 002-another-feature.md
 ├── README.md          # 索引文件
 └── archive/           # 归档文档
 ```
 
-**命名规则**: `NNN-kebab-case-title.md`
+**命名规则**: `YYYY-MM-DD-kebab-case-title.md`
 - `NNN`: 三位数字，从 001 开始递增
 - `kebab-case-title`: 简短英文描述
 - 编号必须连续，不允许跳号
@@ -373,7 +373,7 @@ Component/
 ```
 
 ### 强制检查清单
-- [ ] 是否创建了 design-docs/ 目录？
+- [ ] 是否创建了 docs/superpowers/specs/ 目录？
 - [ ] 是否确定了正确的编号 (NNN)？
 - [ ] 是否使用了标准模板？
 - [ ] 是否包含至少 2 个可选方案的对比？
@@ -400,7 +400,7 @@ Component/
 - **功能名称**:
 - **API 路径**: `METHOD /api/xxx`
 - **复杂度**: L1/L2/L3
-- **Design Doc**: [NNN-title](../design-docs/NNN-title.md) (L2+ 必填)
+- **Design Doc**: [YYYY-MM-DD-title](../docs/superpowers/specs/YYYY-MM-DD-title.md) (L2+ 必填)
 
 ## 2. 变更文件
 
@@ -498,7 +498,7 @@ type XXXResponse struct {
 - **功能名称**:
 - **页面路由**: `/xxx`
 - **复杂度**: L1/L2/L3
-- **Design Doc**: [NNN-title](../design-docs/NNN-title.md) (L2+ 必填)
+- **Design Doc**: [YYYY-MM-DD-title](../docs/superpowers/specs/YYYY-MM-DD-title.md) (L2+ 必填)
 
 ## 2. 变更文件
 
@@ -1678,7 +1678,7 @@ ETF-Insight/
 │   │   ├── services/         # API 服务
 │   │   └── types/            # TypeScript 类型
 │   └── package.json
-├── design-docs/              # 设计文档
+├── docs/superpowers/specs/   # 设计文档
 ├── docs/                     # 项目文档
 └── .trae/
     └── skills/

@@ -144,6 +144,6 @@ DROP TABLE IF EXISTS plugin_registries;
 
 ## 相关文档
 
-- [数据层演进改造方案](../docs/development/DATA_LAYER_EVOLUTION_PLAN.md)
-- [数据层实施指南](../docs/development/DATA_LAYER_IMPLEMENTATION_GUIDE.md)
-- [演进路线图](../docs/roadmap/EVOLUTION_ROADMAP_2026.md)
+- [数据层演进改造方案](../docs/reference/DATA_LAYER_EVOLUTION_PLAN.md)
+- [数据层实施指南](../docs/reference/DATA_LAYER_IMPLEMENTATION_GUIDE.md)
+- [演进路线图](../docs/reference/EVOLUTION_ROADMAP_2026.md)

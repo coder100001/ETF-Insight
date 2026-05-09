@@ -19,9 +19,9 @@
 | `.github/workflows/docs-consistency.yml` | `go-version: '1.24'` | `go-version: '1.26'` |
 | `.golangci.yml` | `go: "1.24"` | `go: "1.26"` |
 | `backend/.golangci.yml` | 未指定 | 保持不指定（继承项目级） |
-| `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md` | `Go 1.21+` | `Go 1.26+` |
+| `docs/reference/FRONTEND_BACKEND_INTEGRATION_PLAN.md` | `Go 1.21+` | `Go 1.26+` |
 | `docs/superpowers/plans/2026-05-06-quality-first-p0-plan.md` | `Go 1.24` | `Go 1.26` |
-| `design-docs/001-code-quality-analysis-and-improvement.md` | `Go 1.24` | `Go 1.26` |
+| `docs/superpowers/legacy/001-code-quality-analysis-and-improvement.md` | `Go 1.24` | `Go 1.26` |
 
 ---
 
@@ -66,9 +66,9 @@
 | 4 | `.github/workflows/ci.yml` | 修改 | `go-version: '1.24'` → `go-version: '1.26'` |
 | 5 | `.github/workflows/docs-consistency.yml` | 修改 | `go-version: '1.24'` → `go-version: '1.26'` |
 | 6 | `.golangci.yml` | 修改 | `go: "1.24"` → `go: "1.26"` |
-| 7 | `docs/development/FRONTEND_BACKEND_INTEGRATION_PLAN.md` | 修改 | `Go 1.21+` → `Go 1.26+` |
+| 7 | `docs/reference/FRONTEND_BACKEND_INTEGRATION_PLAN.md` | 修改 | `Go 1.21+` → `Go 1.26+` |
 | 8 | `docs/superpowers/plans/2026-05-06-quality-first-p0-plan.md` | 修改 | `Go 1.24` → `Go 1.26` |
-| 9 | `design-docs/001-code-quality-analysis-and-improvement.md` | 修改 | `Go 1.24` → `Go 1.26` |
+| 9 | `docs/superpowers/legacy/001-code-quality-analysis-and-improvement.md` | 修改 | `Go 1.24` → `Go 1.26` |
 | 10 | `AGENTS.md` | 检查 | 如有 Go 版本引用则更新 |
 
 ### 4.2 `go fix` 现代化步骤

@@ -244,10 +244,10 @@ backend/
 
 ## 📚 相关文档
 
-- [数据层演进改造方案](file:///Users/liunian/Desktop/dnmp/py_project/docs/development/DATA_LAYER_EVOLUTION_PLAN.md)
-- [数据层实施指南](file:///Users/liunian/Desktop/dnmp/py_project/docs/development/DATA_LAYER_IMPLEMENTATION_GUIDE.md)
-- [演进路线图 2026](file:///Users/liunian/Desktop/dnmp/py_project/docs/roadmap/EVOLUTION_ROADMAP_2026.md)
-- [v2.5第一阶段实现文档](file:///Users/liunian/Desktop/dnmp/py_project/docs/development/v2.5_phase1_implementation.md)
+- [数据层演进改造方案](DATA_LAYER_EVOLUTION_PLAN.md)
+- [数据层实施指南](DATA_LAYER_IMPLEMENTATION_GUIDE.md)
+- [演进路线图 2026](EVOLUTION_ROADMAP_2026.md)
+- [v2.5第一阶段实现文档](v2.5_phase1_implementation.md)
 
 ---
 

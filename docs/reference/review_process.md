@@ -270,8 +270,8 @@ python scripts/consistency_checker.py --module etf --report
 ### 相关工具和资源
 
 - `scripts/consistency_checker.py` - 一致性检查工具
-- `docs/consistency/mapping_rules.json` - 映射规则
-- `docs/consistency/update_specification.md` - 更新规范
+- `docs/reference/mapping_rules.json` - 映射规则
+- `docs/reference/update_specification.md` - 更新规范
 - GitHub PR模板 - 包含文档评审检查清单
 
 ### 联系信息
