@@ -79,8 +79,10 @@ py_project/
 | [AGENTS.md](./AGENTS.md) | 架构设计、数据模型、编码规范、金融算法标准（**开发者必读**） |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
 | [README_EN.md](./README_EN.md) | English documentation |
-| [docs/](./docs/) | 文档入口与索引 | [docs/reference/](./docs/reference/) | 参考文档（路线图、开发指南等） |
-| [docs/superpowers/](./docs/superpowers/) | 设计文档与实施计划 | [docs/archive/](./docs/archive/) | 归档文档（历史审查、安全文档） |
+| [docs/](./docs/) | 文档入口与索引 |
+| [docs/reference/](./docs/reference/) | 参考文档（路线图、开发指南等） |
+| [docs/superpowers/](./docs/superpowers/) | 设计文档与实施计划 |
+| [docs/archive/](./docs/archive/) | 归档文档（历史审查、安全文档） |
 | API 文档 | `http://localhost:8080/swagger`（交互式） |
 
 ## 贡献
