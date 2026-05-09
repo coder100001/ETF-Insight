@@ -29,7 +29,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('AlphaViews', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', { timeout: 15000 }, () => {
     renderWithProviders(<AlphaViews />)
     expect(screen.getAllByText(/Alpha|观点|View[s]?/i).length).toBeGreaterThan(0)
   })

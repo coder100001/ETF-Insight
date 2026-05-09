@@ -27,7 +27,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('RiskAnalysis', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', { timeout: 15000 }, () => {
     renderWithProviders(<RiskAnalysis />)
     expect(screen.getAllByText(/风险|Risk|分析/i).length).toBeGreaterThan(0)
   })

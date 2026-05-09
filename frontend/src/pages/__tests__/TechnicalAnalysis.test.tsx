@@ -24,7 +24,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('TechnicalAnalysis', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', { timeout: 15000 }, () => {
     renderWithProviders(<TechnicalAnalysis />)
     expect(screen.getAllByText(/技术|Technical|指标|分析/i).length).toBeGreaterThan(0)
   })

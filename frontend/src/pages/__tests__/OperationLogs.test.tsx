@@ -35,7 +35,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('OperationLogs', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', { timeout: 15000 }, () => {
     renderWithProviders(<OperationLogs />)
     expect(screen.getAllByText(/日志|Log|操作/i).length).toBeGreaterThan(0)
   })

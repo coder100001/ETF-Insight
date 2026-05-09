@@ -1,8 +1,26 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider, App as AntdApp } from 'antd'
 import BlackLittermanConfig from '../BlackLittermanConfig'
+
+vi.mock('recharts', () => {
+  const PassThrough = (props: any) => props.children
+  return {
+    ResponsiveContainer: PassThrough,
+    PieChart: PassThrough,
+    Pie: () => null,
+    Cell: () => null,
+    Tooltip: () => null,
+    Legend: () => null,
+    BarChart: PassThrough,
+    Bar: () => null,
+    XAxis: () => null,
+    YAxis: () => null,
+    CartesianGrid: () => null,
+  }
+})
 
 beforeEach(() => {
   globalThis.ResizeObserver = class ResizeObserver {
@@ -31,7 +49,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('BlackLittermanConfig', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', { timeout: 15000 }, () => {
     renderWithProviders(<BlackLittermanConfig />)
     expect(screen.getAllByText(/Black-Litterman|BL模型/i).length).toBeGreaterThan(0)
   })

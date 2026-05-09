@@ -37,6 +37,7 @@ type Handlers struct {
 	Agent           *handlers.AgentHandler
 	Data            *handlers.DataHandler
 	Analytics       *handlers.AnalyticsHandler
+	DataSource      *handlers.DataSourceHandler
 }
 
 type Router struct {
@@ -92,6 +93,7 @@ func NewRouter(
 	h.Agent = handlers.NewAgentHandler()
 	h.Data = handlers.NewDataHandler()
 	h.Analytics = handlers.NewAnalyticsHandler()
+	h.DataSource = handlers.NewDataSourceHandler()
 
 	return &Router{engine: engine, handlers: h, config: cfg}
 }
@@ -122,6 +124,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerAgentRoutes()
 	r.registerDataRoutes()
 	r.registerAnalyticsRoutes()
+	r.registerDataSourceRoutes()
 	r.registerStaticRoutes()
 	docs.RegisterSwaggerRoutes(r.engine)
 }
@@ -421,5 +424,15 @@ func (r *Router) registerAnalyticsRoutes() {
 		a.POST("/optimize", r.handlers.Analytics.OptimizePortfolio)
 		a.POST("/var", r.handlers.Analytics.CalculateVaR)
 		a.POST("/capm", r.handlers.Analytics.CalculateCAPM)
+	}
+}
+
+func (r *Router) registerDataSourceRoutes() {
+	ds := r.engine.Group("/api/datasource")
+	{
+		ds.GET("/providers", r.handlers.DataSource.ListDataSources)
+		ds.GET("/providers/:name", r.handlers.DataSource.GetDataSource)
+		ds.POST("/providers/:name/health", r.handlers.DataSource.HealthCheckDataSource)
+		ds.PUT("/strategy", r.handlers.DataSource.SetDataSourceStrategy)
 	}
 }

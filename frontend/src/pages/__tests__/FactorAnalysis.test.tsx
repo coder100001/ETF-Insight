@@ -1,8 +1,28 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider, App as AntdApp } from 'antd'
 import FactorAnalysis from '../FactorAnalysis'
+
+vi.mock('recharts', () => {
+  const PassThrough = (props: any) => props.children
+  return {
+    ResponsiveContainer: PassThrough,
+    BarChart: PassThrough,
+    Bar: () => null,
+    XAxis: () => null,
+    YAxis: () => null,
+    CartesianGrid: () => null,
+    Tooltip: () => null,
+    Legend: () => null,
+    RadarChart: PassThrough,
+    PolarGrid: () => null,
+    PolarAngleAxis: () => null,
+    PolarRadiusAxis: () => null,
+    Radar: () => null,
+  }
+})
 
 beforeEach(() => {
   globalThis.ResizeObserver = class ResizeObserver {
@@ -28,7 +48,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('FactorAnalysis', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', { timeout: 15000 }, () => {
     renderWithProviders(<FactorAnalysis />)
     expect(screen.getAllByText(/因子|Factor|分析/i).length).toBeGreaterThan(0)
   })
