@@ -86,10 +86,10 @@ Client → Rate Limiter → CORS → Security Headers → Audit Log → Handler
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | API 文档 | `/swagger` | OpenAPI 3.0 |
-| 安全改进 | `docs/security/` | 安全功能说明 |
-| 代码审查 | `docs/reviews/` | 审查报告 |
-| 路线图 | `docs/roadmap/` | 演进规划 |
-| 使用指南 | `docs/guides/` | 交互指南 |
+| 安全改进 | `docs/archive/` | 安全功能说明 |
+| 代码审查 | `docs/archive/` | 审查报告 |
+| 路线图 | `docs/reference/` | 演进规划 |
+| 使用指南 | `docs/reference/` | 交互指南 |
 
 ---
 

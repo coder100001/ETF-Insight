@@ -233,9 +233,9 @@ sqlDB.SetConnMaxLifetime(time.Hour)
 | API 文档 (Swagger) | `/swagger` | ✅ OpenAPI 3.0 |
 | 项目 README | `/README.md` | ✅ 完整 |
 | 开发规范 | `/AGENTS.md` | ✅ 详细 |
-| 安全改进 | `/docs/security/` | ✅ 已整理 |
-| 代码审查 | `/docs/reviews/` | ✅ 已整理 |
-| 路线图 | `/docs/roadmap/` | ✅ 已整理 |
+| 安全改进 | `docs/archive/` | ✅ 已整理 |
+| 代码审查 | `docs/archive/` | ✅ 已整理 |
+| 路线图 | `docs/reference/` | ✅ 已整理 |
 
 ### Swagger 文档
 

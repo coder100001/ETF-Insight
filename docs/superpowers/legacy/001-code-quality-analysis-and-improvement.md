@@ -103,4 +103,4 @@
 ---
 
 **文档状态**: draft
-**下一步**: 创建 PLAN.md，开始执行改进
+**下一步**: 创建实施计划（已移至 docs/superpowers/plans/code-quality-fix.md），开始执行改进

@@ -472,4 +472,4 @@ POST   /api/notifications/:id/read     // 标记已读
 ***
 
 **文档状态**: draft
-**下一步**: 创建详细的 PLAN.md，开始 Phase 1 实施
+**下一步**: 创建详细的实施计划（已移至 docs/superpowers/plans/），开始 Phase 1 实施
