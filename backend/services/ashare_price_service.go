@@ -48,10 +48,10 @@ func NewASharePriceService() *ASharePriceService {
 		client:  &http.Client{Timeout: 30 * time.Second},
 		baseURL: "",
 		providers: []PriceProvider{
-			NewSinaProvider(),      // 新浪财经（主数据源）
-			NewEastMoneyProvider(), // 东方财富（备份1）
-			NewTencentProvider(),   // 腾讯财经（备份2）
-			NewNetEaseProvider(),   // 网易财经（备份3）
+			NewSinaProvider(),         // 新浪财经（主数据源）
+			NewEastMoneyProvider(),    // 东方财富（备份1）
+			NewTencentProvider(),      // 腾讯财经（备份2）
+			NewTencentQuoteProvider(), // 腾讯财经备用（备份3）
 		},
 	}
 }
@@ -466,29 +466,29 @@ func (p *TencentProvider) parseTencentData(data, symbol string) (*PriceData, err
 	}, nil
 }
 
-// ==================== 网易财经数据源（东方财富备用接口）====================
+// ==================== 腾讯财经备用数据源 ====================
 
-type NetEaseProvider struct {
+type TencentQuoteProvider struct {
 	client *http.Client
 }
 
-func NewNetEaseProvider() *NetEaseProvider {
-	return &NetEaseProvider{
+func NewTencentQuoteProvider() *TencentQuoteProvider {
+	return &TencentQuoteProvider{
 		client: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-func (p *NetEaseProvider) GetName() string {
-	return "eastmoney-quote"
+func (p *TencentQuoteProvider) GetName() string {
+	return "tencent-quote"
 }
 
-func (p *NetEaseProvider) IsAvailable() bool {
+func (p *TencentQuoteProvider) IsAvailable() bool {
 	return true
 }
 
-// GetPrice 从东方财富行情接口获取ETF价格（备用接口）
-func (p *NetEaseProvider) GetPrice(symbol string) (*PriceData, error) {
-	// 东方财富行情中心备用接口
+// GetPrice 从腾讯财经备用接口获取ETF价格
+func (p *TencentQuoteProvider) GetPrice(symbol string) (*PriceData, error) {
+	// 腾讯财经备用API
 	code := p.convertSymbol(symbol)
 	url := fmt.Sprintf("https://qt.gtimg.cn/q=%s", code)
 
@@ -513,14 +513,14 @@ func (p *NetEaseProvider) GetPrice(symbol string) (*PriceData, error) {
 	return p.parseData(string(body), symbol)
 }
 
-func (p *NetEaseProvider) convertSymbol(symbol string) string {
+func (p *TencentQuoteProvider) convertSymbol(symbol string) string {
 	if strings.HasPrefix(symbol, "5") || strings.HasPrefix(symbol, "6") {
 		return "sh" + symbol
 	}
 	return "sz" + symbol
 }
 
-func (p *NetEaseProvider) parseData(data, symbol string) (*PriceData, error) {
+func (p *TencentQuoteProvider) parseData(data, symbol string) (*PriceData, error) {
 	// 腾讯 qt.gtimg.cn 格式与 web.sqt.gtimg.cn 相同
 	prefix := fmt.Sprintf("v_%s=\"", p.convertSymbol(symbol))
 	if !strings.Contains(data, prefix) {
