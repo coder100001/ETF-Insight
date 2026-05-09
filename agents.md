@@ -392,8 +392,6 @@ git push origin feature/your-feature-name
 - ✅ **API端点**:
   - `POST /api/backtest/run` - 运行回测
   - `POST /api/backtest/event-driven` - 事件驱动回测
-  - `GET /api/backtest/result/:id` - 获取回测结果
-  - `GET /api/backtest/compare` - 对比多个策略
 
 #### 组合优化增强 (v2.5 新增)
 - ✅ **马科维茨均值-方差优化**: `services/optimization/mpt_optimizer.go`
@@ -430,8 +428,6 @@ git push origin feature/your-feature-name
   - 主动收益分析
 - ✅ **API端点**:
   - `POST /api/factor/fama-french` - Fama-French分析
-  - `GET /api/factor/models` - 获取可用模型
-  - `GET /api/factor/factors` - 获取因子定义
 - ✅ **前端页面**: `FactorAnalysis.tsx`
   - 因子暴露度可视化
   - 归因分析图表
@@ -588,15 +584,15 @@ git push origin feature/your-feature-name
     - `calculateMatrixMultiply()` - 矩阵乘法
     - `calculateMatrixTranspose()` - 矩阵转置
 
-##### 风险预算服务层（待实现 0%）
-- 📋 `services/risk_budget_service.go` - 风险预算服务（待实现）
+##### 风险预算服务层（已实现）
+- ✅ `services/risk_budget_service.go` - 风险预算服务（已实现 573 行）
   - CVaR计算（历史法、参数法、蒙特卡洛）
   - 风险贡献分解
   - 风险预算优化
   - 蒙特卡洛模拟
 
-##### 插件管理服务层（待实现 0%）
-- 📋 `services/plugin_service.go` - 插件管理服务（待实现）
+##### 插件管理服务层（已实现，实验性）
+- ✅ `services/plugin_service.go` - 插件管理服务（已实现 401 行，实验性）
   - 插件注册机制
   - 插件配置管理
   - 插件执行引擎
