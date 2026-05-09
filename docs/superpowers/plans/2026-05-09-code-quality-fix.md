@@ -8,11 +8,11 @@
 
 **Tech Stack:** Go 1.26, GORM, gin, shopspring/decimal
 
-**Progress:** ✅ 7/12 任务已完成 (58%) + 4 个审查遗留问题已修复
+**Progress:** ✅ 9/12 任务已完成 (75%)
 
 ---
 
-## Phase 1: 必须修复（11 项）— ✅ 已完成 6/11
+## Phase 1: 必须修复（11 项）— ✅ 已完成 7/11
 
 ---
 
@@ -284,7 +284,7 @@ git commit --no-verify -m "refactor(mathutil): 提取矩阵运算和组合计算
 
 ---
 
-### Task 2: 修复 float64 金融计算 — services 层改用 decimal.Decimal
+### ✅ Task 2: 修复 float64 金融计算 — services 层改用 decimal.Decimal (已完成)
 
 **Files:**
 - Modify: `backend/services/optimization/black_litterman.go:13-14,37-66`
@@ -866,7 +866,7 @@ git commit --no-verify -m "refactor(optimizer): 定义 Optimizer 共享接口"
 
 ---
 
-### Task 12: 文档同步 — 更新 AGENTS.md
+### ✅ Task 12: 文档同步 — 更新 AGENTS.md (已完成)
 
 **Files:**
 - Modify: `AGENTS.md`
@@ -929,38 +929,48 @@ git push --no-verify
 
 ## 📊 执行进度总结
 
-### ✅ 已完成任务 (7/12)
+### ✅ 已完成任务 (9/12)
 
-**Phase 1: 必须修复 (6/11 完成)**
+**Phase 1: 必须修复 (7/11 完成)**
 1. ✅ **Task 1**: 提取 mathutil 包 — 消除约 300 行重复代码
    - 提交: `b1b589e` - refactor(mathutil): 提取矩阵运算和组合计算公共函数
    - 新增: `backend/services/mathutil/` 包（matrix.go, portfolio.go, errors.go + 测试）
    - 重构: `mpt_optimizer.go`, `risk_parity.go` 使用 mathutil
 
-2. ✅ **Task 3**: 修复 AutoMigrate — 补充 12 个遗漏的模型
+2. ✅ **Task 2**: 修复 float64 金融计算 — BlackLittermanOptimizer 改用 decimal.Decimal
+   - 提交: `afb6f90` - refactor(bl): BlackLittermanOptimizer 接口层改用 decimal.Decimal
+   - 修改: `backend/services/optimization/black_litterman.go`
+   - 修改: `backend/services/optimization/black_litterman_test.go`
+
+3. ✅ **Task 3**: 修复 AutoMigrate — 补充 12 个遗漏的模型
    - 提交: `1256c67` - fix(models): 补充 AutoMigrate 遗漏的 12 个模型定义
    - 修改: `backend/models/db.go`
 
-3. ✅ **Task 7**: 修复 ashare_price_service — 修正命名错误
+4. ✅ **Task 7**: 修复 ashare_price_service — 修正命名错误
    - 提交: `3b07d8d` - fix(ashare): 修复 NetEaseProvider 命名错误，改为 TencentQuoteProvider
    - 修改: `backend/services/ashare_price_service.go`
 
-4. ✅ **Task 8**: 修复 operation_logs 分页 — 修复双重分页 bug
+5. ✅ **Task 8**: 修复 operation_logs 分页 — 修复双重分页 bug
    - 提交: `8d63f86` - fix(logs): 修复双重分页 bug
    - 修改: `backend/services/operation_logs_service.go`
 
-5. ✅ **Task 9**: 修复 LoggerMiddleware — 实现请求日志记录
+6. ✅ **Task 9**: 修复 LoggerMiddleware — 实现请求日志记录
    - 提交: `f6a6a37` - fix(middleware): 实现 LoggerMiddleware 请求日志记录
    - 修改: `backend/handlers/middleware.go`
 
-6. ✅ **Task 10**: 修复 calculateDownsideVolatility — 消除硬编码
+7. ✅ **Task 10**: 修复 calculateDownsideVolatility — 消除硬编码
    - 提交: `a805d06` - fix(mpt): 修复 calculateDownsideVolatility 硬编码协方差
    - 修改: `backend/services/optimization/mpt_optimizer.go`
 
 **Phase 2: 建议修改 (1/2 完成)**
-7. ✅ **Task 11**: 提取 Optimizer 接口 — 定义共享接口
+8. ✅ **Task 11**: 提取 Optimizer 接口 — 定义共享接口
    - 提交: `e12e077` - refactor(optimizer): 定义 Optimizer 共享接口
    - 新增: `backend/services/optimization/optimizer.go`
+
+**Phase 3: 文档同步 (1/1 完成)**
+9. ✅ **Task 12**: 文档同步 — 更新 AGENTS.md
+   - 提交: `12a8697` - docs: 同步 AGENTS.md 与实际代码实现状态
+   - 修改: `AGENTS.md`
 
 ### 🔧 审查遗留问题修复 (4/4 完成)
 
@@ -969,16 +979,15 @@ git push --no-verify
 3. ✅ **Optimizer 接口不兼容** — 拆为 3 个领域特定接口：`MPTOptimizerInterface`、`RiskParityOptimizerInterface`、`BlackLittermanOptimizerInterface`
 4. ⏭️ **Sortino 下行偏差** — 截面近似是 API 输入限制导致（只有预期收益率，无历史序列），暂不修复
 
-### 📋 待完成任务 (5/12)
+### 📋 待完成任务 (3/12)
 
-**Phase 1: 必须修复 (剩余 5 项)**
-- Task 2: 修复 float64 金融计算 — services 层改用 decimal.Decimal
+**Phase 1: 必须修复 (剩余 4 项)**
 - Task 4: 统一 JSONMap 使用 — 替换 string 存 JSON
 - Task 5: handler 业务逻辑下沉 — etf_handler.go
 - Task 6: optimization_handler.go 拆分
 
 **Phase 2: 建议修改**
-- Task 12: 文档同步 — 更新 AGENTS.md
+- 无
 
 ### 🎯 验证结果
 
