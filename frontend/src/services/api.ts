@@ -921,7 +921,7 @@ export const blackLittermanAPI = {
   },
 
   getPosteriorReturns: async (configId: number): Promise<ApiResponse<BLPosteriorReturn>> => {
-    return request<ApiResponse<BLPosteriorReturn>>(`/black-litterman/configs/${configId}/posterior`);
+    return request<ApiResponse<BLPosteriorReturn>>(`/black-litterman/results/${configId}`);
   },
 };
 
