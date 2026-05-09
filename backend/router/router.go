@@ -18,7 +18,11 @@ type Handlers struct {
 	ETF             *handlers.ETFHandler
 	Portfolio       *handlers.PortfolioHandler
 	Optimizer       *handlers.PortfolioOptimizerHandler
-	Optimization    *handlers.OptimizationHandler
+	MPT             *handlers.MPTHandler
+	RiskParity      *handlers.RiskParityHandler
+	BL              *handlers.BLHandler
+	RiskBudget      *handlers.RiskBudgetHandler
+	ETFStatistics   *handlers.ETFStatisticsHandler
 	Factor          *handlers.FactorHandler
 	FactorTiming    *handlers.FactorTimingHandler
 	AlphaView       *handlers.AlphaViewHandler
@@ -68,7 +72,11 @@ func NewRouter(
 		ETF:             handlers.NewETFHandler(analysisService, provider),
 		Portfolio:       handlers.NewPortfolioHandler(analysisService),
 		Optimizer:       handlers.NewPortfolioOptimizerHandler(optimizer),
-		Optimization:    handlers.NewOptimizationHandler(),
+		MPT:             handlers.NewMPTHandler(),
+		RiskParity:      handlers.NewRiskParityHandler(),
+		BL:              handlers.NewBLHandler(),
+		RiskBudget:      handlers.NewRiskBudgetHandler(),
+		ETFStatistics:   handlers.NewETFStatisticsHandler(),
 		Factor:          handlers.NewFactorHandler(),
 		ETFHolding:      handlers.NewETFHoldingHandler(models.DB),
 		PortfolioPen:    handlers.NewPortfolioPenetrationHandler(models.DB),
@@ -186,23 +194,23 @@ func (r *Router) registerPortfolioRoutes() {
 func (r *Router) registerOptimizationRoutes() {
 	opt := r.engine.Group("/api/optimization")
 	{
-		opt.POST("/mpt", r.handlers.Optimization.MPTOptimize)
-		opt.POST("/efficient-frontier", r.handlers.Optimization.EfficientFrontier)
-		opt.POST("/covariance", r.handlers.Optimization.CalculateCovarianceMatrix)
-		opt.POST("/etf-statistics", r.handlers.Optimization.GetETFStatistics)
-		opt.POST("/risk-parity", r.handlers.Optimization.RiskParityOptimize)
-		opt.POST("/black-litterman", r.handlers.Optimization.BlackLittermanOptimize)
-		opt.POST("/market-implied-returns", r.handlers.Optimization.MarketImpliedReturns)
+		opt.POST("/mpt", r.handlers.MPT.MPTOptimize)
+		opt.POST("/efficient-frontier", r.handlers.MPT.EfficientFrontier)
+		opt.POST("/covariance", r.handlers.MPT.CalculateCovarianceMatrix)
+		opt.POST("/etf-statistics", r.handlers.ETFStatistics.GetETFStatistics)
+		opt.POST("/risk-parity", r.handlers.RiskParity.RiskParityOptimize)
+		opt.POST("/black-litterman", r.handlers.BL.BlackLittermanOptimize)
+		opt.POST("/market-implied-returns", r.handlers.BL.MarketImpliedReturns)
 	}
 }
 
 func (r *Router) registerRiskBudgetRoutes() {
 	rb := r.engine.Group("/api/risk-budget")
 	{
-		rb.GET("/configs", r.handlers.Optimization.GetRiskBudgetConfigs)
-		rb.POST("/configs", r.handlers.Optimization.CreateRiskBudgetConfig)
-		rb.POST("/calculate-cvar", r.handlers.Optimization.CalculateCVaR)
-		rb.POST("/monte-carlo", r.handlers.Optimization.RunMonteCarlo)
+		rb.GET("/configs", r.handlers.RiskBudget.GetRiskBudgetConfigs)
+		rb.POST("/configs", r.handlers.RiskBudget.CreateRiskBudgetConfig)
+		rb.POST("/calculate-cvar", r.handlers.RiskBudget.CalculateCVaR)
+		rb.POST("/monte-carlo", r.handlers.RiskBudget.RunMonteCarlo)
 	}
 }
 
