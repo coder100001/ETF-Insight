@@ -15,6 +15,7 @@ import (
 	"etf-insight/router"
 	"etf-insight/services"
 	"etf-insight/services/datasource"
+	"etf-insight/services/datasource/unified"
 	"etf-insight/services/event"
 	erdatasource "etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
@@ -82,6 +83,9 @@ func New(configPath string) (*App, error) {
 	} else {
 		utils.Info("Using data source", "provider", defaultProvider.GetName())
 	}
+
+	// 初始化统一数据源注册表
+	initUnifiedRegistry(defaultProvider)
 
 	scheduler := tasks.NewScheduler(&cfg.Schedule, analysisService, exchangeService, defaultProvider)
 
@@ -232,4 +236,33 @@ func (a *App) Shutdown() error {
 
 	utils.Info("Server stopped")
 	return nil
+}
+
+// initUnifiedRegistry 初始化统一数据源注册表
+// 将现有的 ETF 和汇率数据源注册到统一注册表中
+func initUnifiedRegistry(etfProvider datasource.DataSourceProvider) {
+	registry := unified.GetUnifiedRegistry()
+	ctx := context.Background()
+
+	// 注册 ETF 数据源
+	if etfProvider != nil {
+		adapter := unified.NewETFAdapter(etfProvider)
+		registry.Register(etfProvider.GetName(), adapter)
+		utils.Info("ETF data source registered to unified registry",
+			"name", etfProvider.GetName(),
+			"available", etfProvider.IsAvailable(ctx))
+	}
+
+	// 注册汇率数据源（使用 Fallback Provider，无需 API Key）
+	fxProvider := erdatasource.NewFallbackProvider()
+	if fxProvider != nil {
+		adapter := unified.NewFXAdapter(fxProvider)
+		registry.Register(fxProvider.GetName(), adapter)
+		utils.Info("FX data source registered to unified registry",
+			"name", fxProvider.GetName(),
+			"available", fxProvider.IsAvailable(ctx))
+	}
+
+	utils.Info("Unified data source registry initialized",
+		"total_providers", registry.Count())
 }

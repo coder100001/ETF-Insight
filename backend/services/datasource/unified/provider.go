@@ -123,7 +123,9 @@ func (r *UnifiedRegistry) HealthCheck(ctx context.Context) []ProviderHealth {
 	checks := make([]ProviderHealth, 0, len(providers))
 	for _, p := range providers {
 		health := p.GetHealth(ctx)
-		checks = append(checks, *health)
+		if health != nil {
+			checks = append(checks, *health)
+		}
 	}
 	return checks
 }
