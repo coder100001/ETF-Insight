@@ -55,13 +55,8 @@ export interface ExportError {
   details?: string;
 }
 
-// 导出状态枚举
-export enum ExportStatus {
-  IDLE = 'idle',
-  LOADING = 'loading',
-  SUCCESS = 'success',
-  ERROR = 'error'
-}
+// 导出状态类型
+export type ExportStatus = 'idle' | 'loading' | 'success' | 'error';
 
 // 导出配置接口
 export interface ExportConfig {

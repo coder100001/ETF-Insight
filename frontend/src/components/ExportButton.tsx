@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 import { exportApi } from '../services/exportApi';
@@ -36,10 +36,10 @@ const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'outline' }>
         `;
       case 'secondary':
         return `
-          background: ${theme.colors.secondary};
+          background: ${theme.colors.info};
           color: white;
           &:hover {
-            background: ${theme.colors.secondaryDark};
+            background: ${theme.colors.primaryDark};
           }
         `;
       case 'outline':
@@ -67,7 +67,7 @@ const DropdownMenu = styled.div<{ $isOpen: boolean }>`
   right: 0;
   background: ${theme.colors.surface};
   border-radius: ${theme.borderRadius.md};
-  box-shadow: ${theme.shadows.dropdown};
+  box-shadow: ${theme.shadows.lg};
   border: 1px solid ${theme.colors.border};
   z-index: 1000;
   margin-top: ${theme.spacing.xs};
@@ -90,7 +90,7 @@ const DropdownItem = styled.button<{ $isSelected?: boolean }>`
   transition: background ${theme.transitions.fast};
 
   &:hover {
-    background: ${theme.colors.hover};
+    background: ${theme.colors.primaryLight};
   }
 
   &:first-child {
@@ -133,11 +133,11 @@ const StatusMessage = styled.div<{ $type: 'success' | 'error' }>`
   font-size: ${theme.fonts.size.xs};
   text-align: center;
   background: ${({ $type }) =>
-    $type === 'success' ? theme.colors.successLight : theme.colors.errorLight};
+    $type === 'success' ? theme.colors.upBg : theme.colors.downBg};
   color: ${({ $type }) =>
-    $type === 'success' ? theme.colors.success : theme.colors.error};
+    $type === 'success' ? theme.colors.success : theme.colors.danger};
   border: 1px solid ${({ $type }) =>
-    $type === 'success' ? theme.colors.success : theme.colors.error};
+    $type === 'success' ? theme.colors.success : theme.colors.danger};
 `;
 
 // 格式配置
@@ -181,10 +181,26 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [statusMessage, setStatusMessage] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 清理 timer
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // 处理格式选择
   const handleFormatSelect = useCallback(async (format: ExportFormat) => {
     if (disabled || status === 'loading') return;
+
+    // 清除之前的 timer
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
 
     setSelectedFormat(format);
     setIsOpen(false);
@@ -207,9 +223,10 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       onExportSuccess?.(`${title || pageType}_report.${format === 'excel' ? 'csv' : format}`);
 
       // 3秒后清除状态消息
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setStatus('idle');
         setStatusMessage('');
+        timeoutRef.current = null;
       }, 3000);
 
     } catch (error) {
@@ -219,9 +236,10 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       onExportError?.(errorMessage);
 
       // 5秒后清除错误消息
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setStatus('idle');
         setStatusMessage('');
+        timeoutRef.current = null;
       }, 5000);
     }
   }, [pageType, data, title, disabled, status, onExportStart, onExportSuccess, onExportError]);
