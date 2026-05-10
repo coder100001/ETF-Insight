@@ -9,7 +9,6 @@ import Layout from '../components/Layout';
 import { alphaViewAPI } from '../services/api';
 import type { AlphaView, ViewStatus, ViewMethod, ViewType } from '../types';
 
-const { TabPane } = Tabs;
 const { Option } = Select;
 
 const Container = styled.div`
@@ -276,12 +275,16 @@ const AlphaViews: React.FC = () => {
             </Button>
           }
         >
-          <Tabs activeKey={activeTab} onChange={setActiveTab}>
-            <TabPane tab="全部" key="all" />
-            <TabPane tab="活跃" key="active" />
-            <TabPane tab="已验证" key="validated" />
-            <TabPane tab="已过期" key="expired" />
-          </Tabs>
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { key: 'all', label: '全部' },
+              { key: 'active', label: '活跃' },
+              { key: 'validated', label: '已验证' },
+              { key: 'expired', label: '已过期' },
+            ]}
+          />
           <Table
             dataSource={filteredViews}
             columns={columns}
