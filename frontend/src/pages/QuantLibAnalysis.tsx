@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   Tabs,
@@ -52,6 +52,10 @@ function useReferenceData<T>(
 ): { data: T[] | null; loading: boolean; refresh: () => void } {
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const fetchFnRef = useRef(fetchFn);
+
+  // 更新 ref 以避免 stale closure
+  fetchFnRef.current = fetchFn;
 
   const loadData = useCallback(async (forceRefresh: boolean = false) => {
     if (!forceRefresh) {
@@ -72,7 +76,7 @@ function useReferenceData<T>(
 
     setLoading(true);
     try {
-      const response = await fetchFn();
+      const response = await fetchFnRef.current();
       if (response && Array.isArray(response)) {
         const result = response as T[];
         setData(result);
@@ -89,7 +93,7 @@ function useReferenceData<T>(
     } finally {
       setLoading(false);
     }
-  }, [fetchFn, cacheKey, ttlMinutes]);
+  }, [cacheKey, ttlMinutes]);
 
   useEffect(() => {
     loadData();
