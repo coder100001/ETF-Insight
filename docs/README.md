@@ -1,6 +1,6 @@
 # ETF-Insight 文档
 
-**更新日期**: 2026-05-09
+**更新日期**: 2026-05-10
 
 ---
 
@@ -10,7 +10,7 @@
 
 | 目录 | 说明 | 文件数 |
 |------|------|--------|
-| [specs/](superpowers/specs/) | 设计文档 — 当前活跃的设计决策 | 3 |
+| [specs/](superpowers/specs/) | 设计文档 — 当前活跃的设计决策 | 4 |
 | [plans/](superpowers/plans/) | 实施计划 — 进行中或待实施 | 2 |
 | [legacy/](superpowers/legacy/) | 历史设计文档 | 1 |
 
@@ -20,12 +20,31 @@
 
 | 文档 | 说明 | 状态 |
 |------|------|------|
-| [FRONTEND_BACKEND_INTEGRATION_PLAN.md](reference/FRONTEND_BACKEND_INTEGRATION_PLAN.md) | v2.7 前后端一体化实施方案 | ✅ 待实施 |
-| [DATA_LAYER_EVOLUTION_PLAN.md](reference/DATA_LAYER_EVOLUTION_PLAN.md) | 数据层演进改造方案 | ✅ 活跃 |
-| [DATA_LAYER_IMPLEMENTATION_GUIDE.md](reference/DATA_LAYER_IMPLEMENTATION_GUIDE.md) | 数据层改造实施指南 | ✅ 活跃 |
-| [DATA_LAYER_IMPLEMENTATION_PROGRESS.md](reference/DATA_LAYER_IMPLEMENTATION_PROGRESS.md) | 数据层改造进度跟踪 | ⚠️ 需更新 |
 | [consistency-README.md](reference/consistency-README.md) | 文档一致性管理机制 | ✅ 活跃 |
 | [review_process.md](reference/review_process.md) | 文档评审流程 | ✅ 活跃 |
+
+---
+
+## 最新功能
+
+### 报告导出功能 (2026-05-10)
+
+实现了多格式报告导出功能，支持 HTML、PDF、Excel、Markdown 四种格式。
+
+**相关文档：**
+- [报告导出功能设计文档](superpowers/specs/2026-05-10-export-report-design.md) - 完整的设计规格
+- [实施分析报告](superpowers/reports/2026-05-10-implementation-analysis-report.md) - 实施过程分析
+
+**API 端点：**
+- `POST /api/export/:type` - 导出数据
+- `GET /api/export/formats` - 获取支持的格式
+- `GET /api/export/types` - 获取支持的数据类型
+
+**支持的格式：**
+- HTML - 网页格式，支持样式和交互
+- PDF - PDF 文档，适合打印和分享
+- Excel - Excel 表格（CSV 格式），支持数据分析
+- Markdown - Markdown 格式，适合文档编辑
 
 ---
 
@@ -41,9 +60,10 @@
 docs/
 ├── README.md                 ← 本文档
 ├── superpowers/              ← 设计 + 计划
-│   ├── specs/                ← 3 个设计文档
+│   ├── specs/                ← 4 个设计文档
 │   ├── plans/                ← 2 个实施计划
+│   ├── reports/              ← 实施报告
 │   └── legacy/               ← 1 个历史设计文档
-├── reference/                ← 6 个参考文档
+├── reference/                ← 2 个参考文档
 └── archive/                  ← 归档文档
 ```
