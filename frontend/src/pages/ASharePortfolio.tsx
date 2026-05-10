@@ -702,7 +702,7 @@ export default function ASharePortfolioPage() {
                   value={portfolioData.expected_annual_dividend}
                   precision={0}
                   formatter={(value) => formatMoney(Number(value))}
-                  valueStyle={{ color: '#52c41a' }}
+                  styles={{ content: { color: '#52c41a' } }}
                 />
               </Col>
               <Col span={8}>
@@ -719,7 +719,7 @@ export default function ASharePortfolioPage() {
                   value={portfolioData.average_dividend_yield}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: '#1890ff' }}
+                  styles={{ content: { color: '#1890ff' } }}
                 />
               </Col>
             </Row>
@@ -732,7 +732,7 @@ export default function ASharePortfolioPage() {
                   value={portfolioData.quarterly_dividend}
                   precision={0}
                   formatter={(value) => formatMoney(Number(value))}
-                  valueStyle={{ color: '#52c41a' }}
+                  styles={{ content: { color: '#52c41a' } }}
                 />
               </Col>
               <Col span={8}>
@@ -749,7 +749,7 @@ export default function ASharePortfolioPage() {
                   value={portfolioData.average_dividend_yield / 4}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: '#1890ff' }}
+                  styles={{ content: { color: '#1890ff' } }}
                 />
               </Col>
             </Row>
@@ -762,7 +762,7 @@ export default function ASharePortfolioPage() {
                   value={portfolioData.monthly_dividend}
                   precision={0}
                   formatter={(value) => formatMoney(Number(value))}
-                  valueStyle={{ color: '#52c41a' }}
+                  styles={{ content: { color: '#52c41a' } }}
                 />
               </Col>
               <Col span={8}>
@@ -779,7 +779,7 @@ export default function ASharePortfolioPage() {
                   value={portfolioData.average_dividend_yield / 12}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: '#1890ff' }}
+                  styles={{ content: { color: '#1890ff' } }}
                 />
               </Col>
             </Row>

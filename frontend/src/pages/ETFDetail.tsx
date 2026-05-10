@@ -286,7 +286,7 @@ const ETFDetail: React.FC = () => {
                   value={etf.dividend_yield || 0}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: theme.colors.warning }}
+                  styles={{ content: { color: theme.colors.warning } }}
                 />
               </Col>
               <Col span={12}>
@@ -310,7 +310,7 @@ const ETFDetail: React.FC = () => {
                   value={etf.max_drawdown}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: theme.colors.danger }}
+                  styles={{ content: { color: theme.colors.danger } }}
                 />
               </Col>
               <Col span={12}>
@@ -319,7 +319,7 @@ const ETFDetail: React.FC = () => {
                   value={etf.total_return ?? 0}
                   precision={2}
                   suffix="%"
-                  valueStyle={{ color: (etf.total_return ?? 0) >= 0 ? theme.colors.success : theme.colors.danger }}
+                  styles={{ content: { color: (etf.total_return ?? 0) >= 0 ? theme.colors.success : theme.colors.danger } }}
                 />
               </Col>
               <Col span={12}>

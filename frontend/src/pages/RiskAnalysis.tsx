@@ -279,7 +279,7 @@ const RiskAnalysis: React.FC = () => {
                 value={riskData.var_95}
                 precision={2}
                 suffix="%"
-                valueStyle={{ color: '#cf1322' }}
+                styles={{ content: { color: '#cf1322' } }}
                 prefix={<WarningOutlined />}
               />
               <div style={{ marginTop: theme.spacing.sm, fontSize: 12, color: theme.colors.textSecondary }}>
@@ -292,7 +292,7 @@ const RiskAnalysis: React.FC = () => {
                 value={riskData.var_99}
                 precision={2}
                 suffix="%"
-                valueStyle={{ color: '#cf1322' }}
+                styles={{ content: { color: '#cf1322' } }}
               />
               <div style={{ marginTop: theme.spacing.sm, fontSize: 12, color: theme.colors.textSecondary }}>
                 单日最大损失概率 1%
@@ -304,7 +304,7 @@ const RiskAnalysis: React.FC = () => {
                 value={riskData.cvar_95}
                 precision={2}
                 suffix="%"
-                valueStyle={{ color: '#cf1322' }}
+                styles={{ content: { color: '#cf1322' } }}
               />
               <div style={{ marginTop: theme.spacing.sm, fontSize: 12, color: theme.colors.textSecondary }}>
                 超过 VaR 的平均损失
@@ -333,8 +333,10 @@ const RiskAnalysis: React.FC = () => {
                       title="夏普比率"
                       value={riskData.sharpe_ratio}
                       precision={2}
-                      valueStyle={{
-                        color: riskData.sharpe_ratio > 1 ? '#3f8600' : riskData.sharpe_ratio > 0.5 ? '#faad14' : '#cf1322'
+                      styles={{
+                        content: {
+                          color: riskData.sharpe_ratio > 1 ? '#3f8600' : riskData.sharpe_ratio > 0.5 ? '#faad14' : '#cf1322'
+                        }
                       }}
                     />
                   </Col>
@@ -358,7 +360,7 @@ const RiskAnalysis: React.FC = () => {
                       value={riskData.max_drawdown}
                       precision={2}
                       suffix="%"
-                      valueStyle={{ color: '#cf1322' }}
+                      styles={{ content: { color: '#cf1322' } }}
                     />
                   </Col>
                 </Row>
@@ -372,8 +374,10 @@ const RiskAnalysis: React.FC = () => {
                       title="Beta"
                       value={riskData.beta}
                       precision={2}
-                      valueStyle={{
-                        color: riskData.beta > 1 ? '#cf1322' : riskData.beta < 0.8 ? '#3f8600' : '#666'
+                      styles={{
+                        content: {
+                          color: riskData.beta > 1 ? '#cf1322' : riskData.beta < 0.8 ? '#3f8600' : '#666'
+                        }
                       }}
                     />
                     <div style={{ fontSize: 12, color: theme.colors.textSecondary }}>
@@ -386,8 +390,10 @@ const RiskAnalysis: React.FC = () => {
                       value={riskData.alpha}
                       precision={2}
                       suffix="%"
-                      valueStyle={{
-                        color: riskData.alpha > 0 ? '#3f8600' : riskData.alpha < 0 ? '#cf1322' : '#666'
+                      styles={{
+                        content: {
+                          color: riskData.alpha > 0 ? '#3f8600' : riskData.alpha < 0 ? '#cf1322' : '#666'
+                        }
                       }}
                     />
                     <div style={{ fontSize: 12, color: theme.colors.textSecondary }}>
@@ -431,7 +437,7 @@ const RiskAnalysis: React.FC = () => {
           </Card>
         </>
       ) : (
-        <Alert message="请选择投资组合以查看风险分析" type="info" />
+        <Alert title="请选择投资组合以查看风险分析" type="info" />
       )}
       </PageContainer>
     </Layout>

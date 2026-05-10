@@ -539,7 +539,7 @@ const PortfolioAnalysis: React.FC = () => {
                     precision={2}
                     prefix={<ArrowUpOutlined />}
                     suffix="USD"
-                    valueStyle={{ color: '#3f8600' }}
+                    styles={{ content: { color: '#3f8600' } }}
                   />
                 </Card>
               </Col>
@@ -561,7 +561,7 @@ const PortfolioAnalysis: React.FC = () => {
                     precision={2}
                     prefix={<ArrowDownOutlined />}
                     suffix="USD"
-                    valueStyle={{ color: '#cf1322' }}
+                    styles={{ content: { color: '#cf1322' } }}
                   />
                 </Card>
               </Col>

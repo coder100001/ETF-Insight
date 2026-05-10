@@ -317,7 +317,7 @@ const BlackLittermanConfigPage: React.FC = () => {
                 </Card>
               </>
             ) : (
-              <Alert message="请先进行计算" type="warning" />
+              <Alert title="请先进行计算" type="warning" />
             )}
           </TabPane>
         </Tabs>

@@ -324,8 +324,10 @@ const TechnicalAnalysis: React.FC = () => {
                         title="RSI"
                         value={indicator.rsi}
                         precision={1}
-                        valueStyle={{
-                          color: indicator.rsi > 70 ? '#cf1322' : indicator.rsi < 30 ? '#3f8600' : '#666'
+                        styles={{
+                          content: {
+                            color: indicator.rsi > 70 ? '#cf1322' : indicator.rsi < 30 ? '#3f8600' : '#666'
+                          }
                         }}
                       />
                     </Col>
@@ -334,7 +336,7 @@ const TechnicalAnalysis: React.FC = () => {
                         title="MACD"
                         value={indicator.macd}
                         precision={2}
-                        valueStyle={{ color: indicator.macd > 0 ? '#3f8600' : '#cf1322' }}
+                        styles={{ content: { color: indicator.macd > 0 ? '#3f8600' : '#cf1322' } }}
                       />
                     </Col>
                   </Row>
@@ -357,7 +359,7 @@ const TechnicalAnalysis: React.FC = () => {
                 {radarData.length > 0 ? (
                   <Radar {...radarConfig} />
                 ) : (
-                  <Alert message="请选择ETF以查看雷达图" type="info" />
+                  <Alert title="请选择ETF以查看雷达图" type="info" />
                 )}
               </ChartCard>
             </Col>

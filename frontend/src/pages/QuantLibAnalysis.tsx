@@ -738,7 +738,7 @@ const QuantLibAnalysis: React.FC = () => {
                           value={parseFloat(varResult.var)}
                           precision={2}
                           prefix="$"
-                          valueStyle={{ color: '#cf1322' }}
+                          styles={{ content: { color: '#cf1322' } }}
                         />
                       </Col>
                       <Col span={12}>
@@ -747,7 +747,7 @@ const QuantLibAnalysis: React.FC = () => {
                           value={parseFloat(varResult.cvar)}
                           precision={2}
                           prefix="$"
-                          valueStyle={{ color: '#a8071a' }}
+                          styles={{ content: { color: '#a8071a' } }}
                         />
                       </Col>
                       <Col span={12}>

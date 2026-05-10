@@ -199,7 +199,7 @@ const FactorTiming: React.FC = () => {
                     title="MA斜率 (60日)"
                     value={signal.ma_slope_60}
                     precision={4}
-                    valueStyle={{ color: signal.ma_slope_60 > 0 ? '#3f8600' : '#cf1322' }}
+                    styles={{ content: { color: signal.ma_slope_60 > 0 ? '#3f8600' : '#cf1322' } }}
                   />
                   <Tag color={signal.ma_slope_60 > 0 ? 'green' : 'red'}>
                     {signal.ma_slope_60 > 0 ? '上升趋势' : '下降趋势'}
@@ -212,7 +212,7 @@ const FactorTiming: React.FC = () => {
                     title="Z-Score"
                     value={signal.z_score}
                     precision={2}
-                    valueStyle={{ color: Math.abs(signal.z_score) > 1.5 ? '#1890ff' : '#8c8c8c' }}
+                    styles={{ content: { color: Math.abs(signal.z_score) > 1.5 ? '#1890ff' : '#8c8c8c' } }}
                   />
                   <Tag color={Math.abs(signal.z_score) > 2 ? 'blue' : 'default'}>
                     {Math.abs(signal.z_score) > 2 ? '极端值' : '正常范围'}

@@ -417,7 +417,7 @@ const InvestmentStrategy: React.FC = () => {
         <PageHeader>
           <h2><PieChartOutlined /> 智能投资策略中心</h2>
         </PageHeader>
-        <Alert message="暂无ETF数据" description="请先配置ETF并同步数据" type="warning" showIcon />
+        <Alert title="暂无ETF数据" description="请先配置ETF并同步数据" type="warning" showIcon />
       </Layout>
     );
   }

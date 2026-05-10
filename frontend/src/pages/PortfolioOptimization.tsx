@@ -528,11 +528,11 @@ const PortfolioOptimization: React.FC = () => {
           </TabPane>
 
           <TabPane tab="优化结果" key="2">
-            {result ? <OptimizationResultDisplay result={result} /> : <Alert message="请先执行优化" type="info" showIcon />}
+            {result ? <OptimizationResultDisplay result={result} /> : <Alert title="请先执行优化" type="info" showIcon />}
           </TabPane>
 
           <TabPane tab="有效前沿" key="3">
-            {frontier.length > 0 ? <EfficientFrontierDisplay frontier={frontier} /> : <Alert message="请先计算有效前沿" type="info" showIcon />}
+            {frontier.length > 0 ? <EfficientFrontierDisplay frontier={frontier} /> : <Alert title="请先计算有效前沿" type="info" showIcon />}
           </TabPane>
 
           <TabPane tab="风险平价" key="4">
@@ -585,7 +585,7 @@ const PortfolioOptimization: React.FC = () => {
                 </StyledCard>
               </Col>
               <Col span={16}>
-                {rpResult ? <RiskParityDisplay result={rpResult} /> : <Alert message="请先执行风险平价优化" type="info" showIcon />}
+                {rpResult ? <RiskParityDisplay result={rpResult} /> : <Alert title="请先执行风险平价优化" type="info" showIcon />}
               </Col>
             </Row>
           </TabPane>
@@ -639,7 +639,7 @@ const PortfolioOptimization: React.FC = () => {
                 </StyledCard>
               </Col>
               <Col span={16}>
-                {blResult ? <BlackLittermanDisplay result={blResult} selectedETFs={selectedETFs} /> : <Alert message="请先执行Black-Litterman优化" type="info" showIcon />}
+                {blResult ? <BlackLittermanDisplay result={blResult} selectedETFs={selectedETFs} /> : <Alert title="请先执行Black-Litterman优化" type="info" showIcon />}
               </Col>
             </Row>
           </TabPane>

@@ -567,7 +567,7 @@ const FactorAnalysis: React.FC = () => {
               </StyledCard>
             </>
           ) : (
-            <Alert message="请先执行因子分析" type="info" showIcon />
+            <Alert title="请先执行因子分析" type="info" showIcon />
           )}
         </TabPane>
 
@@ -582,7 +582,7 @@ const FactorAnalysis: React.FC = () => {
               />
             </StyledCard>
           ) : (
-            <Alert message="请先执行批量分析" type="info" showIcon />
+            <Alert title="请先执行批量分析" type="info" showIcon />
           )}
         </TabPane>
       </Tabs>

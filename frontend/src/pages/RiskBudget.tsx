@@ -333,7 +333,7 @@ const RiskBudget: React.FC = () => {
                 </Card>
               </>
             ) : (
-              <Alert message="请先计算CVaR" type="warning" />
+              <Alert title="请先计算CVaR" type="warning" />
             )}
           </TabPane>
 
@@ -366,12 +366,12 @@ const RiskBudget: React.FC = () => {
                 <Row gutter={16} style={{ marginBottom: 24 }}>
                   <Col span={12}>
                     <Card>
-                      <Statistic title="5%分位数" value={mcResult.percentile_5 * 100} precision={2} suffix="%" valueStyle={{ color: '#cf1322' }} />
+                      <Statistic title="5%分位数" value={mcResult.percentile_5 * 100} precision={2} suffix="%" styles={{ content: { color: '#cf1322' } }} />
                     </Card>
                   </Col>
                   <Col span={12}>
                     <Card>
-                      <Statistic title="95%分位数" value={mcResult.percentile_95 * 100} precision={2} suffix="%" valueStyle={{ color: '#3f8600' }} />
+                      <Statistic title="95%分位数" value={mcResult.percentile_95 * 100} precision={2} suffix="%" styles={{ content: { color: '#3f8600' } }} />
                     </Card>
                   </Col>
                 </Row>
@@ -382,7 +382,7 @@ const RiskBudget: React.FC = () => {
                 </Card>
               </>
             ) : (
-              <Alert message="请先运行蒙特卡洛模拟" type="warning" />
+              <Alert title="请先运行蒙特卡洛模拟" type="warning" />
             )}
           </TabPane>
         </Tabs>
