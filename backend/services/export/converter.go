@@ -14,35 +14,35 @@ const (
 
 // ExportRequest 导出请求
 type ExportRequest struct {
-	Format  ExportFormat    `json:"format"`
-	Title   string          `json:"title"`
-	Data    map[string]any  `json:"data"`
+	Format ExportFormat   `json:"format"`
+	Title  string         `json:"title"`
+	Data   map[string]any `json:"data"`
 }
 
 // ExportResponse 导出响应
 type ExportResponse struct {
-	Success  bool   `json:"success"`
-	Data     *ExportData `json:"data,omitempty"`
-	Error    string `json:"error,omitempty"`
+	Success bool        `json:"success"`
+	Data    *ExportData `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
 }
 
 // ExportData 导出数据
 type ExportData struct {
-	Content  string `json:"content"`  // base64编码的内容
-	Filename string `json:"filename"` // 文件名
+	Content  string `json:"content"`   // base64编码的内容
+	Filename string `json:"filename"`  // 文件名
 	MimeType string `json:"mime_type"` // MIME类型
 	FileSize int64  `json:"file_size"` // 文件大小
 }
 
 // ExportMetadata 导出元数据
 type ExportMetadata struct {
-	UserID    string    `json:"user_id"`
-	Username  string    `json:"username"`
-	PageType  string    `json:"page_type"`
+	UserID    string       `json:"user_id"`
+	Username  string       `json:"username"`
+	PageType  string       `json:"page_type"`
 	Format    ExportFormat `json:"format"`
-	Title     string    `json:"title"`
-	DataSize  int       `json:"data_size"`
-	Timestamp time.Time `json:"timestamp"`
+	Title     string       `json:"title"`
+	DataSize  int          `json:"data_size"`
+	Timestamp time.Time    `json:"timestamp"`
 }
 
 // DataConverter 数据转换器接口
