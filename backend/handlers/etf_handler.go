@@ -869,11 +869,11 @@ func getDefaultDividendYield(symbol string) float64 {
 // GetDataSourceStatus 获取数据源状态
 func (h *ETFHandler) GetDataSourceStatus(c *gin.Context) {
 	finageAPIKey := os.Getenv("FINAGE_API_KEY")
-	
+
 	// 检查数据库中最新的数据
 	var latestData models.ETFData
 	result := models.DB.Order("date DESC").First(&latestData)
-	
+
 	dataAge := "unknown"
 	dataSource := "none"
 	if result.Error == nil {
@@ -885,7 +885,7 @@ func (h *ETFHandler) GetDataSourceStatus(c *gin.Context) {
 			dataAge = fmt.Sprintf("%.0f days ago", hours/24)
 		}
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
