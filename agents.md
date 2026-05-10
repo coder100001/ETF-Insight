@@ -118,7 +118,11 @@ LOG_LEVEL=info
 - ✅ **回测引擎**: 事件驱动回测、滑点模拟、交易成本建模
 - 🔄 **策略框架**: 策略模板、参数优化、 Walk-forward 分析
 - 🔄 **论文复现**: 经典量化策略实现（动量、价值、低波动等）
-- 🔄 **数据导出**: CSV/Excel/JSON 格式，支持学术研究
+- ✅ **报告导出**: HTML/PDF/Excel/Markdown 多格式导出，支持学术研究
+  - API: `POST /api/export/:type`
+  - 支持投资组合、风险分析等数据导出
+  - 统一错误处理、日志记录、操作记录
+  - 前端 ExportButton 组件，一键导出
 
 #### 模型深度融合 (v2.7 规划)
 - 📋 **Alpha+BL闭环**: Fama-French因子择时 → Black-Litterman观点融合
@@ -289,6 +293,43 @@ git push origin feature/your-feature-name
 - ✅ **容器化**: Dockerfile (Python 3.11-slim)
 
 - 📋 **下一步**: 添加更多 Agent (地缘政治/技术分析/对冲基金)
+
+### v2.8.1 更新内容 (2026-05-10)
+
+#### 报告导出功能 (新增)
+- ✅ **多格式导出**: HTML/PDF/Excel/Markdown 四种格式
+  - `services/export/` - 导出服务架构
+  - `services/export/service/service.go` - 核心导出服务
+  - `services/export/converters/` - 数据转换器（portfolio、risk、default）
+  - `services/export/generators/` - 格式生成器（HTML、PDF、Excel、Markdown）
+
+- ✅ **统一错误处理**: 自定义错误类型和错误码
+  - `services/export/errors.go` - ExportError 结构和预定义错误
+  - 错误码: EXPORT_001 ~ EXPORT_006
+
+- ✅ **日志记录**: 复用现有 Logger，记录导出操作
+  - `services/export/logger.go` - LogExport、LogExportStart、LogExportValidation
+
+- ✅ **操作记录**: 复用现有 AuditLog，记录导出操作
+  - `services/export/audit.go` - RecordExport、RecordExportWithRequestID
+
+- ✅ **API 端点**:
+  - `POST /api/export/:type` - 导出数据
+  - `GET /api/export/formats` - 获取支持的格式
+  - `GET /api/export/types` - 获取支持的数据类型
+
+- ✅ **前端组件**:
+  - `frontend/src/components/ExportButton.tsx` - 导出按钮组件
+  - `frontend/src/services/exportApi.ts` - 导出 API 服务
+  - `frontend/src/types/export.ts` - TypeScript 类型定义
+
+- ✅ **测试覆盖**: 单元测试全部通过
+  - `services/export/service/service_test.go` - 导出服务测试
+
+- 📋 **下一步**: 
+  - 添加更多数据转换器（ETF对比、因子分析等）
+  - 实现真正的 PDF 生成（使用 gofpdf 库）
+  - 添加导出历史记录和下载管理
 
 ### v2.5 更新内容
 
