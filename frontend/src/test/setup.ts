@@ -36,6 +36,20 @@ console.error = (...args: unknown[]) => {
   originalError.apply(console, args)
 }
 
+// 全局 mock fetch，防止测试中的请求挂起
+if (typeof global !== 'undefined') {
+  global.fetch = vi.fn().mockImplementation(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: [] }),
+      text: () => Promise.resolve(''),
+      status: 200,
+      statusText: 'OK',
+      headers: new Headers(),
+    } as Response)
+  )
+}
+
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
