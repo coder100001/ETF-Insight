@@ -153,6 +153,7 @@ func (r *Router) registerETFRoutes() {
 		etf.GET("/comparison", r.handlers.ETF.GetETFComparison)
 		etf.POST("/update-realtime", r.handlers.ETF.UpdateRealtimeData)
 		etf.POST("/portfolio", r.handlers.Portfolio.AnalyzePortfolio)
+		etf.GET("/data-status", r.handlers.ETF.GetDataSourceStatus)
 		etf.GET("/:symbol/realtime", r.handlers.ETF.GetETFRealtime)
 		etf.GET("/:symbol/history", r.handlers.ETF.GetETFHistory)
 		etf.GET("/:symbol/metrics", r.handlers.ETF.GetETFMetrics)

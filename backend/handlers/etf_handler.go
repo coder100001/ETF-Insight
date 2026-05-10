@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -281,6 +283,8 @@ func (h *ETFHandler) buildETFResult(cfg models.ETFConfig, etfData models.ETFData
 		"max_drawdown":   metrics.MaxDrawdown,
 		"sharpe_ratio":   metrics.SharpeRatio,
 		"expense_ratio":  cfg.ExpenseRatio.InexactFloat64() * 100,
+		"data_source":    "unavailable",
+		"data_status":    "FINAGE_API_KEY not configured. Please set the environment variable to fetch real data.",
 	}
 }
 
@@ -860,4 +864,46 @@ func getDefaultDividendYield(symbol string) float64 {
 		}
 	}
 	return defaultDividendYieldFallback
+}
+
+// GetDataSourceStatus 获取数据源状态
+func (h *ETFHandler) GetDataSourceStatus(c *gin.Context) {
+	finageAPIKey := os.Getenv("FINAGE_API_KEY")
+	
+	// 检查数据库中最新的数据
+	var latestData models.ETFData
+	result := models.DB.Order("date DESC").First(&latestData)
+	
+	dataAge := "unknown"
+	dataSource := "none"
+	if result.Error == nil {
+		dataSource = latestData.DataSource
+		hours := time.Since(latestData.Date).Hours()
+		if hours < 24 {
+			dataAge = fmt.Sprintf("%.0f hours ago", hours)
+		} else {
+			dataAge = fmt.Sprintf("%.0f days ago", hours/24)
+		}
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"finage_configured": finageAPIKey != "",
+			"data_source":       dataSource,
+			"data_age":          dataAge,
+			"latest_date":       latestData.Date,
+			"message":           getDataStatusMessage(finageAPIKey, dataSource),
+		},
+	})
+}
+
+func getDataStatusMessage(apiKey, dataSource string) string {
+	if apiKey == "" {
+		return "FINAGE_API_KEY not configured. Set the environment variable to fetch real-time data."
+	}
+	if dataSource == "mock" || dataSource == "generated" {
+		return "Using simulated data. Real data sync may have stopped."
+	}
+	return "Data source is active."
 }
