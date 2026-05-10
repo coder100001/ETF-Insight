@@ -26,6 +26,8 @@ func TestEuropeanOptionBoundaryZeroSpot(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.EuropeanOptionRequest{

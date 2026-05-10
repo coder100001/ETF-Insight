@@ -14,6 +14,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMain(m *testing.M) {
+	// Set test API key for all tests
+	os.Setenv("QUANTLIB_API_KEY", "test-api-key")
+	defer os.Unsetenv("QUANTLIB_API_KEY")
+
+	// Run tests
+	os.Exit(m.Run())
+}
+
 func TestNewClientDefaultURL(t *testing.T) {
 	os.Unsetenv("QUANTLIB_API_URL")
 	os.Unsetenv("QUANTLIB_API_KEY")
@@ -69,6 +78,8 @@ func TestPriceEuropeanOption(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.EuropeanOptionRequest{
@@ -106,6 +117,8 @@ func TestPriceEuropeanOptionError(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.EuropeanOptionRequest{
@@ -138,6 +151,8 @@ func TestPriceEuropeanOptionAPIFailure(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.EuropeanOptionRequest{
@@ -182,6 +197,8 @@ func TestPriceBond(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.BondRequest{
@@ -229,6 +246,8 @@ func TestCalculateVaR(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.VaRRequest{
@@ -272,6 +291,8 @@ func TestPriceEuropeanOptionDirectParse(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.EuropeanOptionRequest{
@@ -438,6 +459,8 @@ func TestPriceAmericanOption(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.AmericanOptionRequest{
@@ -523,6 +546,8 @@ func TestCalculateGreeks(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.GreeksRequest{
@@ -573,6 +598,8 @@ func TestBuildYieldCurve(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
+		cache:      newCache(),
 	}
 
 	req := models.YieldCurveRequest{
@@ -618,6 +645,7 @@ func TestGetSupportedCurrencies(t *testing.T) {
 	client := &Client{
 		baseURL:    server.URL,
 		httpClient: server.Client(),
+		apiKey:     "test-api-key",
 		cache:      newCache(),
 	}
 
