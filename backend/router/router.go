@@ -42,6 +42,7 @@ type Handlers struct {
 	Data            *handlers.DataHandler
 	Analytics       *handlers.AnalyticsHandler
 	DataSource      *handlers.DataSourceHandler
+	Export          *handlers.ExportHandler
 }
 
 type Router struct {
@@ -102,6 +103,7 @@ func NewRouter(
 	h.Data = handlers.NewDataHandler()
 	h.Analytics = handlers.NewAnalyticsHandler()
 	h.DataSource = handlers.NewDataSourceHandler()
+	h.Export = handlers.NewExportHandler()
 
 	return &Router{engine: engine, handlers: h, config: cfg}
 }
@@ -128,6 +130,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerExchangeRateRoutes()
 	r.registerOperationLogsRoutes()
 	r.registerReportRoutes()
+	r.registerExportRoutes()
 	r.registerQuantLibRoutes()
 	r.registerAgentRoutes()
 	r.registerDataRoutes()
@@ -442,5 +445,14 @@ func (r *Router) registerDataSourceRoutes() {
 		ds.GET("/providers/:name", r.handlers.DataSource.GetDataSource)
 		ds.POST("/providers/:name/health", r.handlers.DataSource.HealthCheckDataSource)
 		ds.PUT("/strategy", r.handlers.DataSource.SetDataSourceStrategy)
+	}
+}
+
+func (r *Router) registerExportRoutes() {
+	export := r.engine.Group("/api/export")
+	{
+		export.POST("/:type", r.handlers.Export.Export)
+		export.GET("/formats", r.handlers.Export.GetSupportedFormats)
+		export.GET("/types", r.handlers.Export.GetSupportedTypes)
 	}
 }

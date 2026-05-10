@@ -141,10 +141,13 @@ LOG_LEVEL=info
 - ✅ **AI Agent 微服务**: 从零重写 Agent 框架，4 个金融 Agent，多 LLM 支持
   - 路由: `/ai-agents`
   - 支持单 Agent 执行和多 Agent 团队辩论
-- 📋 **插件接口标准化**:
-  - Alpha Generator插件（输入行情/因子，输出观点）
-  - Portfolio Optimizer插件（输入观点，输出权重）
-  - Risk Model插件（输入权重，输出风险指标）
+- ⚠️ **插件接口标准化** (部分实现):
+  - ✅ 插件注册机制 (`models/plugin.go`, `services/plugin_service.go`)
+  - ✅ 插件配置管理和执行引擎
+  - ✅ 插件执行日志记录
+  - 📋 Alpha Generator插件（输入行情/因子，输出观点）
+  - 📋 Portfolio Optimizer插件（输入观点，输出权重）
+  - 📋 Risk Model插件（输入权重，输出风险指标）
 - 📋 **策略实验台**: 同平台公平竞赛，模型基准对比矩阵
 
 #### 数据源扩展
