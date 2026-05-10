@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"etf-insight/models"
+	"etf-insight/utils"
 )
 
 type cacheEntry struct {
@@ -84,17 +85,26 @@ func NewClient() *Client {
 		baseURL = "https://api.fincept.in/quantlib"
 	}
 
+	apiKey := os.Getenv("QUANTLIB_API_KEY")
+	if apiKey == "" {
+		utils.Warn("QUANTLIB_API_KEY not set, QuantLib API calls will fail")
+	}
+
 	return &Client{
 		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		apiKey: os.Getenv("QUANTLIB_API_KEY"),
+		apiKey: apiKey,
 		cache:  newCache(),
 	}
 }
 
 func (c *Client) doRequest(method, endpoint string, body any, result any) error {
+	if c.apiKey == "" {
+		return fmt.Errorf("QUANTLIB_API_KEY not configured. Please set the environment variable to use QuantLib services")
+	}
+
 	var reqBody io.Reader
 
 	if body != nil {
@@ -114,9 +124,7 @@ func (c *Client) doRequest(method, endpoint string, body any, result any) error 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "ETF-Insight/1.0")
 
-	if c.apiKey != "" {
-		req.Header.Set("X-API-Key", c.apiKey)
-	}
+	req.Header.Set("X-API-Key", c.apiKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -127,6 +135,10 @@ func (c *Client) doRequest(method, endpoint string, body any, result any) error 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode == 401 {
+		return fmt.Errorf("QuantLib API authentication failed. Please check your QUANTLIB_API_KEY")
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
