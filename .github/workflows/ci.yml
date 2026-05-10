@@ -52,7 +52,9 @@ jobs:
         working-directory: frontend
         run: npm install
 
-      - name: Run unified checks (frontend)
+      - name: Run frontend checks
+        env:
+          DOCCHECK_CHANGED_FILES: "frontend/"
         run: |
           ./scripts/run-check.sh --stage=format,static,build,test
 
@@ -77,5 +79,7 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Run documentation consistency check
+        env:
+          DOCCHECK_CHANGED_FILES: "docs/"
         run: |
           ./scripts/run-check.sh --stage=docs
