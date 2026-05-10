@@ -151,7 +151,7 @@ const FORMAT_CONFIG: Record<ExportFormat, { label: string; icon: string; descrip
 // 组件属性
 interface ExportButtonProps {
   pageType: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   title?: string;
   variant?: 'primary' | 'secondary' | 'outline';
   buttonText?: string;

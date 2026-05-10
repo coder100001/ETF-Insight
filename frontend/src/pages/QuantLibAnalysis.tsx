@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Tabs,
@@ -53,7 +53,7 @@ function useReferenceData<T>(
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const loadData = async (forceRefresh: boolean = false) => {
+  const loadData = useCallback(async (forceRefresh: boolean = false) => {
     if (!forceRefresh) {
       try {
         const cached = localStorage.getItem(cacheKey);
@@ -89,11 +89,11 @@ function useReferenceData<T>(
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchFn, cacheKey, ttlMinutes]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   return { data, loading, refresh: () => loadData(true) };
 }

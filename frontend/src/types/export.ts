@@ -5,7 +5,7 @@ export type ExportFormat = 'html' | 'pdf' | 'excel' | 'markdown';
 export interface ExportRequest {
   format: ExportFormat;
   title?: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 }
 
 // 导出响应接口
