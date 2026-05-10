@@ -37,8 +37,8 @@ console.error = (...args: unknown[]) => {
 }
 
 // 全局 mock fetch，防止测试中的请求挂起
-if (typeof global !== 'undefined') {
-  global.fetch = vi.fn().mockImplementation(() =>
+if (typeof globalThis !== 'undefined') {
+  (globalThis as typeof globalThis & { fetch: typeof fetch }).fetch = vi.fn().mockImplementation(() =>
     Promise.resolve({
       ok: true,
       json: () => Promise.resolve({ success: true, data: [] }),
