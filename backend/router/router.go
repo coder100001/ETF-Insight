@@ -354,11 +354,11 @@ func (r *Router) registerReportRoutes() {
 }
 
 func (r *Router) registerStaticRoutes() {
-	r.engine.Static("/assets", "../frontend/dist/assets")
-	r.engine.StaticFile("/favicon.svg", "../frontend/dist/favicon.svg")
-	r.engine.StaticFile("/icons.svg", "../frontend/dist/icons.svg")
+	r.engine.Static("/assets", "frontend/dist/assets")
+	r.engine.StaticFile("/favicon.svg", "frontend/dist/favicon.svg")
+	r.engine.StaticFile("/icons.svg", "frontend/dist/icons.svg")
 	r.engine.NoRoute(func(c *gin.Context) {
-		c.File("../frontend/dist/index.html")
+		c.File("frontend/dist/index.html")
 	})
 }
 
