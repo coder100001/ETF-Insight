@@ -37,17 +37,18 @@ console.error = (...args: unknown[]) => {
 }
 
 // 全局 mock fetch，防止测试中的请求挂起
-if (typeof globalThis !== 'undefined') {
-  (globalThis as typeof globalThis & { fetch: typeof fetch }).fetch = vi.fn().mockImplementation(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ success: true, data: [] }),
-      text: () => Promise.resolve(''),
-      status: 200,
-      statusText: 'OK',
-      headers: new Headers(),
-    } as Response)
-  )
+// 只在测试环境（vitest）中执行，避免影响生产构建
+if (typeof globalThis !== 'undefined' && typeof vi !== 'undefined') {
+  const mockResponse = {
+    ok: true,
+    json: () => Promise.resolve({ success: true, data: [] }),
+    text: () => Promise.resolve(''),
+    status: 200,
+    statusText: 'OK',
+    headers: new Headers(),
+  } as Response
+
+  globalThis.fetch = vi.fn().mockImplementation(() => Promise.resolve(mockResponse))
 }
 
 if (typeof window !== 'undefined') {
