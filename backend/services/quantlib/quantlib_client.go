@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"etf-insight/models"
-	"etf-insight/utils"
 )
 
 type cacheEntry struct {
@@ -85,26 +84,17 @@ func NewClient() *Client {
 		baseURL = "https://api.fincept.in/quantlib"
 	}
 
-	apiKey := os.Getenv("QUANTLIB_API_KEY")
-	if apiKey == "" {
-		utils.Warn("QUANTLIB_API_KEY not set, QuantLib API calls will fail")
-	}
-
 	return &Client{
 		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		apiKey: apiKey,
+		apiKey: os.Getenv("QUANTLIB_API_KEY"),
 		cache:  newCache(),
 	}
 }
 
 func (c *Client) doRequest(method, endpoint string, body any, result any) error {
-	if c.apiKey == "" {
-		return fmt.Errorf("QUANTLIB_API_KEY not configured. Please set the environment variable to use QuantLib services")
-	}
-
 	var reqBody io.Reader
 
 	if body != nil {
@@ -124,7 +114,9 @@ func (c *Client) doRequest(method, endpoint string, body any, result any) error 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "ETF-Insight/1.0")
 
-	req.Header.Set("X-API-Key", c.apiKey)
+	if c.apiKey != "" {
+		req.Header.Set("X-API-Key", c.apiKey)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
