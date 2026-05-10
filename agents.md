@@ -326,7 +326,7 @@ git push origin feature/your-feature-name
 - ✅ **测试覆盖**: 单元测试全部通过
   - `services/export/service/service_test.go` - 导出服务测试
 
-- 📋 **下一步**: 
+- 📋 **下一步**:
   - 添加更多数据转换器（ETF对比、因子分析等）
   - 实现真正的 PDF 生成（使用 gofpdf 库）
   - 添加导出历史记录和下载管理
