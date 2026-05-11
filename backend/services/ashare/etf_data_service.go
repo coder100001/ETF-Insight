@@ -217,6 +217,22 @@ func (s *ETFDataService) GetCoreETFPrices() ([]models.AShareDividendETF, error) 
 	return etfs, nil
 }
 
+// NeedsPriceRefresh 检查核心ETF是否需要刷新价格（检查所有核心ETF）
+func (s *ETFDataService) NeedsPriceRefresh() bool {
+	var etfs []models.AShareDividendETF
+	result := s.db.Where("symbol IN ? AND status = ?", CoreETFSymbols, 1).Find(&etfs)
+	if result.Error != nil || len(etfs) == 0 {
+		return true
+	}
+	// 只要有一个ETF需要刷新就返回true
+	for _, etf := range etfs {
+		if etf.PriceUpdatedAt.IsZero() {
+			return true
+		}
+	}
+	return false
+}
+
 // GetHistoricalPrices 获取历史价格
 func (s *ETFDataService) GetHistoricalPrices(symbol string, startDate, endDate time.Time) ([]ETFHistoricalData, error) {
 	if !s.useAKShare {
