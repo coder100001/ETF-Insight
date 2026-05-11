@@ -10,6 +10,7 @@ import (
 
 	"etf-insight/models"
 
+	"github.com/joho/godotenv"
 	"github.com/shopspring/decimal"
 )
 
@@ -19,10 +20,23 @@ const (
 
 // getFinageAPIKey 获取 Finage API Key，优先从环境变量读取
 func getFinageAPIKey() string {
+	// 尝试从多个位置加载 .env 文件
+	envPaths := []string{
+		".env",
+		"../.env",
+		"../../.env",
+	}
+	for _, path := range envPaths {
+		if err := godotenv.Load(path); err == nil {
+			break
+		}
+	}
+
 	key := os.Getenv("FINAGE_API_KEY")
 	if key == "" {
 		fmt.Println("⚠️ FINAGE_API_KEY 环境变量未设置，请先配置：")
 		fmt.Println("  export FINAGE_API_KEY=your_api_key_here")
+		fmt.Println("  或在 .env 文件中添加 FINAGE_API_KEY=your_api_key_here")
 		os.Exit(1)
 	}
 	return key
