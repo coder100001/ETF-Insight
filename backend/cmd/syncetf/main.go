@@ -11,8 +11,26 @@ import (
 	"etf-insight/services/sync"
 	"etf-insight/utils"
 
+	"github.com/joho/godotenv"
 	"github.com/shopspring/decimal"
 )
+
+// loadEnv 加载 .env 文件
+func loadEnv() {
+	// 尝试从多个位置加载 .env 文件
+	envPaths := []string{
+		".env",
+		"../.env",
+		"../../.env",
+	}
+	for _, path := range envPaths {
+		if err := godotenv.Load(path); err == nil {
+			fmt.Printf("✅ 已加载 .env 文件: %s\n", path)
+			return
+		}
+	}
+	fmt.Println("⚠️ 未找到 .env 文件，将使用环境变量")
+}
 
 // SyncApplication 同步应用
 type SyncApplication struct {
@@ -82,6 +100,9 @@ func NewSyncApplication() (*SyncApplication, error) {
 }
 
 func main() {
+	// 加载 .env 文件
+	loadEnv()
+
 	// 初始化日志
 	utils.InitLogger("info")
 
