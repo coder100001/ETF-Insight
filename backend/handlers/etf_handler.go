@@ -137,6 +137,9 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 		}
 	}
 
+	// 获取数据源状态
+	dataSourceStatus := h.getDataSourceStatus()
+
 	response := gin.H{
 		"success": true,
 		"data":    etfList,
@@ -146,9 +149,59 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 			"total":      totalCount,
 			"totalPages": (totalCount + int64(pageSize) - 1) / int64(pageSize),
 		},
+		"data_source_status": dataSourceStatus,
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// getDataSourceStatus 获取数据源状态
+func (h *ETFHandler) getDataSourceStatus() map[string]any {
+	finageAPIKey := os.Getenv("FINAGE_API_KEY")
+	
+	// 检查数据库中最新的数据
+	var latestData models.ETFData
+	result := models.DB.Order("date DESC").First(&latestData)
+	
+	dataAge := "unknown"
+	dataSource := "none"
+	dataStatus := "no_data"
+	
+	if result.Error == nil {
+		dataSource = latestData.DataSource
+		hours := time.Since(latestData.Date).Hours()
+		if hours < 24 {
+			dataAge = fmt.Sprintf("%.0f hours ago", hours)
+			dataStatus = "recent"
+		} else if hours < 168 { // 7 days
+			dataAge = fmt.Sprintf("%.0f days ago", hours/24)
+			dataStatus = "outdated"
+		} else {
+			dataAge = fmt.Sprintf("%.0f days ago", hours/24)
+			dataStatus = "stale"
+		}
+	}
+	
+	// 生成警告信息
+	warnings := make([]string, 0)
+	if finageAPIKey == "" {
+		warnings = append(warnings, "FINAGE_API_KEY not configured. Set the environment variable to fetch real-time data.")
+	}
+	if dataStatus == "stale" {
+		warnings = append(warnings, fmt.Sprintf("Data is %s old. Run data sync to update.", dataAge))
+	}
+	if dataSource == "mock" || dataSource == "generated" {
+		warnings = append(warnings, "Using simulated data. Configure FINAGE_API_KEY for real market data.")
+	}
+	
+	return map[string]any{
+		"finage_configured": finageAPIKey != "",
+		"data_source":       dataSource,
+		"data_age":          dataAge,
+		"data_status":       dataStatus,
+		"latest_date":       latestData.Date,
+		"warnings":          warnings,
+	}
 }
 
 // getETFDetailData 获取单个 ETF 的详细数据
