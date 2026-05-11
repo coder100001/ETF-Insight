@@ -414,14 +414,16 @@ type ETFPriceResponse struct {
 }
 
 // GetETFPrices 获取核心ETF价格（通过Service层）
-// 首次调用时自动从新浪/东方财富/腾讯等数据源刷新价格
+// 首次调用时自动从新浪/东方财富/腾讯等数据源刷新价格（后台异步）
 func (h *ASharePortfolioHandler) GetETFPrices(c *gin.Context) {
-	// 检查价格是否为空（未初始化），自动触发刷新
+	// 检查价格是否为空（未初始化），后台异步触发刷新
 	if h.etfService.NeedsPriceRefresh() {
-		priceService := services.NewASharePriceService(models.DB)
-		if err := priceService.UpdateAllETFPrices(); err != nil {
-			utils.Error("自动刷新ETF价格失败", err)
-		}
+		go func() {
+			priceService := services.NewASharePriceService(models.DB)
+			if err := priceService.UpdateAllETFPrices(); err != nil {
+				utils.Error("自动刷新ETF价格失败", err)
+			}
+		}()
 	}
 
 	etfs, err := h.etfService.GetCoreETFPrices()

@@ -58,8 +58,8 @@ func (s *ETFDataService) SyncETFList() error {
 		}
 	}
 
-	coreSet := make(map[string]bool, len(CoreETFSymbols))
-	for _, sym := range CoreETFSymbols {
+	coreSet := make(map[string]bool, len(constants.CoreETFSymbols))
+	for _, sym := range constants.CoreETFSymbols {
 		coreSet[sym] = true
 	}
 
@@ -198,35 +198,34 @@ func (s *ETFDataService) GetAllETFPrices() ([]models.AShareDividendETF, error) {
 	return etfs, nil
 }
 
-// CoreETFSymbols 核心ETF白名单（组合内ETF）
-var CoreETFSymbols = constants.CoreETFSymbols
-
 // GetCoreETFPrices 获取核心ETF价格（白名单过滤）
 func (s *ETFDataService) GetCoreETFPrices() ([]models.AShareDividendETF, error) {
 	var etfs []models.AShareDividendETF
-	result := s.db.Where("symbol IN ? AND status = ?", CoreETFSymbols, 1).Find(&etfs)
+	result := s.db.Where("symbol IN ? AND status = ?", constants.CoreETFSymbols, 1).Find(&etfs)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
 	if s.useAKShare && len(etfs) > 0 {
-		s.SyncETFPrices(CoreETFSymbols)
-		s.db.Where("symbol IN ? AND status = ?", CoreETFSymbols, 1).Find(&etfs)
+		s.SyncETFPrices(constants.CoreETFSymbols)
+		s.db.Where("symbol IN ? AND status = ?", constants.CoreETFSymbols, 1).Find(&etfs)
 	}
 
 	return etfs, nil
 }
 
 // NeedsPriceRefresh 检查核心ETF是否需要刷新价格（检查所有核心ETF）
+// 检查条件：从未刷新过 或 超过1小时未刷新
 func (s *ETFDataService) NeedsPriceRefresh() bool {
 	var etfs []models.AShareDividendETF
-	result := s.db.Where("symbol IN ? AND status = ?", CoreETFSymbols, 1).Find(&etfs)
+	result := s.db.Where("symbol IN ? AND status = ?", constants.CoreETFSymbols, 1).Find(&etfs)
 	if result.Error != nil || len(etfs) == 0 {
 		return true
 	}
 	// 只要有一个ETF需要刷新就返回true
+	maxAge := 1 * time.Hour
 	for _, etf := range etfs {
-		if etf.PriceUpdatedAt.IsZero() {
+		if etf.PriceUpdatedAt.IsZero() || time.Since(etf.PriceUpdatedAt) > maxAge {
 			return true
 		}
 	}
