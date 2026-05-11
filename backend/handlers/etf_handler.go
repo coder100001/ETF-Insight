@@ -158,15 +158,15 @@ func (h *ETFHandler) GetETFList(c *gin.Context) {
 // getDataSourceStatus 获取数据源状态
 func (h *ETFHandler) getDataSourceStatus() map[string]any {
 	finageAPIKey := os.Getenv("FINAGE_API_KEY")
-	
+
 	// 检查数据库中最新的数据
 	var latestData models.ETFData
 	result := models.DB.Order("date DESC").First(&latestData)
-	
+
 	dataAge := "unknown"
 	dataSource := "none"
 	dataStatus := "no_data"
-	
+
 	if result.Error == nil {
 		dataSource = latestData.DataSource
 		hours := time.Since(latestData.Date).Hours()
@@ -181,7 +181,7 @@ func (h *ETFHandler) getDataSourceStatus() map[string]any {
 			dataStatus = "stale"
 		}
 	}
-	
+
 	// 生成警告信息
 	warnings := make([]string, 0)
 	if finageAPIKey == "" {
@@ -193,7 +193,7 @@ func (h *ETFHandler) getDataSourceStatus() map[string]any {
 	if dataSource == "mock" || dataSource == "generated" {
 		warnings = append(warnings, "Using simulated data. Configure FINAGE_API_KEY for real market data.")
 	}
-	
+
 	return map[string]any{
 		"finage_configured": finageAPIKey != "",
 		"data_source":       dataSource,
