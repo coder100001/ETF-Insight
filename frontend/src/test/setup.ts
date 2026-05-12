@@ -61,6 +61,7 @@ if (typeof globalThis !== 'undefined') {
     scrollTo: vi.fn(),
     innerWidth: 1024,
     innerHeight: 768,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     getComputedStyle: vi.fn().mockImplementation((_element: any, _pseudoElement?: string) => ({
       getPropertyValue: vi.fn(),
     })),
