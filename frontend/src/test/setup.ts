@@ -46,8 +46,8 @@ if (typeof globalThis !== 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globalAny = globalThis as any;
 
-  // 定义 window mock，不管 window 是否已经存在
-  const windowMock = {
+  // jsdom 缺失的核心 window 属性
+  const essentialWindowMock = {
     matchMedia: vi.fn().mockImplementation((query: string) => ({
       matches: false,
       media: query,
@@ -65,6 +65,13 @@ if (typeof globalThis !== 'undefined') {
     getComputedStyle: vi.fn().mockImplementation((_element: any, _pseudoElement?: string) => ({
       getPropertyValue: vi.fn(),
     })),
+    requestAnimationFrame,
+    cancelAnimationFrame,
+  };
+
+  // 完整 window mock（仅在 window 不存在时使用）
+  const fullWindowMock = {
+    ...essentialWindowMock,
     location: {
       href: 'http://localhost/',
       search: '',
@@ -126,20 +133,18 @@ if (typeof globalThis !== 'undefined') {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
-    requestAnimationFrame,
-    cancelAnimationFrame,
     setTimeout,
     clearTimeout,
     setInterval,
     clearInterval,
   };
 
-  // 确保 window 存在并且有我们需要的属性
   if (!globalAny.window) {
-    globalAny.window = windowMock;
+    // window 不存在（非 jsdom 环境），使用完整 mock
+    globalAny.window = fullWindowMock;
   } else {
-    // 如果 window 已经存在，合并我们的 mock
-    Object.assign(globalAny.window, windowMock);
+    // window 已存在（jsdom 环境），仅合并 jsdom 缺失的属性
+    Object.assign(globalAny.window, essentialWindowMock);
   }
 
   // 同步到 globalThis (只复制 globalThis 上不存在的属性，避免覆盖 crypto 等只读 getter)
