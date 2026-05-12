@@ -42,99 +42,106 @@ console.error = (...args: unknown[]) => {
 
 // 完整模拟浏览器环境
 if (typeof globalThis !== 'undefined') {
-  // 模拟 window 对象
-  if (typeof globalThis.window === 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).window = {
-      matchMedia: vi.fn().mockImplementation(query => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-      scrollTo: vi.fn(),
-      innerWidth: 1024,
-      innerHeight: 768,
-      getComputedStyle: vi.fn().mockImplementation(() => ({
-        getPropertyValue: vi.fn(),
-      })),
-      location: {
-        href: 'http://localhost/',
-        search: '',
-        hash: '',
-        pathname: '/',
-        host: 'localhost',
-        hostname: 'localhost',
-        port: '',
-        protocol: 'http:',
-        assign: vi.fn(),
-        replace: vi.fn(),
-        reload: vi.fn(),
-      },
-      navigator: {
-        userAgent: 'node.js',
-        platform: 'linux',
-        language: 'en-US',
-        languages: ['en-US', 'en'],
-        onLine: true,
-        cookieEnabled: true,
-      },
-      document: {
-        createElement: vi.fn().mockImplementation(tag => ({
-          tagName: tag.toUpperCase(),
-          setAttribute: vi.fn(),
-          getAttribute: vi.fn(),
-          removeAttribute: vi.fn(),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          style: {},
-          dataset: {},
-          appendChild: vi.fn(),
-          removeChild: vi.fn(),
-          insertBefore: vi.fn(),
-        })),
-        createTextNode: vi.fn().mockImplementation(text => ({
-          nodeType: 3,
-          textContent: text,
-          nodeValue: text,
-        })),
-        querySelector: vi.fn(),
-        querySelectorAll: vi.fn().mockReturnValue([]),
-        getElementById: vi.fn(),
-        getElementsByTagName: vi.fn().mockReturnValue([]),
-        getElementsByClassName: vi.fn().mockReturnValue([]),
-        createEvent: vi.fn(),
-        body: {
-          appendChild: vi.fn(),
-          removeChild: vi.fn(),
-        },
-        head: {
-          appendChild: vi.fn(),
-          removeChild: vi.fn(),
-        },
-        readyState: 'complete',
-        cookie: '',
-        title: '',
-      },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globalAny = globalThis as any;
+
+  // 定义 window mock，不管 window 是否已经存在
+  const windowMock = {
+    matchMedia: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
-      requestAnimationFrame,
-      cancelAnimationFrame,
-      setTimeout,
-      clearTimeout,
-      setInterval,
-      clearInterval,
-    }
+    })),
+    scrollTo: vi.fn(),
+    innerWidth: 1024,
+    innerHeight: 768,
+    getComputedStyle: vi.fn().mockImplementation(() => ({
+      getPropertyValue: vi.fn(),
+    })),
+    location: {
+      href: 'http://localhost/',
+      search: '',
+      hash: '',
+      pathname: '/',
+      host: 'localhost',
+      hostname: 'localhost',
+      port: '',
+      protocol: 'http:',
+      assign: vi.fn(),
+      replace: vi.fn(),
+      reload: vi.fn(),
+    },
+    navigator: {
+      userAgent: 'node.js',
+      platform: 'linux',
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+      onLine: true,
+      cookieEnabled: true,
+    },
+    document: {
+      createElement: vi.fn().mockImplementation((tag: string) => ({
+        tagName: tag.toUpperCase(),
+        setAttribute: vi.fn(),
+        getAttribute: vi.fn(),
+        removeAttribute: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        style: {},
+        dataset: {},
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+        insertBefore: vi.fn(),
+      })),
+      createTextNode: vi.fn().mockImplementation((text: string) => ({
+        nodeType: 3,
+        textContent: text,
+        nodeValue: text,
+      })),
+      querySelector: vi.fn(),
+      querySelectorAll: vi.fn().mockReturnValue([]),
+      getElementById: vi.fn(),
+      getElementsByTagName: vi.fn().mockReturnValue([]),
+      getElementsByClassName: vi.fn().mockReturnValue([]),
+      createEvent: vi.fn(),
+      body: {
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+      },
+      head: {
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+      },
+      readyState: 'complete',
+      cookie: '',
+      title: '',
+    },
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    requestAnimationFrame,
+    cancelAnimationFrame,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+  };
 
-    // 将 window 的属性同步到 globalThis
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Object.assign(globalThis, (globalThis as any).window)
+  // 确保 window 存在并且有我们需要的属性
+  if (!globalAny.window) {
+    globalAny.window = windowMock;
+  } else {
+    // 如果 window 已经存在，合并我们的 mock
+    Object.assign(globalAny.window, windowMock);
   }
+
+  // 同步到 globalThis
+  Object.assign(globalAny, globalAny.window);
 
   // 全局 mock fetch，防止测试中的请求挂起
   if (typeof vi !== 'undefined') {
@@ -145,9 +152,9 @@ if (typeof globalThis !== 'undefined') {
       status: 200,
       statusText: 'OK',
       headers: new Headers(),
-    } as Response
+    } as Response;
 
-    globalThis.fetch = vi.fn().mockImplementation(() => Promise.resolve(mockResponse))
+    globalAny.fetch = vi.fn().mockImplementation(() => Promise.resolve(mockResponse));
   }
 }
 
