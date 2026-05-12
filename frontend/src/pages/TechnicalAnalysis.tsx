@@ -411,7 +411,7 @@ const TechnicalAnalysis: React.FC = () => {
                     </Row>
                     <div style={{ marginTop: theme.spacing.md }}>
                       <Alert
-                        message={
+                        title={
                           indicator.bollingerMiddle > indicator.bollingerLower &&
                           indicator.bollingerMiddle < indicator.bollingerUpper
                             ? '价格位于布林带中部，趋势稳定'

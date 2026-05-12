@@ -66,7 +66,7 @@ const WeightConstraints: React.FC<{
 }> = ({ selectedETFs, minWeights, maxWeights, onMinWeightsChange, onMaxWeightsChange }) => (
   <StyledCard title="权重约束">
     <Alert
-      message="权重约束设置"
+      title="权重约束设置"
       description="可以为每个ETF设置最小和最大权重限制。如果不设置，默认为0-100%。"
       type="info"
       showIcon

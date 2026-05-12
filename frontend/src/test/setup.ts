@@ -1,9 +1,6 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// 启用 fake timers - 这是修复的核心！
-vi.useFakeTimers()
-
 declare global {
   var ResizeObserver: typeof ResizeObserver
   var IntersectionObserver: typeof IntersectionObserver

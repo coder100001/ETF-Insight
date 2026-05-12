@@ -5,10 +5,26 @@ import { ConfigProvider, App as AntdApp } from 'antd'
 import FactorTiming from '../FactorTiming'
 
 beforeEach(() => {
+  // Mock ResizeObserver
   globalThis.ResizeObserver = class ResizeObserver {
     observe() {}
     unobserve() {}
     disconnect() {}
+  }
+  
+  // Mock window and related APIs if not available
+  if (typeof globalThis.window === 'undefined') {
+    (globalThis as any).window = {
+      matchMedia: vi.fn().mockImplementation(() => ({
+        matches: false,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+      scrollTo: vi.fn(),
+    };
   }
 })
 

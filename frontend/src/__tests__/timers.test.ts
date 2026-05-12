@@ -1,9 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 describe('Timers Test', () => {
   beforeEach(() => {
-    // 每次测试前重置所有 mocks
-    vi.clearAllTimers()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should mock setTimeout correctly', () => {

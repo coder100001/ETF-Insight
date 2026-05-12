@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Select, Button, Row, Col, Statistic, Tag, message, InputNumber, Alert, Table, Tabs } from 'antd';
+import { Card, Select, Button, Row, Col, Statistic, Tag, App, InputNumber, Alert, Table, Tabs } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, RobotOutlined } from '@ant-design/icons';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import styled from 'styled-components';
@@ -87,6 +87,7 @@ const getSignalLabel = (strength: SignalStrength): string => {
 };
 
 const FactorTiming: React.FC = () => {
+  const { message } = App.useApp();
   const [selectedFactor, setSelectedFactor] = useState('Mkt-RF');
   const [lookbackDays, setLookbackDays] = useState(60);
   const [signal, setSignal] = useState<FactorTimingSignal | null>(null);
@@ -273,7 +274,7 @@ const FactorTiming: React.FC = () => {
                   </Row>
                   {generatedView && (
                     <Alert
-                      message="Alpha观点已生成"
+                      title="Alpha观点已生成"
                       description={
                         <div>
                           <p><strong>资产:</strong> {generatedView.asset_symbol}</p>

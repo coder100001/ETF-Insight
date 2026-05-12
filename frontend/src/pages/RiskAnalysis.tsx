@@ -232,7 +232,7 @@ const RiskAnalysis: React.FC = () => {
 
       {error && (
         <Alert
-          message="数据获取失败"
+          title="数据获取失败"
           description={error}
           type="error"
           style={{ marginBottom: theme.spacing.lg }}
@@ -403,7 +403,7 @@ const RiskAnalysis: React.FC = () => {
                 </Row>
                 <Alert
                   style={{ marginTop: theme.spacing.md }}
-                  message="风险解释"
+                  title="风险解释"
                   description="Beta 衡量相对于市场的波动性，Alpha 表示超额收益能力。"
                   type="info"
                   showIcon
@@ -429,7 +429,7 @@ const RiskAnalysis: React.FC = () => {
             />
             <Alert
               style={{ marginTop: theme.spacing.md }}
-              message="成分 VaR 说明"
+              title="成分 VaR 说明"
               description="成分 VaR 表示每个资产对组合总风险的贡献度。边际 VaR 表示增加该资产配置对组合风险的影响程度。"
               type="info"
               showIcon

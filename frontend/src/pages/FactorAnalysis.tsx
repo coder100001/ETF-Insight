@@ -389,7 +389,7 @@ const FactorAnalysis: React.FC = () => {
 
         {error && (
           <Alert
-            message="错误"
+            title="错误"
             description={error}
             type="error"
             closable
