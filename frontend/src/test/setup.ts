@@ -19,7 +19,8 @@ console.warn = (...args: unknown[]) => {
     message.includes('TabPane') ||
     message.includes('message is deprecated') ||
     message.includes('valueStyle is deprecated') ||
-    message.includes('Please use')
+    message.includes('Please use') ||
+    message.includes('Not implemented: Window\'s getComputedStyle() method: with pseudo-elements')
   ) {
     return
   }
@@ -60,7 +61,7 @@ if (typeof globalThis !== 'undefined') {
     scrollTo: vi.fn(),
     innerWidth: 1024,
     innerHeight: 768,
-    getComputedStyle: vi.fn().mockImplementation(() => ({
+    getComputedStyle: vi.fn().mockImplementation((_element: any, _pseudoElement?: string) => ({
       getPropertyValue: vi.fn(),
     })),
     location: {
