@@ -142,8 +142,16 @@ if (typeof globalThis !== 'undefined') {
     Object.assign(globalAny.window, windowMock);
   }
 
-  // 同步到 globalThis
-  Object.assign(globalAny, globalAny.window);
+  // 同步到 globalThis (只复制 globalThis 上不存在的属性，避免覆盖 crypto 等只读 getter)
+  Object.keys(globalAny.window).forEach(key => {
+    if (!(key in globalAny)) {
+      try {
+        globalAny[key] = globalAny.window[key];
+      } catch {
+        // 跳过只读属性
+      }
+    }
+  });
 
   // 全局 mock fetch，防止测试中的请求挂起
   if (typeof vi !== 'undefined') {
