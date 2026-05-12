@@ -11,10 +11,11 @@ beforeEach(() => {
     unobserve() {}
     disconnect() {}
   }
-  
+
   // Mock window and related APIs if not available
   if (typeof globalThis.window === 'undefined') {
-    (globalThis as any).window = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).window = {
       matchMedia: vi.fn().mockImplementation(() => ({
         matches: false,
         addListener: vi.fn(),
