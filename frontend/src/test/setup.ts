@@ -7,8 +7,6 @@ vi.useFakeTimers()
 declare global {
   var ResizeObserver: typeof ResizeObserver
   var IntersectionObserver: typeof IntersectionObserver
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  var window: any
 }
 
 // 抑制 antd 废弃警告，避免 CI/CD 日志膨胀
