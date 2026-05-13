@@ -142,17 +142,20 @@ func (e *BacktestEngine) SetDataProvider(provider DataProvider) {
 	e.dataProvider = provider
 }
 
-// SetCurrentCapital 设置当前资金（用于适配器）
+// SetCurrentCapital 设置当前资金
+// 注意：此方法仅用于 EventDrivenEngine 适配器场景，常规回测中资金应通过交易操作自动更新
 func (e *BacktestEngine) SetCurrentCapital(capital decimal.Decimal) {
 	e.currentCapital = capital
 }
 
-// SetPositions 设置持仓（用于适配器）
+// SetPositions 设置持仓
+// 注意：此方法仅用于 EventDrivenEngine 适配器场景，常规回测中持仓应通过交易操作自动更新
 func (e *BacktestEngine) SetPositions(positions map[string]*Position) {
 	e.positions = positions
 }
 
-// SetEquityCurve 设置权益曲线（用于适配器）
+// SetEquityCurve 设置权益曲线
+// 注意：此方法仅用于 EventDrivenEngine 适配器场景，常规回测中权益曲线应通过 recordEquity 自动更新
 func (e *BacktestEngine) SetEquityCurve(curve []*EquityPoint) {
 	e.equityCurve = curve
 }

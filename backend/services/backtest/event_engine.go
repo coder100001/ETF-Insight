@@ -284,47 +284,6 @@ type EventDrivenEngine struct {
 	lastRebalanceDate time.Time
 }
 
-// EventDrivenEngineAdapter 事件驱动引擎适配器
-// 用于将 EventDrivenEngine 适配为 BacktestEngine 接口，供策略使用
-type EventDrivenEngineAdapter struct {
-	engine *EventDrivenEngine
-}
-
-// NewEventDrivenEngineAdapter 创建适配器
-func NewEventDrivenEngineAdapter(engine *EventDrivenEngine) *EventDrivenEngineAdapter {
-	return &EventDrivenEngineAdapter{engine: engine}
-}
-
-// GetCurrentCapital 获取当前资金
-func (a *EventDrivenEngineAdapter) GetCurrentCapital() decimal.Decimal {
-	return a.engine.currentCapital
-}
-
-// GetInitialCapital 获取初始资金
-func (a *EventDrivenEngineAdapter) GetInitialCapital() decimal.Decimal {
-	return a.engine.initialCapital
-}
-
-// GetPositions 获取持仓
-func (a *EventDrivenEngineAdapter) GetPositions() map[string]*Position {
-	return a.engine.positions
-}
-
-// GetPosition 获取指定标的的持仓
-func (a *EventDrivenEngineAdapter) GetPosition(symbol string) *Position {
-	return a.engine.positions[symbol]
-}
-
-// GetCurrentDate 获取当前日期
-func (a *EventDrivenEngineAdapter) GetCurrentDate() time.Time {
-	return a.engine.currentDate
-}
-
-// GetEquityCurve 获取权益曲线
-func (a *EventDrivenEngineAdapter) GetEquityCurve() []*EquityPoint {
-	return a.engine.equityCurve
-}
-
 // NewEventDrivenEngine 创建事件驱动回测引擎
 func NewEventDrivenEngine(initialCapital float64, strategy Strategy) *EventDrivenEngine {
 	capital := decimal.NewFromFloat(initialCapital)
@@ -959,7 +918,9 @@ func (e *EventDrivenEngine) generateResult() *EventDrivenBacktestResult {
 	finalEquity := e.equityCurve[len(e.equityCurve)-1].Equity
 	totalReturn := finalEquity.Sub(e.initialCapital).Div(e.initialCapital).Mul(decimal.NewFromInt(100))
 
-	// 计算年化收益率 (复利公式: (final/initial)^(1/years) - 1)
+	// 计算年化收益率
+	// 公式: annualized = ((final/initial)^(1/years) - 1) * 100%
+	// 示例: 2年翻倍 -> ((20000/10000)^(1/2) - 1) * 100% = 41.42%
 	durationDays := int(e.endDate.Sub(e.startDate).Hours() / 24)
 	var annualizedReturn decimal.Decimal
 	if durationDays > 0 && e.initialCapital.GreaterThan(decimal.Zero) {

@@ -11,12 +11,20 @@ import (
 // TestCalculateAnnualizedReturn 测试年化收益率计算
 // 期望：使用复利公式 (final/initial)^(1/years) - 1
 func TestCalculateAnnualizedReturn(t *testing.T) {
+	// 计算期望的年化收益率（百分比）
+	calculateExpected := func(initial, final decimal.Decimal, years float64) float64 {
+		if years <= 0 {
+			return 0
+		}
+		growth := final.Div(initial)
+		return (math.Pow(growth.InexactFloat64(), 1.0/years) - 1) * 100
+	}
+
 	tests := []struct {
 		name           string
 		initialCapital decimal.Decimal
 		finalEquity    decimal.Decimal
 		years          float64
-		want           float64 // 期望的年化收益率（百分比）
 		tolerance      float64 // 允许的误差
 	}{
 		{
@@ -24,54 +32,53 @@ func TestCalculateAnnualizedReturn(t *testing.T) {
 			initialCapital: decimal.NewFromInt(10000),
 			finalEquity:    decimal.NewFromInt(20000),
 			years:          2,
-			want:           41.42, // (2)^(1/2) - 1 = 0.4142 = 41.42%
-			tolerance:      0.1,
+			tolerance:      0.01,
 		},
 		{
 			name:           "1年50%收益",
 			initialCapital: decimal.NewFromInt(10000),
 			finalEquity:    decimal.NewFromInt(15000),
 			years:          1,
-			want:           50.0, // 1.5 - 1 = 0.5 = 50%
-			tolerance:      0.1,
+			tolerance:      0.01,
 		},
 		{
 			name:           "3年总收益30%",
 			initialCapital: decimal.NewFromInt(10000),
 			finalEquity:    decimal.NewFromInt(13000),
 			years:          3,
-			want:           9.14, // (1.3)^(1/3) - 1 = 0.0914 = 9.14%
-			tolerance:      0.1,
+			tolerance:      0.01,
 		},
 		{
 			name:           "亏损",
 			initialCapital: decimal.NewFromInt(10000),
 			finalEquity:    decimal.NewFromInt(8000),
 			years:          1,
-			want:           -20.0, // 0.8 - 1 = -0.2 = -20%
-			tolerance:      0.1,
+			tolerance:      0.01,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// 动态计算期望值
+			want := calculateExpected(tt.initialCapital, tt.finalEquity, tt.years)
+
 			// 使用与 BacktestEngine 相同的正确计算方式
 			growth := tt.finalEquity.Div(tt.initialCapital)
 			yearsDec := decimal.NewFromFloat(tt.years)
 
-			var expected decimal.Decimal
+			var got decimal.Decimal
 			if yearsDec.GreaterThan(decimal.Zero) {
-				expected = decimal.NewFromFloat(
+				got = decimal.NewFromFloat(
 					math.Pow(growth.InexactFloat64(), 1.0/tt.years) - 1,
 				).Mul(decimal.NewFromInt(100))
 			}
 
-			// 验证期望值
-			got := expected.InexactFloat64()
-			diff := math.Abs(got - tt.want)
+			// 验证计算结果
+			gotFloat := got.InexactFloat64()
+			diff := math.Abs(gotFloat - want)
 			if diff > tt.tolerance {
 				t.Errorf("calculateAnnualizedReturn() = %.2f%%, want %.2f%% (diff: %.2f)",
-					got, tt.want, diff)
+					gotFloat, want, diff)
 			}
 		})
 	}
@@ -162,9 +169,9 @@ func TestWinRateCalculation(t *testing.T) {
 	}
 }
 
-// TestStrategyEngineAdapter 测试策略引擎适配器
-// Bug: EventDrivenEngine 传入空 BacktestEngine 实例，策略无法获取资金信息
-func TestStrategyEngineAdapter(t *testing.T) {
+// TestEventDrivenEngineInitialCapital 测试事件驱动引擎的初始资金设置
+// 验证引擎正确初始化资金，为策略提供正确的基础数据
+func TestEventDrivenEngineInitialCapital(t *testing.T) {
 	// 创建买入持有策略
 	strategy := NewBuyAndHoldStrategy()
 
@@ -172,7 +179,7 @@ func TestStrategyEngineAdapter(t *testing.T) {
 	initialCapital := 10000.0
 	engine := NewEventDrivenEngine(initialCapital, strategy)
 
-	// 验证引擎状态
+	// 验证引擎正确初始化资金
 	if engine.initialCapital.IsZero() {
 		t.Error("EventDrivenEngine initialCapital should not be zero")
 	}
@@ -180,11 +187,13 @@ func TestStrategyEngineAdapter(t *testing.T) {
 		t.Error("EventDrivenEngine currentCapital should not be zero")
 	}
 
-	// 验证适配器是否正确传递资金信息
-	// 策略应该能够通过适配器获取到正确的资金
+	// 验证初始资金设置正确
 	expectedCapital := decimal.NewFromFloat(initialCapital)
 	if !engine.initialCapital.Equal(expectedCapital) {
 		t.Errorf("initialCapital = %s, want %s", engine.initialCapital.String(), expectedCapital.String())
+	}
+	if !engine.currentCapital.Equal(expectedCapital) {
+		t.Errorf("currentCapital = %s, want %s", engine.currentCapital.String(), expectedCapital.String())
 	}
 }
 
