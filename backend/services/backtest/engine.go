@@ -142,6 +142,21 @@ func (e *BacktestEngine) SetDataProvider(provider DataProvider) {
 	e.dataProvider = provider
 }
 
+// SetCurrentCapital 设置当前资金（用于适配器）
+func (e *BacktestEngine) SetCurrentCapital(capital decimal.Decimal) {
+	e.currentCapital = capital
+}
+
+// SetPositions 设置持仓（用于适配器）
+func (e *BacktestEngine) SetPositions(positions map[string]*Position) {
+	e.positions = positions
+}
+
+// SetEquityCurve 设置权益曲线（用于适配器）
+func (e *BacktestEngine) SetEquityCurve(curve []*EquityPoint) {
+	e.equityCurve = curve
+}
+
 // Run 运行回测
 func (e *BacktestEngine) Run(startDate, endDate time.Time) (*BacktestResult, error) {
 	e.startDate = startDate

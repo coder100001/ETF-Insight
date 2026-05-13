@@ -2,6 +2,7 @@ package backtest
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -126,6 +127,7 @@ type Fill struct {
 	Commission   decimal.Decimal `json:"commission"`
 	Timestamp    time.Time       `json:"timestamp"`
 	StrategyName string          `json:"strategy_name"`
+	RealizedPnL  decimal.Decimal `json:"realized_pnl"` // 本次成交的已实现盈亏
 }
 
 // FillEvent 成交事件
@@ -282,6 +284,47 @@ type EventDrivenEngine struct {
 	lastRebalanceDate time.Time
 }
 
+// EventDrivenEngineAdapter 事件驱动引擎适配器
+// 用于将 EventDrivenEngine 适配为 BacktestEngine 接口，供策略使用
+type EventDrivenEngineAdapter struct {
+	engine *EventDrivenEngine
+}
+
+// NewEventDrivenEngineAdapter 创建适配器
+func NewEventDrivenEngineAdapter(engine *EventDrivenEngine) *EventDrivenEngineAdapter {
+	return &EventDrivenEngineAdapter{engine: engine}
+}
+
+// GetCurrentCapital 获取当前资金
+func (a *EventDrivenEngineAdapter) GetCurrentCapital() decimal.Decimal {
+	return a.engine.currentCapital
+}
+
+// GetInitialCapital 获取初始资金
+func (a *EventDrivenEngineAdapter) GetInitialCapital() decimal.Decimal {
+	return a.engine.initialCapital
+}
+
+// GetPositions 获取持仓
+func (a *EventDrivenEngineAdapter) GetPositions() map[string]*Position {
+	return a.engine.positions
+}
+
+// GetPosition 获取指定标的的持仓
+func (a *EventDrivenEngineAdapter) GetPosition(symbol string) *Position {
+	return a.engine.positions[symbol]
+}
+
+// GetCurrentDate 获取当前日期
+func (a *EventDrivenEngineAdapter) GetCurrentDate() time.Time {
+	return a.engine.currentDate
+}
+
+// GetEquityCurve 获取权益曲线
+func (a *EventDrivenEngineAdapter) GetEquityCurve() []*EquityPoint {
+	return a.engine.equityCurve
+}
+
 // NewEventDrivenEngine 创建事件驱动回测引擎
 func NewEventDrivenEngine(initialCapital float64, strategy Strategy) *EventDrivenEngine {
 	capital := decimal.NewFromFloat(initialCapital)
@@ -372,6 +415,10 @@ func (e *EventDrivenEngine) Run(startDate, endDate time.Time) (*EventDrivenBackt
 	// 按日期排序
 	sortDataByDate(data)
 
+	// 预创建临时的 BacktestEngine 实例，避免在循环中重复创建
+	// 这个实例用于向策略提供 EventDrivenEngine 的当前状态
+	tempEngine := NewBacktestEngine(e.initialCapital.InexactFloat64(), e.strategy)
+
 	// 事件驱动循环
 	for _, bar := range data {
 		e.currentDate = bar.Date
@@ -406,7 +453,11 @@ func (e *EventDrivenEngine) Run(startDate, endDate time.Time) (*EventDrivenBackt
 		e.processSplits(bar)
 
 		// 策略信号生成
-		signals := e.strategy.GenerateSignals(&BacktestEngine{}, bar)
+		// 更新临时引擎的状态，使其反映 EventDrivenEngine 的当前状态
+		tempEngine.SetCurrentCapital(e.currentCapital)
+		tempEngine.SetPositions(e.positions)
+		tempEngine.SetEquityCurve(e.equityCurve)
+		signals := e.strategy.GenerateSignals(tempEngine, bar)
 
 		// 将信号转换为订单
 		for _, signal := range signals {
@@ -599,14 +650,16 @@ func (e *EventDrivenEngine) executeOrder(order *Order, price decimal.Decimal, ti
 		Timestamp:    timestamp,
 		StrategyName: order.StrategyName,
 	}
-	e.fills = append(e.fills, fill)
 
-	// 更新持仓和资金
+	// 更新持仓和资金，并计算盈亏
 	if isBuy {
 		e.executeBuy(order.Symbol, order.Quantity, executionPrice, commission, timestamp)
 	} else {
-		e.executeSell(order.Symbol, order.Quantity, executionPrice, commission, timestamp)
+		realizedPnL := e.executeSell(order.Symbol, order.Quantity, executionPrice, commission, timestamp)
+		fill.RealizedPnL = realizedPnL
 	}
+
+	e.fills = append(e.fills, fill)
 
 	// 发送成交事件
 	fillEvent := &FillEvent{
@@ -649,10 +702,10 @@ func (e *EventDrivenEngine) executeBuy(symbol string, quantity, price, commissio
 }
 
 // executeSell 执行卖出
-func (e *EventDrivenEngine) executeSell(symbol string, quantity, price, commission decimal.Decimal, timestamp time.Time) {
+func (e *EventDrivenEngine) executeSell(symbol string, quantity, price, commission decimal.Decimal, timestamp time.Time) decimal.Decimal {
 	position, exists := e.positions[symbol]
 	if !exists || position.Quantity.LessThan(quantity) {
-		return
+		return decimal.Zero
 	}
 
 	totalRevenue := price.Mul(quantity).Sub(commission)
@@ -670,6 +723,8 @@ func (e *EventDrivenEngine) executeSell(symbol string, quantity, price, commissi
 
 	// 增加资金
 	e.currentCapital = e.currentCapital.Add(totalRevenue)
+
+	return realizedPnL
 }
 
 // checkStopLossTakeProfit 检查止损止盈
@@ -904,16 +959,19 @@ func (e *EventDrivenEngine) generateResult() *EventDrivenBacktestResult {
 	finalEquity := e.equityCurve[len(e.equityCurve)-1].Equity
 	totalReturn := finalEquity.Sub(e.initialCapital).Div(e.initialCapital).Mul(decimal.NewFromInt(100))
 
-	// 计算年化收益率
+	// 计算年化收益率 (复利公式: (final/initial)^(1/years) - 1)
 	durationDays := int(e.endDate.Sub(e.startDate).Hours() / 24)
 	var annualizedReturn decimal.Decimal
 	if durationDays > 0 && e.initialCapital.GreaterThan(decimal.Zero) {
 		years := decimal.NewFromInt(int64(durationDays)).Div(decimal.NewFromInt(365))
 		if years.GreaterThan(decimal.Zero) {
 			growth := finalEquity.Div(e.initialCapital)
-			_ = decimal.NewFromFloat(1).Div(years)
-			// 简化计算: (1 + total_return)^(1/years) - 1
-			annualizedReturn = growth.Sub(decimal.NewFromInt(1)).Mul(decimal.NewFromInt(100))
+			yearsFloat, _ := years.Float64()
+			if yearsFloat > 0 {
+				annualizedReturn = decimal.NewFromFloat(
+					math.Pow(growth.InexactFloat64(), 1.0/yearsFloat) - 1,
+				).Mul(decimal.NewFromInt(100))
+			}
 		}
 	}
 
@@ -928,23 +986,20 @@ func (e *EventDrivenEngine) generateResult() *EventDrivenBacktestResult {
 	sharpeRatio := decimal.NewFromFloat(calculateSharpeRatioFloat(returns))
 	sortinoRatio := decimal.NewFromFloat(calculateSortinoRatioFloat(returns))
 
-	// 计算胜率
+	// 计算胜率 - 从 Fill 记录中读取已实现盈亏
 	winningTrades := 0
 	losingTrades := 0
 	var totalWin, totalLoss decimal.Decimal
 
 	for _, fill := range e.fills {
-		// 简化处理，实际需要根据持仓变化计算
 		if fill.Side == OrderSideSell {
-			// 假设卖出时计算盈亏
-			if position, exists := e.positions[fill.Symbol]; exists {
-				if position.RealizedPnL.GreaterThan(decimal.Zero) {
-					winningTrades++
-					totalWin = totalWin.Add(position.RealizedPnL)
-				} else {
-					losingTrades++
-					totalLoss = totalLoss.Add(position.RealizedPnL.Abs())
-				}
+			// 使用 Fill 中记录的已实现盈亏
+			if fill.RealizedPnL.GreaterThan(decimal.Zero) {
+				winningTrades++
+				totalWin = totalWin.Add(fill.RealizedPnL)
+			} else if fill.RealizedPnL.LessThan(decimal.Zero) {
+				losingTrades++
+				totalLoss = totalLoss.Add(fill.RealizedPnL.Abs())
 			}
 		}
 	}
