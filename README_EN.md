@@ -82,7 +82,6 @@ py_project/
 | [docs/](./docs/) | Documentation index |
 | [docs/reference/](./docs/reference/) | Reference docs (roadmap, dev guides) |
 | [docs/superpowers/](./docs/superpowers/) | Design docs & implementation plans |
-| [docs/archive/](./docs/archive/) | Archived docs (reviews, security) |
 | API Docs | `http://localhost:8080/swagger` (interactive) |
 
 ## Contributing
