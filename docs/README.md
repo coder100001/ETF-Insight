@@ -1,18 +1,17 @@
 # ETF-Insight 文档
 
-**更新日期**: 2026-05-10
+**更新日期**: 2026-05-13
 
 ---
 
-## 设计与计划
+## 设计文档
 
-核心设计决策和实施计划由 [superpowers](https://github.com/obra/superpowers) 工具链管理。
+核心设计决策由 [superpowers](https://github.com/obra/superpowers) 工具链管理。
 
 | 目录 | 说明 | 文件数 |
 |------|------|--------|
-| [specs/](superpowers/specs/) | 设计文档 — 当前活跃的设计决策 | 4 |
-| [plans/](superpowers/plans/) | 实施计划 — 进行中或待实施 | 2 |
-| [legacy/](superpowers/legacy/) | 历史设计文档 | 1 |
+| [specs/](superpowers/specs/) | 设计文档 — 当前活跃的设计决策 | 6 |
+| [legacy/](superpowers/legacy/) | 历史设计文档、旧计划和报告 | 5 |
 
 ---
 
@@ -33,7 +32,6 @@
 
 **相关文档：**
 - [报告导出功能设计文档](superpowers/specs/2026-05-10-export-report-design.md) - 完整的设计规格
-- [实施分析报告](superpowers/reports/2026-05-10-implementation-analysis-report.md) - 实施过程分析
 
 **API 端点：**
 - `POST /api/export/:type` - 导出数据
@@ -48,22 +46,19 @@
 
 ---
 
-## 归档
-
-历史审查报告、安全文档、过期计划等。详见 [archive/](archive/)。
-
----
-
 ## 目录结构
 
 ```
 docs/
 ├── README.md                 ← 本文档
-├── superpowers/              ← 设计 + 计划
-│   ├── specs/                ← 4 个设计文档
-│   ├── plans/                ← 2 个实施计划
-│   ├── reports/              ← 实施报告
-│   └── legacy/               ← 1 个历史设计文档
-├── reference/                ← 2 个参考文档
-└── archive/                  ← 归档文档
+├── superpowers/              ← 设计文档
+│   ├── specs/                ← 6 个设计文档
+│   └── legacy/               ← 5 个历史文档
+└── reference/                ← 2 个参考文档
 ```
+
+---
+
+## 历史清理记录
+
+- **2026-05-13**: 清理了 archive/ 目录下的所有历史审查报告和旧计划，将过时的计划和报告移到 superpowers/legacy/，大幅精简了文档结构。
