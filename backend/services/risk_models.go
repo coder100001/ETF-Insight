@@ -114,7 +114,7 @@ func (rm *RiskModels) CalculateParametricVaR(returns []decimal.Decimal, confiden
 
 	// CVaR 计算说明：
 	// 当前使用近似值 VaR * 1.2，适用于正态分布假设下的快速估算。
-	// 
+	//
 	// 精确计算公式（未来可优化）：
 	// CVaR = μ - σ * φ(z) / (1 - α)
 	// 其中 φ(z) 是标准正态密度函数，α 是置信水平

@@ -113,7 +113,7 @@ func SecurityHeaders() gin.HandlerFunc {
 }
 
 // InputSanitizer 输入净化中间件
-// 
+//
 // 设计说明：
 // 当前版本通过以下方式保证安全性：
 // 1. 参数验证中间件（validation.go）- 验证输入格式和类型
