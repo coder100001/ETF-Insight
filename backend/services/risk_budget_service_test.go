@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -461,4 +462,227 @@ func TestRiskBudgetService_CalculatePortfolioSkewness_InsufficientData(t *testin
 	if err != ErrInsufficientReturns {
 		t.Errorf("Expected ErrInsufficientReturns, got %v", err)
 	}
+}
+
+func TestRunMonteCarloSimulation_InvalidNumSimulations(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+	returns := generateTestReturns(100)
+
+	_, err := service.RunMonteCarloSimulation(1, 50, 252, returns)
+	if err == nil {
+		t.Fatal("Expected error for numSimulations < 100")
+	}
+	var simErr *SimulationError
+	if !errors.As(err, &simErr) {
+		t.Errorf("Expected SimulationError, got %T: %v", err, err)
+	}
+	if simErr.Step != "param_validation" {
+		t.Errorf("Expected step 'param_validation', got %q", simErr.Step)
+	}
+}
+
+func TestRunMonteCarloSimulation_ExcessiveNumSimulations(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+	returns := generateTestReturns(100)
+
+	_, err := service.RunMonteCarloSimulation(1, 200000, 252, returns)
+	if err == nil {
+		t.Fatal("Expected error for numSimulations > 100000")
+	}
+	var simErr *SimulationError
+	if !errors.As(err, &simErr) {
+		t.Errorf("Expected SimulationError, got %T: %v", err, err)
+	}
+}
+
+func TestRunMonteCarloSimulation_InvalidTimeSteps(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+	returns := generateTestReturns(100)
+
+	_, err := service.RunMonteCarloSimulation(1, 1000, 0, returns)
+	if err == nil {
+		t.Fatal("Expected error for timeSteps < 1")
+	}
+
+	_, err = service.RunMonteCarloSimulation(1, 1000, 5000, returns)
+	if err == nil {
+		t.Fatal("Expected error for timeSteps > 2520")
+	}
+}
+
+func TestRunMonteCarloSimulation_EmptyReturns(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	_, err := service.RunMonteCarloSimulation(1, 1000, 252, []decimal.Decimal{})
+	if err == nil {
+		t.Fatal("Expected error for empty returns")
+	}
+	var simErr *SimulationError
+	if !errors.As(err, &simErr) {
+		t.Errorf("Expected SimulationError, got %T: %v", err, err)
+	}
+}
+
+func TestRunMonteCarloSimulation_InsufficientReturns(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+	returns := generateTestReturns(15)
+
+	_, err := service.RunMonteCarloSimulation(1, 1000, 252, returns)
+	if err == nil {
+		t.Fatal("Expected error for insufficient returns (< 20)")
+	}
+}
+
+func TestRunMonteCarloSimulation_WithExtremeReturns(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+	returns := generateTestReturns(100)
+	returns[0] = decimal.NewFromFloat(3.0)
+	returns[1] = decimal.NewFromFloat(-3.0)
+
+	simulation, err := service.RunMonteCarloSimulation(1, 1000, 252, returns)
+	if err != nil {
+		t.Errorf("Should handle extreme returns by filtering: %v", err)
+	}
+	if simulation.ID == 0 {
+		t.Error("Simulation ID should not be zero")
+	}
+}
+
+func TestRunMonteCarloSimulation_ZeroVolatility(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := make([]decimal.Decimal, 20)
+	for i := range 20 {
+		returns[i] = decimal.NewFromFloat(0.001)
+	}
+
+	simulation, err := service.RunMonteCarloSimulation(1, 1000, 252, returns)
+	if err != nil {
+		t.Errorf("Should handle zero volatility gracefully: %v", err)
+	}
+	if simulation.ID == 0 {
+		t.Error("Simulation ID should not be zero")
+	}
+}
+
+func TestRunMonteCarloSimulation_WithFilteredReturns(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := generateTestReturns(25)
+	returns[0] = decimal.NewFromFloat(5.0)
+	returns[1] = decimal.NewFromFloat(-5.0)
+
+	simulation, err := service.RunMonteCarloSimulation(1, 1000, 252, returns)
+	if err != nil {
+		t.Errorf("Should filter out extreme returns: %v", err)
+	}
+
+	if simulation.MeanReturn.IsZero() && simulation.StdDev.IsZero() {
+		t.Error("Simulation results should not be all zeros after filtering")
+	}
+}
+
+func TestRunMonteCarloSimulation_MinimalValidInput(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := generateTestReturns(20)
+
+	simulation, err := service.RunMonteCarloSimulation(1, 100, 1, returns)
+	if err != nil {
+		t.Errorf("Should accept minimal valid input: %v", err)
+	}
+	if simulation.NumPaths != 100 {
+		t.Errorf("Expected NumPaths 100, got %d", simulation.NumPaths)
+	}
+	if simulation.TimeSteps != 1 {
+		t.Errorf("Expected TimeSteps 1, got %d", simulation.TimeSteps)
+	}
+}
+
+func TestRunMonteCarloSimulation_ResultsInRange(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+	returns := generateTestReturns(100)
+
+	simulation, err := service.RunMonteCarloSimulation(1, 1000, 252, returns)
+	if err != nil {
+		t.Errorf("RunMonteCarloSimulation failed: %v", err)
+	}
+
+	if simulation.VaR95.GreaterThan(decimal.NewFromFloat(0.5)) || simulation.VaR95.LessThan(decimal.NewFromFloat(-1.0)) {
+		t.Errorf("VaR95 seems unreasonable: %s", simulation.VaR95.String())
+	}
+
+	if simulation.MeanReturn.GreaterThan(decimal.NewFromFloat(2.0)) || simulation.MeanReturn.LessThan(decimal.NewFromFloat(-2.0)) {
+		t.Errorf("MeanReturn seems unreasonable: %s", simulation.MeanReturn.String())
+	}
+
+	t.Logf("Simulation: MeanReturn=%s, StdDev=%s, VaR95=%s, CVaR95=%s",
+		simulation.MeanReturn.String(), simulation.StdDev.String(),
+		simulation.VaR95.String(), simulation.CVaR95.String())
+}
+
+func TestRiskBudgetService_CalculateMonteCarloCVaR(t *testing.T) {
+	db := setupRiskTestDB(t)
+	defer cleanupRiskTestDB(db)
+
+	service := NewRiskBudgetService(db)
+
+	returns := make([]decimal.Decimal, 0, 200)
+	for i := range 200 {
+		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
+		returns = append(returns, ret)
+	}
+
+	varVaR, varCVaR, err := service.CalculateMonteCarloCVaR(returns, decimal.NewFromFloat(0.95))
+	if err != nil {
+		t.Errorf("CalculateMonteCarloCVaR failed: %v", err)
+	}
+
+	if varVaR.IsZero() {
+		t.Error("VaR should not be zero")
+	}
+	if varCVaR.IsZero() {
+		t.Error("CVaR should not be zero")
+	}
+
+	t.Logf("Monte Carlo VaR95: %s, CVaR95: %s", varVaR.String(), varCVaR.String())
+}
+
+func generateTestReturns(n int) []decimal.Decimal {
+	returns := make([]decimal.Decimal, 0, n)
+	for i := range n {
+		ret := decimal.NewFromFloat(0.001 * float64(i%10-5))
+		returns = append(returns, ret)
+	}
+	return returns
 }

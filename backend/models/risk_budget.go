@@ -59,6 +59,7 @@ type MonteCarloSimulation struct {
 	Kurtosis   decimal.Decimal `json:"kurtosis" gorm:"type:decimal(10,6)"`
 
 	SimulationResult string    `json:"simulation_result" gorm:"type:json"`
+	Warnings         string    `json:"warnings" gorm:"type:json"`
 	CacheExpiry      time.Time `json:"cache_expiry"`
 
 	CreatedAt time.Time `json:"created_at"`
