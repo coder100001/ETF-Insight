@@ -15,12 +15,16 @@ beforeEach(() => {
 const mockGetRates = vi.fn().mockResolvedValue({ success: true, data: null })
 const mockConvert = vi.fn().mockResolvedValue({ success: true, data: null })
 
-vi.mock('../../services/api', () => ({
-  exchangeRateAPI: {
-    getRates: (...args: unknown[]) => mockGetRates(...args),
-    convert: (...args: unknown[]) => mockConvert(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    exchangeRateAPI: {
+      getRates: (...args: unknown[]) => mockGetRates(...args),
+      convert: (...args: unknown[]) => mockConvert(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

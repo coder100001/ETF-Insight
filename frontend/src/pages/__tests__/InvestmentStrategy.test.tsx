@@ -14,33 +14,40 @@ beforeEach(() => {
 
 const mockGetList = vi.fn().mockResolvedValue({ success: true, data: [] })
 
-vi.mock('../../services/api', () => ({
-  etfAPI: {
-    getList: (...args: unknown[]) => mockGetList(...args),
-  },
-  portfolioAPI: {
-    analyzeScenarios: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    getDefaultTemplates: vi.fn().mockResolvedValue({ success: true, data: [] }),
-    analyzeRisk: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    optimize: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    getEfficientFrontier: vi.fn().mockResolvedValue({ success: true, data: [] }),
-  },
-  portfolioConfigAPI: {
-    getAll: vi.fn().mockResolvedValue({ success: true, data: [] }),
-    getById: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    create: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    update: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    delete: vi.fn().mockResolvedValue({ success: true, data: null }),
-    toggleStatus: vi.fn().mockResolvedValue({ success: true, data: {} }),
-    analyze: vi.fn().mockResolvedValue({ success: true, data: {} }),
-  },
-  financialConfigAPI: {
-    get: vi.fn().mockResolvedValue({
-      success: true,
-      data: { risk_free_rate: 0.0435, trading_days_year: 252, default_currency: 'USD' },
-    }),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    etfAPI: {
+      getList: (...args: unknown[]) => mockGetList(...args),
+    },
+    portfolioAPI: {
+      ...actual.portfolioAPI,
+      analyzeScenarios: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      getDefaultTemplates: vi.fn().mockResolvedValue({ success: true, data: [] }),
+      analyzeRisk: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      optimize: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      getEfficientFrontier: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    },
+    portfolioConfigAPI: {
+      ...actual.portfolioConfigAPI,
+      getAll: vi.fn().mockResolvedValue({ success: true, data: [] }),
+      getById: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      create: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      update: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      delete: vi.fn().mockResolvedValue({ success: true, data: null }),
+      toggleStatus: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      analyze: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    },
+    financialConfigAPI: {
+      ...actual.financialConfigAPI,
+      get: vi.fn().mockResolvedValue({
+        success: true,
+        data: { risk_free_rate: 0.0435, trading_days_year: 252, default_currency: 'USD' },
+      }),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

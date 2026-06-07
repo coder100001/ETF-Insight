@@ -16,15 +16,19 @@ const mockGetList = vi.fn().mockResolvedValue({ success: true, data: [] })
 const mockGetComparison = vi.fn().mockResolvedValue({ success: true, data: null })
 const mockAnalyzeScenarios = vi.fn().mockResolvedValue({ success: true, data: null })
 
-vi.mock('../../services/api', () => ({
-  etfAPI: {
-    getList: (...args: unknown[]) => mockGetList(...args),
-    getComparison: (...args: unknown[]) => mockGetComparison(...args),
-  },
-  portfolioAPI: {
-    analyzeScenarios: (...args: unknown[]) => mockAnalyzeScenarios(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    etfAPI: {
+      getList: (...args: unknown[]) => mockGetList(...args),
+      getComparison: (...args: unknown[]) => mockGetComparison(...args),
+    },
+    portfolioAPI: {
+      analyzeScenarios: (...args: unknown[]) => mockAnalyzeScenarios(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

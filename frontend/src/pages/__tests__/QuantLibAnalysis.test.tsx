@@ -14,17 +14,22 @@ beforeEach(() => {
 
 const mockGetReferenceData = vi.fn().mockResolvedValue({ success: true, data: [] })
 
-vi.mock('../../services/api', () => ({
-  quantlibAPI: {
-    getReferenceData: (...args: unknown[]) => mockGetReferenceData(...args),
-    priceEuropeanOption: vi.fn().mockResolvedValue({ success: true, data: null }),
-    priceBond: vi.fn().mockResolvedValue({ success: true, data: null }),
-    buildYieldCurve: vi.fn().mockResolvedValue({ success: true, data: null }),
-    calculateVaR: vi.fn().mockResolvedValue({ success: true, data: null }),
-    priceAmericanOption: vi.fn().mockResolvedValue({ success: true, data: null }),
-    calculateGreeks: vi.fn().mockResolvedValue({ success: true, data: null }),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    quantlibAPI: {
+      ...actual.quantlibAPI,
+      getReferenceData: (...args: unknown[]) => mockGetReferenceData(...args),
+      priceEuropeanOption: vi.fn().mockResolvedValue({ success: true, data: null }),
+      priceBond: vi.fn().mockResolvedValue({ success: true, data: null }),
+      buildYieldCurve: vi.fn().mockResolvedValue({ success: true, data: null }),
+      calculateVaR: vi.fn().mockResolvedValue({ success: true, data: null }),
+      priceAmericanOption: vi.fn().mockResolvedValue({ success: true, data: null }),
+      calculateGreeks: vi.fn().mockResolvedValue({ success: true, data: null }),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

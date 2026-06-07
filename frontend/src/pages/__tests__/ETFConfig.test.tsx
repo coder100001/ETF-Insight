@@ -15,12 +15,16 @@ beforeEach(() => {
 const mockGetConfigs = vi.fn().mockResolvedValue({ success: true, data: [] })
 const mockToggleStatus = vi.fn().mockResolvedValue({ success: true, data: null })
 
-vi.mock('../../services/api', () => ({
-  etfConfigAPI: {
-    getConfigs: (...args: unknown[]) => mockGetConfigs(...args),
-    toggleStatus: (...args: unknown[]) => mockToggleStatus(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    etfConfigAPI: {
+      getConfigs: (...args: unknown[]) => mockGetConfigs(...args),
+      toggleStatus: (...args: unknown[]) => mockToggleStatus(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

@@ -15,12 +15,16 @@ beforeEach(() => {
 const mockGetConfigs = vi.fn().mockResolvedValue({ success: true, data: [] })
 const mockCreateConfig = vi.fn().mockResolvedValue({ success: true, data: null })
 
-vi.mock('../../services/api', () => ({
-  portfolioConfigAPI: {
-    getConfigs: (...args: unknown[]) => mockGetConfigs(...args),
-    createConfig: (...args: unknown[]) => mockCreateConfig(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    portfolioConfigAPI: {
+      getConfigs: (...args: unknown[]) => mockGetConfigs(...args),
+      createConfig: (...args: unknown[]) => mockCreateConfig(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

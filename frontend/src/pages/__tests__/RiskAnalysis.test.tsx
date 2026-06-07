@@ -14,11 +14,15 @@ beforeEach(() => {
 
 const mockAnalyzeRisk = vi.fn().mockResolvedValue({ success: true, data: null })
 
-vi.mock('../../services/api', () => ({
-  portfolioAPI: {
-    analyzeRisk: (...args: unknown[]) => mockAnalyzeRisk(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    portfolioAPI: {
+      analyzeRisk: (...args: unknown[]) => mockAnalyzeRisk(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

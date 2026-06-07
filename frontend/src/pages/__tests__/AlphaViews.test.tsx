@@ -15,12 +15,16 @@ beforeEach(() => {
 const mockGetActive = vi.fn().mockResolvedValue({ success: true, data: [] })
 const mockCreate = vi.fn().mockResolvedValue({ success: true, data: null })
 
-vi.mock('../../services/api', () => ({
-  alphaViewAPI: {
-    getActive: (...args: unknown[]) => mockGetActive(...args),
-    create: (...args: unknown[]) => mockCreate(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    alphaViewAPI: {
+      getActive: (...args: unknown[]) => mockGetActive(...args),
+      create: (...args: unknown[]) => mockCreate(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

@@ -15,12 +15,16 @@ beforeEach(() => {
 const mockGetDefaultPortfolio = vi.fn().mockResolvedValue({ success: true, data: null })
 const mockGetETFPrices = vi.fn().mockResolvedValue({ success: true, data: [] })
 
-vi.mock('../../services/api', () => ({
-  aShareAPI: {
-    getDefaultPortfolio: (...args: unknown[]) => mockGetDefaultPortfolio(...args),
-    getETFPrices: (...args: unknown[]) => mockGetETFPrices(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    aShareAPI: {
+      getDefaultPortfolio: (...args: unknown[]) => mockGetDefaultPortfolio(...args),
+      getETFPrices: (...args: unknown[]) => mockGetETFPrices(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

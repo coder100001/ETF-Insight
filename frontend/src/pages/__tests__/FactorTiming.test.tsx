@@ -50,13 +50,18 @@ const mockGetSignalHistory = vi.fn().mockResolvedValue({
   data: [],
 })
 
-vi.mock('../../services/api', () => ({
-  factorTimingAPI: {
-    calculateSignal: (...args: unknown[]) => mockCalculateSignal(...args),
-    getSignalHistory: (...args: unknown[]) => mockGetSignalHistory(...args),
-    generateView: vi.fn().mockResolvedValue({ success: true, data: null }),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    factorTimingAPI: {
+      ...actual.factorTimingAPI,
+      calculateSignal: (...args: unknown[]) => mockCalculateSignal(...args),
+      getSignalHistory: (...args: unknown[]) => mockGetSignalHistory(...args),
+      generateView: vi.fn().mockResolvedValue({ success: true, data: null }),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

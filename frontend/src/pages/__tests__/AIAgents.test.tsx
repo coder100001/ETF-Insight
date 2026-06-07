@@ -14,11 +14,15 @@ beforeEach(() => {
 
 const mockDiscover = vi.fn().mockResolvedValue({ success: true, data: [] })
 
-vi.mock('../../services/api', () => ({
-  agentAPI: {
-    discover: (...args: unknown[]) => mockDiscover(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    agentAPI: {
+      discover: (...args: unknown[]) => mockDiscover(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

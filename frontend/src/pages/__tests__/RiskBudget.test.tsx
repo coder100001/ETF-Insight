@@ -30,9 +30,12 @@ beforeEach(() => {
   }
 })
 
-vi.mock('../../services/api', () => ({
-  riskBudgetAPI: {},
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

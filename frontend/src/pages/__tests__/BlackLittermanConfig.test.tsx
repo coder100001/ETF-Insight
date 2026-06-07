@@ -30,13 +30,18 @@ beforeEach(() => {
   }
 })
 
-vi.mock('../../services/api', () => ({
-  blackLittermanAPI: {
-    createConfig: vi.fn().mockResolvedValue({ success: true, data: null }),
-    calculate: vi.fn().mockResolvedValue({ success: true, data: null }),
-    getPosteriorReturns: vi.fn().mockResolvedValue({ success: true, data: null }),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    blackLittermanAPI: {
+      ...actual.blackLittermanAPI,
+      createConfig: vi.fn().mockResolvedValue({ success: true, data: null }),
+      calculate: vi.fn().mockResolvedValue({ success: true, data: null }),
+      getPosteriorReturns: vi.fn().mockResolvedValue({ success: true, data: null }),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

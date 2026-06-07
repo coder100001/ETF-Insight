@@ -34,12 +34,15 @@ beforeEach(() => {
 
 const mockGetList = vi.fn().mockResolvedValue({ success: true, data: [] })
 
-vi.mock('../../services/api', () => ({
-  etfAPI: {
-    getList: (...args: unknown[]) => mockGetList(...args),
-  },
-  factorAPI: {},
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    etfAPI: {
+      getList: (...args: unknown[]) => mockGetList(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

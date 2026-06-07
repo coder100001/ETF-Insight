@@ -16,13 +16,17 @@ const mockGetRealtimeData = vi.fn().mockResolvedValue({ success: true, data: nul
 const mockGetMetrics = vi.fn().mockResolvedValue({ success: true, data: null })
 const mockGetHistory = vi.fn().mockResolvedValue({ success: true, data: [] })
 
-vi.mock('../../services/api', () => ({
-  etfAPI: {
-    getRealtimeData: (...args: unknown[]) => mockGetRealtimeData(...args),
-    getMetrics: (...args: unknown[]) => mockGetMetrics(...args),
-    getHistory: (...args: unknown[]) => mockGetHistory(...args),
-  },
-}))
+vi.mock('../../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    etfAPI: {
+      getRealtimeData: (...args: unknown[]) => mockGetRealtimeData(...args),
+      getMetrics: (...args: unknown[]) => mockGetMetrics(...args),
+      getHistory: (...args: unknown[]) => mockGetHistory(...args),
+    },
+  }
+})
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
