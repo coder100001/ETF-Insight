@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"etf-insight/models"
+	"etf-insight/services/factor"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -78,6 +79,66 @@ func (s *FactorDataService) SeedSampleFactorData(days int) error {
 		return nil
 	}
 
+	// Check if real data already exists
+	var count int64
+	s.db.Model(&models.FactorData{}).Where("data_source = ?", "kenneth_french").Count(&count)
+	if count > 0 {
+		s.seed = true
+		return nil
+	}
+
+	// Try to load real data from Kenneth French Data Library
+	if err := s.loadRealFactorData(); err == nil {
+		s.seed = true
+		return nil
+	} else {
+		// Log warning but fall through to synthetic data
+		fmt.Printf("Warning: failed to load real factor data, using synthetic: %v\n", err)
+	}
+
+	// Fall back to synthetic data
+	return s.generateSyntheticData(days)
+}
+
+// loadRealFactorData attempts to load real Fama-French factor data from the Kenneth French Data Library.
+func (s *FactorDataService) loadRealFactorData() error {
+	endDate := time.Now()
+	startDate := endDate.AddDate(-5, 0, 0) // 5 years of data
+
+	rows, err := factor.LoadFactorDataFromFrench(startDate, endDate, "monthly", false)
+	if err != nil {
+		return fmt.Errorf("failed to download from Kenneth French: %w", err)
+	}
+
+	if len(rows) == 0 {
+		return fmt.Errorf("no data returned from Kenneth French for date range %s to %s", startDate.Format("2006-01"), endDate.Format("2006-01"))
+	}
+
+	// Convert and store each factor
+	factors := []string{"Mkt-RF", "SMB", "HML"}
+	for _, factorName := range factors {
+		factorData := factor.FrenchRowsToFactorData(rows, factorName)
+		if len(factorData) == 0 {
+			continue
+		}
+
+		// Check if this factor already has real data
+		var existingCount int64
+		s.db.Model(&models.FactorData{}).Where("factor_name = ? AND data_source = ?", factorName, "kenneth_french").Count(&existingCount)
+		if existingCount > 0 {
+			continue
+		}
+
+		if err := s.db.CreateInBatches(factorData, 100).Error; err != nil {
+			return fmt.Errorf("failed to store %s data: %w", factorName, err)
+		}
+	}
+
+	return nil
+}
+
+// generateSyntheticData generates synthetic factor data as a fallback.
+func (s *FactorDataService) generateSyntheticData(days int) error {
 	rand.Seed(time.Now().UnixNano())
 
 	factors := []string{"Mkt-RF", "SMB", "HML", "RMW", "CMA"}

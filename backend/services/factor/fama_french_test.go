@@ -3,6 +3,9 @@ package factor
 import (
 	"math"
 	"testing"
+	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 func TestNewFamaFrenchModel(t *testing.T) {
@@ -1180,5 +1183,234 @@ func TestFamaFrench_GenerateSampleData(t *testing.T) {
 	m, s, h, rf := GenerateSampleFactorData(10)
 	if len(m) != 10 || len(s) != 10 || len(h) != 10 || len(rf) != 10 {
 		t.Errorf("Expected 10 data points each, got market=%d smb=%d hml=%d rf=%d", len(m), len(s), len(h), len(rf))
+	}
+}
+
+func TestParseFrenchCSVData_ThreeFactor(t *testing.T) {
+	// Simulate the Kenneth French CSV format
+	csvData := `This file was created using the 202606 zip file
+
+Mkt-RF   SMB   HML   RF
+196307   -0.39  -0.41  -0.97  0.27
+196308    5.07  -0.80   1.80  0.25
+196309   -1.57  -0.50   0.13  0.27
+196310    2.54  -1.35  -0.26  0.29
+`
+
+	rows, err := parseFrenchCSVData(csvData, false)
+	if err != nil {
+		t.Fatalf("parseFrenchCSVData failed: %v", err)
+	}
+
+	if len(rows) != 4 {
+		t.Fatalf("Expected 4 rows, got %d", len(rows))
+	}
+
+	// Check first row
+	if rows[0].Date.Year() != 1963 || rows[0].Date.Month() != 7 {
+		t.Errorf("Expected date 1963-07, got %s", rows[0].Date.Format("2006-01"))
+	}
+	expectedMktRF := -0.39 / 100
+	if math.Abs(rows[0].MktRF-expectedMktRF) > 1e-10 {
+		t.Errorf("Expected Mkt-RF %f, got %f", expectedMktRF, rows[0].MktRF)
+	}
+	expectedSMB := -0.41 / 100
+	if math.Abs(rows[0].SMB-expectedSMB) > 1e-10 {
+		t.Errorf("Expected SMB %f, got %f", expectedSMB, rows[0].SMB)
+	}
+	expectedHML := -0.97 / 100
+	if math.Abs(rows[0].HML-expectedHML) > 1e-10 {
+		t.Errorf("Expected HML %f, got %f", expectedHML, rows[0].HML)
+	}
+	expectedRF := 0.27 / 100
+	if math.Abs(rows[0].RF-expectedRF) > 1e-10 {
+		t.Errorf("Expected RF %f, got %f", expectedRF, rows[0].RF)
+	}
+
+	// Check second row
+	expectedMktRF2 := 5.07 / 100
+	if math.Abs(rows[1].MktRF-expectedMktRF2) > 1e-10 {
+		t.Errorf("Expected Mkt-RF %f, got %f", expectedMktRF2, rows[1].MktRF)
+	}
+}
+
+func TestParseFrenchCSVData_FiveFactor(t *testing.T) {
+	csvData := `This file was created using the 202606 zip file
+
+Mkt-RF   SMB   HML   RMW   CMA   RF
+202001    2.05  -1.22   0.48   0.85  -0.11   0.13
+202002   -8.13  -2.54  -1.96   0.35   1.08   0.12
+202003  -13.39   2.54  -3.18  -2.75   0.76   0.12
+`
+
+	rows, err := parseFrenchCSVData(csvData, true)
+	if err != nil {
+		t.Fatalf("parseFrenchCSVData failed: %v", err)
+	}
+
+	if len(rows) != 3 {
+		t.Fatalf("Expected 3 rows, got %d", len(rows))
+	}
+
+	// Check first row
+	if rows[0].Date.Year() != 2020 || rows[0].Date.Month() != 1 {
+		t.Errorf("Expected date 2020-01, got %s", rows[0].Date.Format("2006-01"))
+	}
+	expectedRMW := 0.85 / 100
+	if math.Abs(rows[0].RMW-expectedRMW) > 1e-10 {
+		t.Errorf("Expected RMW %f, got %f", expectedRMW, rows[0].RMW)
+	}
+	expectedCMA := -0.11 / 100
+	if math.Abs(rows[0].CMA-expectedCMA) > 1e-10 {
+		t.Errorf("Expected CMA %f, got %f", expectedCMA, rows[0].CMA)
+	}
+}
+
+func TestParseFrenchCSVData_DailyFormat(t *testing.T) {
+	csvData := `This file was created using the 202606 zip file
+
+Mkt-RF   SMB   HML   RF
+20260102    1.23   0.45  -0.67   0.02
+20260103   -0.89   0.12   0.34   0.02
+`
+
+	rows, err := parseFrenchCSVData(csvData, false)
+	if err != nil {
+		t.Fatalf("parseFrenchCSVData failed: %v", err)
+	}
+
+	if len(rows) != 2 {
+		t.Fatalf("Expected 2 rows, got %d", len(rows))
+	}
+
+	// Check daily date parsing
+	if rows[0].Date.Year() != 2026 || rows[0].Date.Month() != 1 || rows[0].Date.Day() != 2 {
+		t.Errorf("Expected date 2026-01-02, got %s", rows[0].Date.Format("2006-01-02"))
+	}
+}
+
+func TestParseFrenchCSVData_EmptyData(t *testing.T) {
+	csvData := `This file was created using the 202606 zip file
+
+Mkt-RF   SMB   HML   RF
+`
+
+	rows, err := parseFrenchCSVData(csvData, false)
+	if err != nil {
+		t.Fatalf("parseFrenchCSVData failed: %v", err)
+	}
+
+	if len(rows) != 0 {
+		t.Errorf("Expected 0 rows for empty data, got %d", len(rows))
+	}
+}
+
+func TestParseFrenchCSVData_NoHeader(t *testing.T) {
+	csvData := `This file has no header
+Just some random text
+More text here
+`
+
+	_, err := parseFrenchCSVData(csvData, false)
+	if err == nil {
+		t.Error("Expected error for missing header")
+	}
+}
+
+func TestParseFrenchCSVData_InvalidValues(t *testing.T) {
+	csvData := `This file was created using the 202606 zip file
+
+Mkt-RF   SMB   HML   RF
+196307   -0.39  -0.41  -0.97  0.27
+196308    not_a_number  -0.80   1.80  0.25
+196309   -1.57  -0.50   0.13  0.27
+`
+
+	rows, err := parseFrenchCSVData(csvData, false)
+	if err != nil {
+		t.Fatalf("parseFrenchCSVData failed: %v", err)
+	}
+
+	// Should skip the invalid row and parse the valid ones
+	if len(rows) != 2 {
+		t.Errorf("Expected 2 valid rows (skipping invalid), got %d", len(rows))
+	}
+}
+
+func TestFrenchRowsToFactorData(t *testing.T) {
+	rows := []FrenchFactorRow{
+		{
+			Date:  time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+			MktRF: 0.0205,
+			SMB:   -0.0122,
+			HML:   0.0048,
+			RMW:   0.0085,
+			CMA:   -0.0011,
+			RF:    0.0013,
+		},
+		{
+			Date:  time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC),
+			MktRF: -0.0813,
+			SMB:   -0.0254,
+			HML:   -0.0196,
+			RMW:   0.0035,
+			CMA:   0.0108,
+			RF:    0.0012,
+		},
+	}
+
+	// Test Mkt-RF conversion
+	mktRFData := FrenchRowsToFactorData(rows, "Mkt-RF")
+	if len(mktRFData) != 2 {
+		t.Fatalf("Expected 2 Mkt-RF data points, got %d", len(mktRFData))
+	}
+	if mktRFData[0].FactorName != "Mkt-RF" {
+		t.Errorf("Expected factor name 'Mkt-RF', got '%s'", mktRFData[0].FactorName)
+	}
+	if mktRFData[0].DataSource != "kenneth_french" {
+		t.Errorf("Expected data source 'kenneth_french', got '%s'", mktRFData[0].DataSource)
+	}
+	expectedValue, _ := decimal.NewFromFloat(0.0205).Float64()
+	actualValue, _ := mktRFData[0].Value.Float64()
+	if math.Abs(actualValue-expectedValue) > 1e-10 {
+		t.Errorf("Expected value %f, got %f", expectedValue, actualValue)
+	}
+
+	// Test SMB conversion
+	smbData := FrenchRowsToFactorData(rows, "SMB")
+	if len(smbData) != 2 {
+		t.Fatalf("Expected 2 SMB data points, got %d", len(smbData))
+	}
+	expectedSMB, _ := decimal.NewFromFloat(-0.0122).Float64()
+	actualSMB, _ := smbData[0].Value.Float64()
+	if math.Abs(actualSMB-expectedSMB) > 1e-10 {
+		t.Errorf("Expected SMB value %f, got %f", expectedSMB, actualSMB)
+	}
+
+	// Test invalid factor name
+	invalidData := FrenchRowsToFactorData(rows, "INVALID")
+	if len(invalidData) != 0 {
+		t.Errorf("Expected 0 data points for invalid factor, got %d", len(invalidData))
+	}
+}
+
+func TestParseFrenchCSVLine_InsufficientFields(t *testing.T) {
+	_, err := parseFrenchCSVLine("196307   -0.39", false)
+	if err == nil {
+		t.Error("Expected error for insufficient fields")
+	}
+}
+
+func TestParseFrenchCSVLine_InvalidDate(t *testing.T) {
+	_, err := parseFrenchCSVLine("abcde   -0.39  -0.41  -0.97  0.27", false)
+	if err == nil {
+		t.Error("Expected error for invalid date")
+	}
+}
+
+func TestParseFrenchCSVLine_UnexpectedDateLength(t *testing.T) {
+	_, err := parseFrenchCSVLine("1963   -0.39  -0.41  -0.97  0.27", false)
+	if err == nil {
+		t.Error("Expected error for unexpected date length")
 	}
 }
