@@ -18,6 +18,22 @@ vi.mock('../../services/api', () => ({
   etfAPI: {
     getList: (...args: unknown[]) => mockGetList(...args),
   },
+  portfolioAPI: {
+    analyzeScenarios: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    getDefaultTemplates: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    analyzeRisk: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    optimize: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    getEfficientFrontier: vi.fn().mockResolvedValue({ success: true, data: [] }),
+  },
+  portfolioConfigAPI: {
+    getAll: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    getById: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    create: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    update: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    delete: vi.fn().mockResolvedValue({ success: true, data: null }),
+    toggleStatus: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    analyze: vi.fn().mockResolvedValue({ success: true, data: {} }),
+  },
   financialConfigAPI: {
     get: vi.fn().mockResolvedValue({
       success: true,

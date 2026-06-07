@@ -16,8 +16,11 @@ vi.mock('../../services/api', () => ({
   optimizationAPI: {
     mptOptimize: vi.fn().mockResolvedValue({ success: true, data: null }),
     efficientFrontier: vi.fn().mockResolvedValue({ success: true, data: [] }),
-    riskParityOptimize: vi.fn().mockResolvedValue({ success: true, data: null }),
-    blackLittermanOptimize: vi.fn().mockResolvedValue({ success: true, data: null }),
+    riskParity: vi.fn().mockResolvedValue({ success: true, data: null }),
+    blackLitterman: vi.fn().mockResolvedValue({ success: true, data: null }),
+    covarianceMatrix: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    etfStatistics: vi.fn().mockResolvedValue({ success: true, data: {} }),
+    marketImpliedReturns: vi.fn().mockResolvedValue({ success: true, data: {} }),
   },
   financialConfigAPI: {
     get: vi.fn().mockResolvedValue({
