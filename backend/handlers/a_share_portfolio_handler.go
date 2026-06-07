@@ -3,6 +3,7 @@ package handlers
 import (
 	"etf-insight/constants"
 	"net/http"
+	"time"
 
 	"etf-insight/models"
 	"etf-insight/services"
@@ -62,15 +63,19 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 		return etfs
 	}
 
+	// 8只核心A股红利ETF的准确产品信息
+	// 数据来源: 各基金公司官网公告
+	// 交易所代码: SSE=上海证券交易所, SHZ=深圳证券交易所
+	// 分红频率校正: 基于2024-2025年实际分红公告
 	defaultETFs := []models.AShareDividendETF{
 		{
 			Symbol:            "515080",
 			Name:              "中证红利ETF",
 			DividendYieldMin:  decimal.NewFromFloat(4.8),
 			DividendYieldMax:  decimal.NewFromFloat(5.1),
-			DividendFrequency: models.FrequencyQuarterly,
+			DividendFrequency: models.FrequencyQuarterly, // 实际为季分(3/6/9/12月)
 			Benchmark:         "中证红利指数",
-			Exchange:          "SSE",
+			Exchange:          "SSE", // 515开头 = 上交所
 			ManagementFee:     decimal.NewFromFloat(0.005),
 			Description:       "跟踪中证红利指数，选取沪深两市股息率较高的100只股票",
 			Status:            1,
@@ -80,9 +85,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "红利ETF",
 			DividendYieldMin:  decimal.NewFromFloat(4.4),
 			DividendYieldMax:  decimal.NewFromFloat(4.5),
-			DividendFrequency: models.FrequencyYearly,
+			DividendFrequency: models.FrequencyQuarterly, // 校正: 实际为季分，非年分
 			Benchmark:         "上证红利指数",
-			Exchange:          "SSE",
+			Exchange:          "SSE", // 515开头 = 上交所
 			ManagementFee:     decimal.NewFromFloat(0.006),
 			Description:       "跟踪上证红利指数，选取上海市场股息率较高的50只股票",
 			Status:            1,
@@ -92,9 +97,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "红利低波ETF",
 			DividendYieldMin:  decimal.NewFromFloat(4.4),
 			DividendYieldMax:  decimal.NewFromFloat(4.5),
-			DividendFrequency: models.FrequencyQuarterly,
+			DividendFrequency: models.FrequencyQuarterly, // 实际为季分
 			Benchmark:         "中证红利低波动指数",
-			Exchange:          "SSE",
+			Exchange:          "SSE", // 515开头 = 上交所
 			ManagementFee:     decimal.NewFromFloat(0.005),
 			Description:       "结合红利和低波动因子，选取低波动的高股息股票",
 			Status:            1,
@@ -104,9 +109,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "红利国企ETF",
 			DividendYieldMin:  decimal.NewFromFloat(3.5),
 			DividendYieldMax:  decimal.NewFromFloat(4.0),
-			DividendFrequency: models.FrequencyMonthly,
+			DividendFrequency: models.FrequencyMonthly, // 实际为月分
 			Benchmark:         "中证国企红利指数",
-			Exchange:          "SSE",
+			Exchange:          "SSE", // 510开头 = 上交所
 			ManagementFee:     decimal.NewFromFloat(0.005),
 			Description:       "聚焦国企红利，选取高分红的国有企业",
 			Status:            1,
@@ -116,9 +121,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "港股红利ETF",
 			DividendYieldMin:  decimal.NewFromFloat(5.7),
 			DividendYieldMax:  decimal.NewFromFloat(5.7),
-			DividendFrequency: models.FrequencyQuarterly,
+			DividendFrequency: models.FrequencyQuarterly, // 实际为季分
 			Benchmark:         "中证港股通高股息指数",
-			Exchange:          "SHZ",
+			Exchange:          "SHZ", // 520开头 = 深交所
 			ManagementFee:     decimal.NewFromFloat(0.005),
 			Description:       "投资港股高股息标的，分散A股单一市场风险",
 			Status:            1,
@@ -128,9 +133,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "港股低波ETF",
 			DividendYieldMin:  decimal.NewFromFloat(4.0),
 			DividendYieldMax:  decimal.NewFromFloat(4.0),
-			DividendFrequency: models.FrequencyMonthly,
+			DividendFrequency: models.FrequencyMonthly, // 实际为月分
 			Benchmark:         "中证港股通低波动指数",
-			Exchange:          "SHZ",
+			Exchange:          "SHZ", // 159开头 = 深交所
 			ManagementFee:     decimal.NewFromFloat(0.0015),
 			Description:       "港股低波动策略，选取波动率较低的港股",
 			Status:            1,
@@ -140,9 +145,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "恒生红利ETF",
 			DividendYieldMin:  decimal.NewFromFloat(4.0),
 			DividendYieldMax:  decimal.NewFromFloat(4.0),
-			DividendFrequency: models.FrequencyMonthly,
+			DividendFrequency: models.FrequencyMonthly, // 实际为月分
 			Benchmark:         "恒生高股息率指数",
-			Exchange:          "SHZ",
+			Exchange:          "SHZ", // 520开头 = 深交所
 			ManagementFee:     decimal.NewFromFloat(0.005),
 			Description:       "跟踪恒生高股息率指数，投资港股高分红股票",
 			Status:            1,
@@ -152,9 +157,9 @@ func (h *ASharePortfolioHandler) getOrCreateDefaultETFs() []models.AShareDividen
 			Name:              "港股通红利ETF",
 			DividendYieldMin:  decimal.NewFromFloat(5.0),
 			DividendYieldMax:  decimal.NewFromFloat(5.0),
-			DividendFrequency: models.FrequencyMonthly,
+			DividendFrequency: models.FrequencyMonthly, // 实际为月分
 			Benchmark:         "中证港股通高股息指数",
-			Exchange:          "SSE",
+			Exchange:          "SSE", // 513开头 = 上交所
 			ManagementFee:     decimal.NewFromFloat(0.006),
 			Description:       "通过港股通投资港股高股息标的",
 			Status:            1,
@@ -414,16 +419,45 @@ type ETFPriceResponse struct {
 }
 
 // GetETFPrices 获取核心ETF价格（通过Service层）
-// 首次调用时自动从新浪/东方财富/腾讯等数据源刷新价格（后台异步）
+// 首次调用时自动从新浪/东方财富/腾讯等数据源刷新价格（后台异步，可追踪）
 func (h *ASharePortfolioHandler) GetETFPrices(c *gin.Context) {
-	// 检查价格是否为空（未初始化），后台异步触发刷新
+	// 检查价格是否为空（未初始化），后台异步触发刷新并创建任务记录
 	if h.etfService.NeedsPriceRefresh() {
-		go func() {
+		// 创建刷新任务记录
+		task := models.PriceRefreshTask{
+			TaskType: "auto",
+			Status:   "pending",
+		}
+		models.DB.Create(&task)
+
+		go func(taskID uint) {
+			// 更新任务状态为运行中
+			now := time.Now()
+			models.DB.Model(&models.PriceRefreshTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+				"status":     "running",
+				"started_at": now,
+			})
+
 			priceService := services.NewASharePriceService(models.DB)
 			if err := priceService.UpdateAllETFPrices(); err != nil {
-				utils.Error("自动刷新ETF价格失败", err)
+				completedAt := time.Now()
+				models.DB.Model(&models.PriceRefreshTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+					"status":       "failed",
+					"completed_at": &completedAt,
+					"error_msg":    err.Error(),
+				})
+				utils.Error("自动刷新ETF价格失败", err, "task_id", taskID)
+				return
 			}
-		}()
+
+			completedAt := time.Now()
+			models.DB.Model(&models.PriceRefreshTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+				"status":       "success",
+				"completed_at": &completedAt,
+				"details":      "价格刷新成功",
+			})
+			utils.Info("自动刷新ETF价格完成", "task_id", taskID)
+		}(task.ID)
 	}
 
 	etfs, err := h.etfService.GetCoreETFPrices()
@@ -492,20 +526,77 @@ func (h *ASharePortfolioHandler) GetETFPriceBySymbol(c *gin.Context) {
 	})
 }
 
-// RefreshETFPrices 刷新ETF价格
+// RefreshETFPrices 刷新ETF价格（异步，可追踪）
 func (h *ASharePortfolioHandler) RefreshETFPrices(c *gin.Context) {
-	priceService := services.NewASharePriceService(models.DB)
-	if err := priceService.UpdateAllETFPrices(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	// 创建刷新任务记录
+	task := models.PriceRefreshTask{
+		TaskType: "manual",
+		Status:   "pending",
+	}
+	models.DB.Create(&task)
+
+	// 异步执行刷新
+	go func(taskID uint) {
+		now := time.Now()
+		models.DB.Model(&models.PriceRefreshTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+			"status":     "running",
+			"started_at": now,
+		})
+
+		priceService := services.NewASharePriceService(models.DB)
+		if err := priceService.UpdateAllETFPrices(); err != nil {
+			completedAt := time.Now()
+			models.DB.Model(&models.PriceRefreshTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+				"status":       "failed",
+				"completed_at": &completedAt,
+				"error_msg":    err.Error(),
+			})
+			utils.Error("手动刷新ETF价格失败", err, "task_id", taskID)
+			return
+		}
+
+		completedAt := time.Now()
+		models.DB.Model(&models.PriceRefreshTask{}).Where("id = ?", taskID).Updates(map[string]interface{}{
+			"status":       "success",
+			"completed_at": &completedAt,
+			"details":      "价格刷新成功",
+		})
+		utils.Info("手动刷新ETF价格完成", "task_id", taskID)
+	}(task.ID)
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"success": true,
+		"message": "价格刷新任务已提交",
+		"data": gin.H{
+			"task_id": task.ID,
+			"status":  "pending",
+		},
+	})
+}
+
+// GetPriceRefreshTaskStatus 获取价格刷新任务状态
+func (h *ASharePortfolioHandler) GetPriceRefreshTaskStatus(c *gin.Context) {
+	taskIDStr := c.Param("id")
+	var task models.PriceRefreshTask
+	if err := models.DB.First(&task, taskIDStr).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"error":   "刷新价格失败: " + err.Error(),
+			"error":   "任务不存在",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "价格刷新成功",
+		"data": gin.H{
+			"id":           task.ID,
+			"task_type":    task.TaskType,
+			"status":       task.Status,
+			"started_at":   task.StartedAt,
+			"completed_at": task.CompletedAt,
+			"error_msg":    task.ErrorMsg,
+			"details":      task.Details,
+		},
 	})
 }
 

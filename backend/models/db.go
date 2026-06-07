@@ -121,6 +121,9 @@ func AutoMigrate() error {
 		&ETFOverlapCache{},
 		&CacheInvalidationLog{},
 		&ExchangeRateSyncLog{},
+		// A股红利模块新增模型
+		&ETFActualDividend{},
+		&PriceRefreshTask{},
 	)
 }
 

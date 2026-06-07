@@ -93,6 +93,34 @@ type AShareHoldingDetail struct {
 	DividendContribution decimal.Decimal `json:"dividend_contribution"` // 分红贡献占比
 }
 
+// ETFActualDividend ETF实际分红记录
+// 从外部数据源(天天基金/东方财富)获取的真实分红数据
+type ETFActualDividend struct {
+	ID            uint            `json:"id" gorm:"primaryKey"`
+	Symbol        string          `json:"symbol" gorm:"index;size:20"`               // ETF代码
+	DividendDate  time.Time       `json:"dividend_date" gorm:"index"`                // 分红发放日
+	AmountPerUnit decimal.Decimal `json:"amount_per_unit" gorm:"type:decimal(10,6)"` // 每份分红金额(元)
+	RecordDate    time.Time       `json:"record_date"`                               // 权益登记日
+	ExDivDate     time.Time       `json:"ex_div_date"`                               // 除息日
+	Source        string          `json:"source" gorm:"size:50"`                     // 数据来源
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+}
+
+// PriceRefreshTask 价格刷新任务记录
+// 用于跟踪异步价格刷新任务的状态
+type PriceRefreshTask struct {
+	ID          uint       `json:"id" gorm:"primaryKey"`
+	TaskType    string     `json:"task_type" gorm:"size:20;default:'manual'"` // manual/auto
+	Status      string     `json:"status" gorm:"size:20;default:'pending'"`   // pending/running/success/failed
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
+	ErrorMsg    string     `json:"error_msg" gorm:"size:500"`
+	Details     string     `json:"details" gorm:"size:500"` // 成功/失败的详细信息
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
 // TableName 指定表名
 func (AShareDividendETF) TableName() string {
 	return "a_share_dividend_etfs"
@@ -104,4 +132,12 @@ func (AShareETFPortfolio) TableName() string {
 
 func (ASharePortfolioHolding) TableName() string {
 	return "a_share_portfolio_holdings"
+}
+
+func (ETFActualDividend) TableName() string {
+	return "etf_actual_dividends"
+}
+
+func (PriceRefreshTask) TableName() string {
+	return "price_refresh_tasks"
 }
