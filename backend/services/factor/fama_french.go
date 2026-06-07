@@ -1,9 +1,12 @@
 package factor
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/csv"
 	"etf-insight/models"
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
 	"net/http"
@@ -825,31 +828,290 @@ const (
 	FactorSourceLocalDB       = "local_db"       // 本地数据库
 )
 
-// LoadFactorDataFromFrench 从Kenneth French数据库下载因子数据
-// 注意: 这是一个示例实现，实际使用时需要处理网络错误和数据格式
-func LoadFactorDataFromFrench(startDate, endDate time.Time) (
+// frenchDataFactorURLs maps factor model types to Kenneth French data URLs.
+var frenchDataFactorURLs = map[string]string{
+	"3factor_monthly": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip",
+	"3factor_daily":   "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip",
+	"5factor_monthly": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_CSV.zip",
+	"5factor_daily":   "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip",
+}
+
+// FrenchFactorRow represents a single parsed row of factor data from the Kenneth French library.
+type FrenchFactorRow struct {
+	Date  time.Time
+	MktRF float64
+	SMB   float64
+	HML   float64
+	RMW   float64 // Only for 5-factor
+	CMA   float64 // Only for 5-factor
+	RF    float64
+}
+
+// LoadFactorDataFromFrench downloads and parses factor data from the Kenneth French Data Library.
+// frequency: "monthly" or "daily"
+// fiveFactor: true for 5-factor model, false for 3-factor
+// Returns parsed rows filtered by date range.
+func LoadFactorDataFromFrench(startDate, endDate time.Time, frequency string, fiveFactor bool) ([]FrenchFactorRow, error) {
+	key := "3factor_" + frequency
+	if fiveFactor {
+		key = "5factor_" + frequency
+	}
+
+	url, ok := frenchDataFactorURLs[key]
+	if !ok {
+		return nil, fmt.Errorf("unsupported factor model/frequency combination: %s", key)
+	}
+
+	csvData, err := downloadAndUnzipFrenchData(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download French data: %w", err)
+	}
+
+	rows, err := parseFrenchCSVData(csvData, fiveFactor)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse French data: %w", err)
+	}
+
+	// Filter by date range
+	var filtered []FrenchFactorRow
+	for _, row := range rows {
+		if !row.Date.Before(startDate) && !row.Date.After(endDate) {
+			filtered = append(filtered, row)
+		}
+	}
+
+	return filtered, nil
+}
+
+// downloadAndUnzipFrenchData downloads a ZIP file from the given URL and extracts the first CSV file.
+func downloadAndUnzipFrenchData(url string) (string, error) {
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("HTTP GET failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP request failed with status %d", resp.StatusCode)
+	}
+
+	zipBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	zipReader, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
+	if err != nil {
+		return "", fmt.Errorf("failed to open ZIP: %w", err)
+	}
+
+	// Find the first CSV file in the ZIP
+	for _, f := range zipReader.File {
+		name := strings.ToLower(f.Name)
+		if strings.HasSuffix(name, ".csv") {
+			rc, err := f.Open()
+			if err != nil {
+				return "", fmt.Errorf("failed to open file %s in ZIP: %w", f.Name, err)
+			}
+			defer rc.Close()
+
+			data, err := io.ReadAll(rc)
+			if err != nil {
+				return "", fmt.Errorf("failed to read file %s in ZIP: %w", f.Name, err)
+			}
+
+			return string(data), nil
+		}
+	}
+
+	return "", fmt.Errorf("no CSV file found in ZIP archive")
+}
+
+// parseFrenchCSVData parses the Kenneth French CSV format.
+// The format has:
+//   - Header lines with description text
+//   - A blank line
+//   - Column header line (e.g., "Mkt-RF   SMB   HML   RF")
+//   - Data rows with YYYYMM (monthly) or YYYYMMDD (daily) dates and percentage values
+//   - Values may be separated by spaces or tabs
+//   - Some rows may have footer text after the data
+func parseFrenchCSVData(csvData string, fiveFactor bool) ([]FrenchFactorRow, error) {
+	lines := strings.Split(csvData, "\n")
+	var rows []FrenchFactorRow
+
+	// Find the header line with column names
+	headerFound := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		// Look for the header line containing "Mkt-RF"
+		if strings.Contains(trimmed, "Mkt-RF") && strings.Contains(trimmed, "SMB") && strings.Contains(trimmed, "HML") {
+			headerFound = true
+			// Parse data starting from the next line
+			for j := i + 1; j < len(lines); j++ {
+				dataLine := strings.TrimSpace(lines[j])
+				if dataLine == "" {
+					continue
+				}
+
+				row, err := parseFrenchCSVLine(dataLine, fiveFactor)
+				if err != nil {
+					// Skip lines that can't be parsed (likely footer text)
+					continue
+				}
+				rows = append(rows, *row)
+			}
+			break
+		}
+	}
+
+	if !headerFound {
+		return nil, fmt.Errorf("could not find header line with 'Mkt-RF' in CSV data")
+	}
+
+	return rows, nil
+}
+
+// parseFrenchCSVLine parses a single data line from the Kenneth French CSV.
+// Format: "YYYYMM  value1  value2  value3  [value4  value5]  value6"
+// Values are percentages and will be converted to decimals (divided by 100).
+func parseFrenchCSVLine(line string, fiveFactor bool) (*FrenchFactorRow, error) {
+	// Split by whitespace (spaces and tabs)
+	fields := strings.Fields(line)
+	if len(fields) < 5 {
+		return nil, fmt.Errorf("insufficient fields in line: %s", line)
+	}
+
+	dateStr := fields[0]
+
+	// Determine date format based on length
+	var date time.Time
+	var err error
+	if len(dateStr) == 6 {
+		// Monthly: YYYYMM
+		date, err = time.Parse("200601", dateStr)
+	} else if len(dateStr) == 8 {
+		// Daily: YYYYMMDD
+		date, err = time.Parse("20060102", dateStr)
+	} else {
+		return nil, fmt.Errorf("unexpected date format: %s", dateStr)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse date %s: %w", dateStr, err)
+	}
+
+	// Parse factor values (percentages -> decimals)
+	expectedCols := 5 // Mkt-RF, SMB, HML, RF = 4 values + date = 5
+	if fiveFactor {
+		expectedCols = 7 // Mkt-RF, SMB, HML, RMW, CMA, RF = 6 values + date = 7
+	}
+
+	if len(fields) < expectedCols {
+		return nil, fmt.Errorf("expected %d fields for %s, got %d", expectedCols, map[bool]string{true: "5-factor", false: "3-factor"}[fiveFactor], len(fields))
+	}
+
+	mktRF, err := strconv.ParseFloat(fields[1], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Mkt-RF: %w", err)
+	}
+
+	smb, err := strconv.ParseFloat(fields[2], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse SMB: %w", err)
+	}
+
+	hml, err := strconv.ParseFloat(fields[3], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse HML: %w", err)
+	}
+
+	var rmw, cma float64
+	rfIdx := 4
+	if fiveFactor {
+		rmw, err = strconv.ParseFloat(fields[4], 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse RMW: %w", err)
+		}
+		cma, err = strconv.ParseFloat(fields[5], 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse CMA: %w", err)
+		}
+		rfIdx = 6
+	}
+
+	rf, err := strconv.ParseFloat(fields[rfIdx], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse RF: %w", err)
+	}
+
+	return &FrenchFactorRow{
+		Date:  date,
+		MktRF: mktRF / 100, // Convert percentage to decimal
+		SMB:   smb / 100,
+		HML:   hml / 100,
+		RMW:   rmw / 100,
+		CMA:   cma / 100,
+		RF:    rf / 100,
+	}, nil
+}
+
+// LoadFactorDataFromFrenchLegacy is the legacy interface that returns raw float64 slices.
+// Deprecated: Use LoadFactorDataFromFrench instead for new code.
+func LoadFactorDataFromFrenchLegacy(startDate, endDate time.Time) (
 	marketReturns,
 	smbReturns,
 	hmlReturns,
 	riskFreeReturns []float64,
 	err error,
 ) {
-	// Kenneth French数据库URL (Fama-French三因子月度数据)
-	url := "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip"
-
-	resp, err := http.Get(url)
+	rows, err := LoadFactorDataFromFrench(startDate, endDate, "monthly", false)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("failed to download factor data: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, nil, nil, fmt.Errorf("failed to download factor data: status %d", resp.StatusCode)
+		return nil, nil, nil, nil, err
 	}
 
-	// 实际实现需要解压ZIP并解析CSV
-	// 这里返回错误提示需要实现具体解析逻辑
-	return nil, nil, nil, nil, fmt.Errorf("parsing French database data requires additional implementation")
+	for _, row := range rows {
+		marketReturns = append(marketReturns, row.MktRF)
+		smbReturns = append(smbReturns, row.SMB)
+		hmlReturns = append(hmlReturns, row.HML)
+		riskFreeReturns = append(riskFreeReturns, row.RF)
+	}
+
+	return marketReturns, smbReturns, hmlReturns, riskFreeReturns, nil
+}
+
+// FrenchRowsToFactorData converts parsed French factor rows to FactorData model instances.
+// factorName should be one of: "Mkt-RF", "SMB", "HML", "RMW", "CMA".
+func FrenchRowsToFactorData(rows []FrenchFactorRow, factorName string) []models.FactorData {
+	data := make([]models.FactorData, 0, len(rows))
+	for _, row := range rows {
+		var value float64
+		switch factorName {
+		case "Mkt-RF":
+			value = row.MktRF
+		case "SMB":
+			value = row.SMB
+		case "HML":
+			value = row.HML
+		case "RMW":
+			value = row.RMW
+		case "CMA":
+			value = row.CMA
+		default:
+			continue
+		}
+		data = append(data, models.FactorData{
+			FactorName: factorName,
+			Date:       row.Date,
+			Value:      decimal.NewFromFloat(value),
+			DataSource: FactorSourceKennethFrench,
+			CreatedAt:  time.Now(),
+		})
+	}
+	return data
 }
 
 // LoadFactorDataFromDB 从本地数据库加载因子数据
