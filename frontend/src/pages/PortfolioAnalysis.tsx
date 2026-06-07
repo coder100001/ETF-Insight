@@ -35,6 +35,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import Layout from '../components/Layout';
+import { request } from '../services/api';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -125,8 +126,7 @@ const PortfolioAnalysis: React.FC = () => {
   useEffect(() => {
     const fetchETFs = async () => {
       try {
-        const response = await fetch('/api/etf/list?pageSize=100');
-        const data = await response.json();
+        const data = await request<{ success: boolean; data?: ETFInfo[] }>('/etf/list?pageSize=100');
         if (data.success && data.data) {
           setAvailableETFs(data.data);
         }
@@ -191,17 +191,14 @@ const PortfolioAnalysis: React.FC = () => {
         portfolioMap[item.symbol] = item.weight / 100;
       });
 
-      const response = await fetch('/api/portfolio/scenarios', {
+      const data = await request<{ success: boolean; data?: ScenarioAnalysisResult; error?: string }>('/portfolio/scenarios', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           portfolio: portfolioMap,
           total_investment: totalInvestment,
           time_horizon_years: timeHorizon,
         }),
       });
-
-      const data = await response.json();
       if (data.success) {
         setResult(data.data);
         message.success('分析完成');

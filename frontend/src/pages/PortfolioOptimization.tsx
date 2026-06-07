@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import styled from 'styled-components';
 import { useOptimization } from '../hooks/useOptimization';
 import { useETFData } from '../hooks/useETFData';
+import { useFinancialConfig } from '../hooks/useFinancialConfig';
 import type {
   OptimizationResult,
   EfficientFrontierPoint,
@@ -377,10 +378,14 @@ const BlackLittermanDisplay: React.FC<{ result: BlackLittermanResult; selectedET
 );
 
 const PortfolioOptimization: React.FC = () => {
+  // 使用自定义Hooks (must be before useState that references finConfig)
+  const { config: finConfig } = useFinancialConfig();
+  const { availableETFs, etfStatistics, statsLoading } = useETFData();
+
   const [selectedETFs, setSelectedETFs] = useState<string[]>(['VTI', 'VOO', 'AGG']);
   const [objective, setObjective] = useState<'min_volatility' | 'max_sharpe' | 'target_return'>('max_sharpe');
   const [targetReturn, setTargetReturn] = useState<number>(0.10);
-  const [riskFreeRate, setRiskFreeRate] = useState<number>(0.045);
+  const [riskFreeRate, setRiskFreeRate] = useState<number>(finConfig.risk_free_rate);
   const [minWeights, setMinWeights] = useState<Record<string, number>>({});
   const [maxWeights, setMaxWeights] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState('1');
@@ -394,9 +399,6 @@ const PortfolioOptimization: React.FC = () => {
   const [absoluteViews, setAbsoluteViews] = useState<Record<string, number>>({});
   const [tau, setTau] = useState<number>(0.025);
   const [riskAversion, setRiskAversion] = useState<number>(2.5);
-
-  // 使用自定义Hooks
-  const { availableETFs, etfStatistics, statsLoading } = useETFData();
   const {
     result,
     frontier,
@@ -414,6 +416,7 @@ const PortfolioOptimization: React.FC = () => {
       symbols: selectedETFs,
       objective,
       targetReturn: objective === 'target_return' ? targetReturn : undefined,
+      riskFreeRate,
     });
     setActiveTab('2');
   };

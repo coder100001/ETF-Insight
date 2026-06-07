@@ -6,6 +6,7 @@ import type {
   BlackLittermanConfig, BLPosteriorReturn, CreateBLConfigRequest,
   RiskBudgetConfig, MonteCarloSimulation, CVaRResult, CreateRiskBudgetRequest
 } from '../types';
+import type { FinancialConfig } from '../types/common';
 import type {
   EuropeanOptionRequest, AmericanOptionRequest, GreeksRequest, OptionResult,
   YieldCurveRequest, YieldCurveResult, BondRequest, BondResult, VaRRequest, VaRResult
@@ -227,16 +228,27 @@ export const portfolioAPI = {
     return request<ApiResponse<Array<{ name: string; description: string; allocation: Record<string, number> }>>>(`/portfolio/default-templates`);
   },
 
-  analyzeRisk: (allocation: Record<string, number>, totalInvestment: number = 10000) => {
+  analyzeRisk: (portfolio: Record<string, number>, confidence: number = 0.95, period: string = '1y') => {
     return request<ApiResponse<{
-      total_risk: number;
-      systematic_risk: number;
-      unsystematic_risk: number;
-      diversification_ratio: number;
-      concentration_risk: string;
+      portfolio: Record<string, number>;
+      period: string;
+      confidence: number;
+      risk_level: string;
+      var_95: number;
+      var_99: number;
+      cvar_95: number;
+      volatility: number;
+      sharpe_ratio: number;
+      sortino_ratio: number;
+      max_drawdown: number;
+      calmar_ratio: number;
+      beta: number;
+      alpha: number;
+      portfolio_risks: Array<{ symbol: string; weight: number; componentVar: number; marginalVar: number }>;
+      data_points: number;
     }>>(`/portfolio/risk`, {
       method: 'POST',
-      body: JSON.stringify({ allocation, total_investment: totalInvestment }),
+      body: JSON.stringify({ portfolio, confidence, period }),
     });
   },
 
@@ -1028,4 +1040,14 @@ export const agentAPI = {
       body: JSON.stringify(req),
     });
   },
+};
+
+// 金融配置API
+export const financialConfigAPI = {
+  get: () => request<{ success: boolean; data: FinancialConfig }>('/config/financial'),
+  update: (config: { risk_free_rate?: number; trading_days_year?: number }) =>
+    request<{ success: boolean; message: string }>('/config/financial', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    }),
 };

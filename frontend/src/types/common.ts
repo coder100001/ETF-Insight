@@ -110,3 +110,9 @@ export interface DailyStatItem {
 export interface DailyStat {
   [date: string]: DailyStatItem;
 }
+
+export interface FinancialConfig {
+  risk_free_rate: number;
+  trading_days_year: number;
+  default_currency: string;
+}

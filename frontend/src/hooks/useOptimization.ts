@@ -21,7 +21,7 @@ export interface OptimizeParams {
   symbols: string[];
   objective: 'min_volatility' | 'max_sharpe' | 'target_return';
   targetReturn?: number;
-  targetRisk?: number;
+  riskFreeRate?: number;
 }
 
 export const useOptimization = (): UseOptimizationReturn => {
@@ -70,7 +70,7 @@ export const useOptimization = (): UseOptimizationReturn => {
         params.symbols,
         params.objective,
         params.targetReturn,
-        params.targetRisk
+        params.riskFreeRate
       );
 
       if (!isMountedRef.current) return;

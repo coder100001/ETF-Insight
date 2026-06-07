@@ -49,9 +49,9 @@ export const optimizeMPT = async (params: MPTOptimizeParams): Promise<Optimizati
     expected_risk: response.data.volatility,
     volatility: response.data.volatility,
     sharpe_ratio: response.data.sharpe_ratio,
-    sortino_ratio: 0,
-    diversification_ratio: 0,
-    risk_contribution: {},
+    sortino_ratio: response.data?.sortino_ratio ?? 0,
+    diversification_ratio: response.data?.diversification_ratio ?? 0,
+    risk_contribution: response.data?.risk_contribution ?? {},
   };
 };
 
@@ -102,8 +102,8 @@ export const optimizeRiskParity = async (symbols: string[]): Promise<RiskParityR
   return {
     weights: response.data.weights,
     risk_contributions: response.data.risk_contributions,
-    volatility: 0,
-    diversification_ratio: 0,
+    volatility: response.data?.volatility ?? 0,
+    diversification_ratio: response.data?.diversification_ratio ?? 0,
   };
 };
 
@@ -130,9 +130,9 @@ export const optimizeBlackLitterman = async (
   return {
     posterior_returns: response.data.posterior_returns,
     optimal_weights: response.data.optimal_weights,
-    expected_return: 0,
-    expected_risk: 0,
-    sharpe_ratio: 0,
+    expected_return: response.data?.expected_return ?? 0,
+    expected_risk: response.data?.expected_risk ?? 0,
+    sharpe_ratio: response.data?.sharpe_ratio ?? 0,
   };
 };
 

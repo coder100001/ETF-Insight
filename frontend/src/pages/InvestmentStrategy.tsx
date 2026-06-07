@@ -16,6 +16,7 @@ import {
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
+import { useFinancialConfig } from '../hooks/useFinancialConfig';
 
 const { Text, Title, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -226,6 +227,8 @@ const InvestmentStrategy: React.FC = () => {
   const [investmentAmount, setInvestmentAmount] = useState<number>(100000);
   const [activeTab, setActiveTab] = useState('recommend');
 
+  const { config: finConfig } = useFinancialConfig();
+
   // 从API获取ETF数据
   useEffect(() => {
     const fetchETFData = async () => {
@@ -370,7 +373,7 @@ const InvestmentStrategy: React.FC = () => {
     const returns = backtestData.slice(1).map((d, i) => (d.portfolio - backtestData[i].portfolio) / backtestData[i].portfolio);
     const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
     const stdDev = Math.sqrt(returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length);
-    const sharpe = stdDev > 0 ? (avgReturn - 0.04 / 12) / stdDev * Math.sqrt(12) : 0;
+    const sharpe = stdDev > 0 ? (avgReturn - finConfig.risk_free_rate / 12) / stdDev * Math.sqrt(12) : 0;
 
     // 计算加权股息率
     const monthlyDividend = currentStrategy ?
