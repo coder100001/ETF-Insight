@@ -207,3 +207,22 @@ vi.mock('axios', () => ({
     }),
   },
 }))
+
+// Global mock for services/api to include financialConfigAPI
+vi.mock('../services/api', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...(actual as Record<string, unknown>),
+    financialConfigAPI: {
+      get: vi.fn().mockResolvedValue({
+        success: true,
+        data: {
+          risk_free_rate: 0.0435,
+          trading_days_year: 252,
+          default_currency: 'USD',
+        },
+      }),
+      update: vi.fn().mockResolvedValue({ success: true, message: 'updated' }),
+    },
+  }
+})

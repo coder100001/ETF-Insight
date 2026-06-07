@@ -19,6 +19,16 @@ vi.mock('../../services/api', () => ({
     riskParityOptimize: vi.fn().mockResolvedValue({ success: true, data: null }),
     blackLittermanOptimize: vi.fn().mockResolvedValue({ success: true, data: null }),
   },
+  financialConfigAPI: {
+    get: vi.fn().mockResolvedValue({
+      success: true,
+      data: { risk_free_rate: 0.0435, trading_days_year: 252, default_currency: 'USD' },
+    }),
+  },
+  etfAPI: {
+    getList: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    getStatistics: vi.fn().mockResolvedValue({ success: true, data: {} }),
+  },
 }))
 
 const renderWithProviders = (ui: React.ReactElement) => {

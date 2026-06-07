@@ -18,6 +18,12 @@ vi.mock('../../services/api', () => ({
   etfAPI: {
     getList: (...args: unknown[]) => mockGetList(...args),
   },
+  financialConfigAPI: {
+    get: vi.fn().mockResolvedValue({
+      success: true,
+      data: { risk_free_rate: 0.0435, trading_days_year: 252, default_currency: 'USD' },
+    }),
+  },
 }))
 
 const renderWithProviders = (ui: React.ReactElement) => {
