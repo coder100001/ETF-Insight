@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"sort"
 	"time"
+
+	"etf-insight/config"
 )
 
 // MarketScenario 市场情景类型
@@ -246,7 +248,7 @@ func (s *ScenarioAnalysisService) getDefaultPortfolioAnalytics(portfolio map[str
 	// 组合波动率调整 (简化计算)
 	volatility = volatility * 0.9 // 考虑分散化效应
 
-	riskFreeRate := 0.045
+	riskFreeRate := config.GetFinancialConfig().RiskFreeRate
 	sharpeRatio := (expectedReturn - riskFreeRate) / volatility
 	if volatility == 0 {
 		sharpeRatio = 0
@@ -298,7 +300,7 @@ func (s *ScenarioAnalysisService) generateScenario(
 	timeHorizonYears int,
 	scenarioMultiplier float64,
 ) *ScenarioResult {
-	riskFreeRate := 0.045
+	riskFreeRate := config.GetFinancialConfig().RiskFreeRate
 
 	assumptions := &ScenarioAssumptions{
 		Scenario:      scenario,

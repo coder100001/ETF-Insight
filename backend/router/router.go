@@ -136,6 +136,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerDataRoutes()
 	r.registerAnalyticsRoutes()
 	r.registerDataSourceRoutes()
+	r.registerFinancialConfigRoutes()
 	r.registerStaticRoutes()
 	docs.RegisterSwaggerRoutes(r.engine)
 }
@@ -355,11 +356,11 @@ func (r *Router) registerReportRoutes() {
 }
 
 func (r *Router) registerStaticRoutes() {
-	r.engine.Static("/assets", "frontend/dist/assets")
-	r.engine.StaticFile("/favicon.svg", "frontend/dist/favicon.svg")
-	r.engine.StaticFile("/icons.svg", "frontend/dist/icons.svg")
+	r.engine.Static("/assets", "../frontend/dist/assets")
+	r.engine.StaticFile("/favicon.svg", "../frontend/dist/favicon.svg")
+	r.engine.StaticFile("/icons.svg", "../frontend/dist/icons.svg")
 	r.engine.NoRoute(func(c *gin.Context) {
-		c.File("frontend/dist/index.html")
+		c.File("../frontend/dist/index.html")
 	})
 }
 
@@ -455,5 +456,13 @@ func (r *Router) registerExportRoutes() {
 		export.POST("/:type", r.handlers.Export.Export)
 		export.GET("/formats", r.handlers.Export.GetSupportedFormats)
 		export.GET("/types", r.handlers.Export.GetSupportedTypes)
+	}
+}
+
+func (r *Router) registerFinancialConfigRoutes() {
+	cfg := r.engine.Group("/api/config")
+	{
+		cfg.GET("/financial", handlers.GetFinancialConfig)
+		cfg.PUT("/financial", handlers.UpdateFinancialConfig)
 	}
 }

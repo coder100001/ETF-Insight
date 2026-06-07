@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"etf-insight/config"
 	"etf-insight/services/mathutil"
 )
 
@@ -14,8 +15,8 @@ func TestNewMPTOptimizer(t *testing.T) {
 		t.Fatal("NewMPTOptimizer() returned nil")
 	}
 
-	if optimizer.RiskFreeRate != 0.045 {
-		t.Errorf("Expected default RiskFreeRate 0.045, got %f", optimizer.RiskFreeRate)
+	if optimizer.RiskFreeRate != config.GetFinancialConfig().RiskFreeRate {
+		t.Errorf("Expected default RiskFreeRate %f, got %f", config.GetFinancialConfig().RiskFreeRate, optimizer.RiskFreeRate)
 	}
 
 	if optimizer.MaxIter != 1000 {

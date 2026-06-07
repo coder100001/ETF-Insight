@@ -4,8 +4,119 @@ import (
 	"fmt"
 	"math"
 
+	"etf-insight/config"
 	"github.com/shopspring/decimal"
 )
+
+// --- Matrix utility functions ---
+
+func matrixInverse(m [][]float64) ([][]float64, error) {
+	n := len(m)
+	aug := make([][]float64, n)
+	for i := range aug {
+		aug[i] = make([]float64, 2*n)
+		for j := range n {
+			aug[i][j] = m[i][j]
+		}
+		aug[i][n+i] = 1
+	}
+	for col := 0; col < n; col++ {
+		maxVal := math.Abs(aug[col][col])
+		maxRow := col
+		for row := col + 1; row < n; row++ {
+			if math.Abs(aug[row][col]) > maxVal {
+				maxVal = math.Abs(aug[row][col])
+				maxRow = row
+			}
+		}
+		aug[col], aug[maxRow] = aug[maxRow], aug[col]
+		pivot := aug[col][col]
+		if math.Abs(pivot) < 1e-12 {
+			return nil, fmt.Errorf("matrix is singular")
+		}
+		for j := 0; j < 2*n; j++ {
+			aug[col][j] /= pivot
+		}
+		for row := 0; row < n; row++ {
+			if row == col {
+				continue
+			}
+			factor := aug[row][col]
+			for j := 0; j < 2*n; j++ {
+				aug[row][j] -= factor * aug[col][j]
+			}
+		}
+	}
+	inv := make([][]float64, n)
+	for i := range inv {
+		inv[i] = make([]float64, n)
+		for j := range n {
+			inv[i][j] = aug[i][n+j]
+		}
+	}
+	return inv, nil
+}
+
+func matrixMultiply(a, b [][]float64) [][]float64 {
+	rows, cols, inner := len(a), len(b[0]), len(b)
+	result := make([][]float64, rows)
+	for i := range result {
+		result[i] = make([]float64, cols)
+		for j := range cols {
+			for k := range inner {
+				result[i][j] += a[i][k] * b[k][j]
+			}
+		}
+	}
+	return result
+}
+
+func matrixTranspose(m [][]float64) [][]float64 {
+	rows, cols := len(m), len(m[0])
+	t := make([][]float64, cols)
+	for i := range t {
+		t[i] = make([]float64, rows)
+		for j := range rows {
+			t[i][j] = m[j][i]
+		}
+	}
+	return t
+}
+
+func matrixAdd(a, b [][]float64) [][]float64 {
+	rows, cols := len(a), len(a[0])
+	result := make([][]float64, rows)
+	for i := range result {
+		result[i] = make([]float64, cols)
+		for j := range cols {
+			result[i][j] = a[i][j] + b[i][j]
+		}
+	}
+	return result
+}
+
+func matrixVectorMultiply(m [][]float64, v []float64) []float64 {
+	rows := len(m)
+	result := make([]float64, rows)
+	for i := range rows {
+		for j := range len(v) {
+			result[i] += m[i][j] * v[j]
+		}
+	}
+	return result
+}
+
+func scalarMultiplyMatrix(m [][]float64, s float64) [][]float64 {
+	rows, cols := len(m), len(m[0])
+	result := make([][]float64, rows)
+	for i := range result {
+		result[i] = make([]float64, cols)
+		for j := range cols {
+			result[i][j] = m[i][j] * s
+		}
+	}
+	return result
+}
 
 // BlackLittermanOptimizer Black-Litterman模型优化器
 // 融合市场均衡收益和投资者观点，生成后验收益估计
@@ -18,7 +129,7 @@ type BlackLittermanOptimizer struct {
 func NewBlackLittermanOptimizer() *BlackLittermanOptimizer {
 	return &BlackLittermanOptimizer{
 		Tau:          decimal.NewFromFloat(0.025),
-		RiskFreeRate: decimal.NewFromFloat(0.045),
+		RiskFreeRate: decimal.NewFromFloat(config.GetFinancialConfig().RiskFreeRate),
 	}
 }
 
@@ -284,6 +395,7 @@ func (o *BlackLittermanOptimizer) buildViewMatrices(
 }
 
 // calculatePosteriorReturns 计算后验收益
+// Full BL formula: E[R] = [(τΣ)⁻¹ + P'Ω⁻¹P]⁻¹ × [(τΣ)⁻¹Π + P'Ω⁻¹Q]
 func (o *BlackLittermanOptimizer) calculatePosteriorReturns(
 	Sigma [][]float64,
 	priorReturns map[string]float64,
@@ -299,73 +411,62 @@ func (o *BlackLittermanOptimizer) calculatePosteriorReturns(
 		return priorReturns
 	}
 
-	k := len(P)
+	tau := o.Tau.InexactFloat64()
 
-	// 构建先验收益向量 (使用 decimal.Decimal 保证精度)
-	Pi := make([]decimal.Decimal, n)
+	// 1. τΣ
+	tauSigma := scalarMultiplyMatrix(Sigma, tau)
+
+	// 2. (τΣ)⁻¹
+	tauSigmaInv, err := matrixInverse(tauSigma)
+	if err != nil {
+		return priorReturns
+	}
+
+	// 3. P' and Ω⁻¹
+	Pt := matrixTranspose(P)
+	OmegaInv, err := matrixInverse(Omega)
+	if err != nil {
+		return priorReturns
+	}
+
+	// 4. P'Ω⁻¹P
+	PtOmegaInv := matrixMultiply(Pt, OmegaInv)
+	PtOmegaInvP := matrixMultiply(PtOmegaInv, P)
+
+	// 5. M = (τΣ)⁻¹ + P'Ω⁻¹P
+	M := matrixAdd(tauSigmaInv, PtOmegaInvP)
+
+	// 6. M⁻¹
+	MInv, err := matrixInverse(M)
+	if err != nil {
+		return priorReturns
+	}
+
+	// 7. Build Π vector
+	Pi := make([]float64, n)
 	for i, symbol := range symbols {
-		Pi[i] = decimal.NewFromFloat(priorReturns[symbol])
+		Pi[i] = priorReturns[symbol]
 	}
 
-	// 计算 τΣ (使用 decimal.Decimal)
-	tauSigma := make([][]decimal.Decimal, n)
-	for i := range tauSigma {
-		tauSigma[i] = make([]decimal.Decimal, n)
-		for j := range tauSigma[i] {
-			tauSigma[i][j] = o.Tau.Mul(decimal.NewFromFloat(Sigma[i][j]))
-		}
+	// 8. (τΣ)⁻¹Π
+	tauSigmaInvPi := matrixVectorMultiply(tauSigmaInv, Pi)
+
+	// 9. P'Ω⁻¹Q
+	PtOmegaInvQ := matrixVectorMultiply(PtOmegaInv, Q)
+
+	// 10. rhs = (τΣ)⁻¹Π + P'Ω⁻¹Q
+	rhs := make([]float64, n)
+	for i := range n {
+		rhs[i] = tauSigmaInvPi[i] + PtOmegaInvQ[i]
 	}
 
-	// 简化计算：使用后验收益的解析解
-	// E[R] = Π + τΣ * P^T * (P * τΣ * P^T + Ω)^-1 * (Q - P * Π)
+	// 11. E[R] = M⁻¹ × rhs
+	posteriorVec := matrixVectorMultiply(MInv, rhs)
 
-	// 1. 计算 P * Π (使用 decimal.Decimal)
-	P_Pi := make([]decimal.Decimal, k)
-	for i := range k {
-		sum := decimal.Zero
-		for j := range n {
-			sum = sum.Add(decimal.NewFromFloat(P[i][j]).Mul(Pi[j]))
-		}
-		P_Pi[i] = sum
-	}
-
-	// 2. 计算 Q - P * Π (使用 decimal.Decimal)
-	residual := make([]decimal.Decimal, k)
-	for i := range k {
-		residual[i] = decimal.NewFromFloat(Q[i]).Sub(P_Pi[i])
-	}
-
-	// 3. 应用观点调整 (使用 decimal.Decimal)
 	posteriorReturns := make(map[string]float64)
-
-	// 初始化为先验收益
-	for _, symbol := range symbols {
-		posteriorReturns[symbol] = priorReturns[symbol]
+	for i, symbol := range symbols {
+		posteriorReturns[symbol] = posteriorVec[i]
 	}
-
-	// 应用观点调整 (使用 decimal.Decimal 进行精确计算)
-	for _, view := range viewsFromMatrices(P, Q, symbols) {
-		if view.Type == "absolute" && len(view.Assets) > 0 {
-			asset := view.Assets[0]
-			// 向观点收益靠拢 (使用 decimal.Decimal)
-			confidence := decimal.NewFromFloat(0.5)
-			if len(view.Weights) > 0 {
-				confidence = decimal.NewFromFloat(view.Weights[0])
-			}
-
-			priorReturn := decimal.NewFromFloat(priorReturns[asset])
-			viewReturn := decimal.NewFromFloat(view.Return)
-
-			// posterior = prior * (1 - confidence) + view * confidence
-			oneMinusConfidence := decimal.NewFromInt(1).Sub(confidence)
-			weightedPrior := priorReturn.Mul(oneMinusConfidence)
-			weightedView := viewReturn.Mul(confidence)
-			posterior := weightedPrior.Add(weightedView)
-
-			posteriorReturns[asset] = posterior.InexactFloat64()
-		}
-	}
-
 	return posteriorReturns
 }
 
@@ -396,6 +497,7 @@ func viewsFromMatrices(P [][]float64, Q []float64, symbols []string) []*Investor
 }
 
 // optimizeWeights 基于后验收益优化权重
+// Mean-variance optimization: w* = (1/δ) × Σ⁻¹ × (μ - rf), then normalize
 func (o *BlackLittermanOptimizer) optimizeWeights(
 	Sigma [][]float64,
 	posteriorReturns map[string]float64,
@@ -404,32 +506,46 @@ func (o *BlackLittermanOptimizer) optimizeWeights(
 ) map[string]float64 {
 	n := len(symbols)
 
-	// 构建收益向量
-	mu := make([]float64, n)
-	for i, symbol := range symbols {
-		mu[i] = posteriorReturns[symbol]
+	// w* = (1/δ) × Σ⁻¹ × (μ - rf)
+	SigmaInv, err := matrixInverse(Sigma)
+	if err != nil {
+		// Fallback: equal weights
+		weights := make(map[string]float64)
+		for _, sym := range symbols {
+			weights[sym] = 1.0 / float64(n)
+		}
+		return weights
+	}
+	excessReturns := make([]float64, n)
+	rf := o.RiskFreeRate.InexactFloat64()
+	for i, sym := range symbols {
+		excessReturns[i] = posteriorReturns[sym] - rf
 	}
 
-	// 简化：使用等权重作为起点，然后调整
-	weights := make([]float64, n)
-	for i := range weights {
-		weights[i] = 1.0 / float64(n)
+	weights := matrixVectorMultiply(SigmaInv, excessReturns)
+
+	// Normalize to positive weights
+	sum := 0.0
+	for _, w := range weights {
+		if w > 0 {
+			sum += w
+		}
+	}
+	if sum > 0 {
+		for i := range weights {
+			if weights[i] < 0 {
+				weights[i] = 0
+			}
+			weights[i] /= sum
+		}
+	} else {
+		// Fallback: equal weight
+		for i := range weights {
+			weights[i] = 1.0 / float64(n)
+		}
 	}
 
-	// 基于收益调整权重（收益越高，权重越大）
-	// 使用softmax风格的调整
-	expReturns := make([]float64, n)
-	sumExp := 0.0
-	for i := range n {
-		expReturns[i] = math.Exp(mu[i] * 10) // 缩放因子
-		sumExp += expReturns[i]
-	}
-
-	for i := range weights {
-		weights[i] = expReturns[i] / sumExp
-	}
-
-	// 应用约束（nil 约束时创建默认值）
+	// Apply constraints
 	if constraint == nil {
 		constraint = &BlackLittermanConstraint{
 			MinWeight: make(map[string]float64),
@@ -438,12 +554,10 @@ func (o *BlackLittermanOptimizer) optimizeWeights(
 	}
 	weights = o.applyConstraints(weights, symbols, constraint)
 
-	// 构建结果
 	result := make(map[string]float64)
 	for i, symbol := range symbols {
 		result[symbol] = weights[i]
 	}
-
 	return result
 }
 

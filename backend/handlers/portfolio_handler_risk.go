@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"etf-insight/config"
 	"etf-insight/models"
 	"etf-insight/services"
 	"etf-insight/utils"
@@ -115,7 +116,7 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 	}
 
 	// 计算综合风险指标
-	riskFreeRate := decimal.NewFromFloat(0.02 / 252)
+	riskFreeRate := decimal.NewFromFloat(config.GetFinancialConfig().RiskFreeRate / float64(config.GetFinancialConfig().TradingDaysYear))
 	riskMetrics, err := riskModels.CalculateRiskMetrics(portfolioReturns, riskFreeRate, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

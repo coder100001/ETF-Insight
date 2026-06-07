@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 
+	"etf-insight/config"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -18,8 +20,8 @@ func TestNewBlackLittermanOptimizer(t *testing.T) {
 		t.Errorf("Expected default Tau 0.025, got %s", optimizer.Tau.String())
 	}
 
-	if !optimizer.RiskFreeRate.Equal(decimal.NewFromFloat(0.045)) {
-		t.Errorf("Expected default RiskFreeRate 0.045, got %s", optimizer.RiskFreeRate.String())
+	if !optimizer.RiskFreeRate.Equal(decimal.NewFromFloat(config.GetFinancialConfig().RiskFreeRate)) {
+		t.Errorf("Expected default RiskFreeRate %f, got %s", config.GetFinancialConfig().RiskFreeRate, optimizer.RiskFreeRate.String())
 	}
 }
 

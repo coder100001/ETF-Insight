@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 
+	"etf-insight/services/statistics"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -112,15 +114,17 @@ func (rm *RiskModels) CalculateParametricVaR(returns []decimal.Decimal, confiden
 	zDecimal := decimal.NewFromFloat(zScore)
 	varValue := mean.Sub(zDecimal.Mul(stdDev)).Neg()
 
-	// CVaR 计算说明：
-	// 当前使用近似值 VaR * 1.2，适用于正态分布假设下的快速估算。
-	//
-	// 精确计算公式（未来可优化）：
-	// CVaR = μ - σ * φ(z) / (1 - α)
-	// 其中 φ(z) 是标准正态密度函数，α 是置信水平
-	//
-	// 参考：https://en.wikipedia.org/wiki/Expected_shortfall
-	cvarValue := varValue.Mul(decimal.NewFromFloat(1.2)) // 近似值
+	// CVaR = μ - σ × φ(z) / (1 - α)
+	// Reference: https://en.wikipedia.org/wiki/Expected_shortfall
+	phiZ := statistics.NormalPDF(zScore)
+	oneMinusAlpha := 1.0 - confidence
+	if oneMinusAlpha < 1e-10 {
+		oneMinusAlpha = 1e-10
+	}
+	meanFloat := mean.InexactFloat64()
+	stdFloat := stdDev.InexactFloat64()
+	cvarRaw := meanFloat - stdFloat*(phiZ/oneMinusAlpha)
+	cvarValue := decimal.NewFromFloat(-cvarRaw) // positive = loss
 
 	// 年化
 	annualizedVaR := varValue.Mul(decimal.NewFromFloat(math.Sqrt(252)))
@@ -337,13 +341,11 @@ func calculateStdDev(values []decimal.Decimal, mean decimal.Decimal) decimal.Dec
 	if len(values) == 0 {
 		return decimal.Zero
 	}
-	variance := decimal.Zero
-	for _, v := range values {
-		diff := v.Sub(mean)
-		variance = variance.Add(diff.Mul(diff))
+	floats := make([]float64, len(values))
+	for i, v := range values {
+		floats[i] = v.InexactFloat64()
 	}
-	variance = variance.Div(decimal.NewFromInt(int64(len(values))))
-	return decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+	return decimal.NewFromFloat(statistics.SampleStdDev(floats))
 }
 
 func getZScore(confidence float64) float64 {

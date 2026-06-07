@@ -6,7 +6,9 @@ import (
 	"sort"
 	"time"
 
+	"etf-insight/config"
 	"etf-insight/models"
+	"etf-insight/services/statistics"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -146,7 +148,7 @@ func (s *PortfolioAnalyticsService) CalculateETFMetrics(symbol string, days int)
 
 	// 计算夏普比率
 	// Sharpe = (R_p - R_f) / σ_p
-	riskFreeRate := 0.045 // 4.5% 无风险利率
+	riskFreeRate := config.GetFinancialConfig().RiskFreeRate
 	sharpeRatio := (annualReturn - riskFreeRate) / annualVolatility
 	if annualVolatility == 0 {
 		sharpeRatio = 0
@@ -327,7 +329,7 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 	portfolioVolatility := math.Sqrt(portfolioVariance)
 
 	// 计算夏普比率
-	riskFreeRate := 0.045
+	riskFreeRate := config.GetFinancialConfig().RiskFreeRate
 	sharpeRatio := (expectedReturn - riskFreeRate) / portfolioVolatility
 	if portfolioVolatility == 0 {
 		sharpeRatio = 0
@@ -415,7 +417,8 @@ func (s *PortfolioAnalyticsService) mean(values []float64) float64 {
 }
 
 func (s *PortfolioAnalyticsService) variance(values []float64, mean float64) float64 {
-	if len(values) == 0 {
+	n := len(values)
+	if n < 2 {
 		return 0
 	}
 	sum := 0.0
@@ -423,7 +426,7 @@ func (s *PortfolioAnalyticsService) variance(values []float64, mean float64) flo
 		diff := v - mean
 		sum += diff * diff
 	}
-	return sum / float64(len(values))
+	return sum / float64(n-1) // N-1 sample variance
 }
 
 func (s *PortfolioAnalyticsService) calculateMaxDrawdown(prices []decimal.Decimal) float64 {
@@ -557,8 +560,11 @@ func (s *PortfolioAnalyticsService) CalculateCVaR(returns []float64, confidence 
 	// 标准正态分布在Z处的PDF值
 	phi := (1.0 / math.Sqrt(2*math.Pi)) * math.Exp(-zScore*zScore/2)
 
-	// 标准正态分布在Z处的CDF值 (近似)
-	Phi := 1 - confidence
+	// 标准正态分布在Z处的CDF值 (精确)
+	Phi := statistics.NormalCDF(zScore)
+	if Phi < 1e-10 {
+		Phi = 1e-10
+	}
 
 	cvar := mean - std*(phi/Phi)
 	return cvar
@@ -867,7 +873,7 @@ func (s *PortfolioAnalyticsService) CalculateRollingWindowMetrics(
 	volatility := math.Sqrt(variance) * math.Sqrt(252)
 
 	// 计算夏普比率
-	riskFreeRate := 0.045
+	riskFreeRate := config.GetFinancialConfig().RiskFreeRate
 	sharpeRatio := 0.0
 	if volatility > 0 {
 		sharpeRatio = (annualReturn - riskFreeRate) / volatility

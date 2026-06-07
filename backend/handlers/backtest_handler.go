@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"etf-insight/config"
 	"etf-insight/models"
 	"etf-insight/services/backtest"
 
@@ -14,8 +15,6 @@ import (
 )
 
 const (
-	DaysPerYear            = 365.0
-	DefaultRiskFreeRate    = 0.045
 	DefaultSMBFactorReturn = 0.02
 	DefaultHMLFactorReturn = 0.03
 )
@@ -307,11 +306,11 @@ func (h *BacktestHandler) AnalyzeFactors(c *gin.Context) {
 			days := endDate.Sub(startDate).Hours() / 24
 			annualizedMarketReturn := 0.0
 			if days > 0 {
-				annualizedMarketReturn = math.Pow(1+marketReturn, DaysPerYear/days) - 1
+				annualizedMarketReturn = math.Pow(1+marketReturn, float64(config.GetFinancialConfig().TradingDaysYear)/days) - 1
 			}
 
 			// 无风险利率
-			riskFreeRate := DefaultRiskFreeRate
+			riskFreeRate := config.GetFinancialConfig().RiskFreeRate
 
 			factorReturns[string(backtest.FactorMarket)] = annualizedMarketReturn - riskFreeRate
 			factorReturns[string(backtest.FactorSMB)] = DefaultSMBFactorReturn

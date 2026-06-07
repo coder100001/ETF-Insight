@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 
+	"etf-insight/config"
 	"etf-insight/models"
 	"etf-insight/utils"
 
@@ -81,7 +82,7 @@ func (o *PortfolioOptimizer) Optimize(request PortfolioOptimizationRequest) (*Po
 		request.RiskAversion = decimal.NewFromFloat(2.0)
 	}
 	if request.RiskFreeRate.IsZero() {
-		request.RiskFreeRate = decimal.NewFromFloat(0.04)
+		request.RiskFreeRate = decimal.NewFromFloat(config.GetFinancialConfig().RiskFreeRate)
 	}
 
 	symbolReturns, err := o.getHistoricalReturns(request.Symbols)
@@ -494,7 +495,7 @@ func (o *PortfolioOptimizer) GetEfficientFrontier(request PortfolioOptimizationR
 	}
 
 	if request.RiskFreeRate.IsZero() {
-		request.RiskFreeRate = decimal.NewFromFloat(0.04)
+		request.RiskFreeRate = decimal.NewFromFloat(config.GetFinancialConfig().RiskFreeRate)
 	}
 
 	defaultConstraints := OptimizationConstraints{

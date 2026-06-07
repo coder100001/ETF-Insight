@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 
+	"etf-insight/config"
 	"etf-insight/services/mathutil"
 	"github.com/shopspring/decimal"
 )
@@ -21,7 +22,7 @@ type MPTOptimizer struct {
 // NewMPTOptimizer 创建MPT优化器
 func NewMPTOptimizer() *MPTOptimizer {
 	return &MPTOptimizer{
-		RiskFreeRate: 0.045, // 默认4.5%年化无风险利率
+		RiskFreeRate: config.GetFinancialConfig().RiskFreeRate,
 		MaxIter:      1000,
 		Tolerance:    1e-8,
 	}
