@@ -23,6 +23,8 @@ import BlackLittermanConfig from './pages/BlackLittermanConfig';
 import RiskBudget from './pages/RiskBudget';
 import QuantLibAnalysis from './pages/QuantLibAnalysis';
 import AIAgents from './pages/AIAgents';
+import ETFComparisonReport from './pages/ETFComparisonReport';
+import InvestmentStrategy from './pages/InvestmentStrategy';
 import './App.css';
 
 const antdTheme = {
@@ -78,6 +80,9 @@ const App: FC = () => {
               <Route path="/risk-budget" element={<RiskBudget />} />
               <Route path="/quantlib" element={<QuantLibAnalysis />} />
               <Route path="/ai-agents" element={<AIAgents />} />
+
+              <Route path="/etf-comparison-report" element={<ETFComparisonReport />} />
+              <Route path="/investment-strategy" element={<InvestmentStrategy />} />
 
               <Route path="/operation-logs" element={<OperationLogs />} />
               <Route path="/exchange-rate" element={<ExchangeRate />} />

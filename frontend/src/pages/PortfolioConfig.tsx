@@ -194,9 +194,19 @@ const PortfolioConfigPage: React.FC = () => {
     setIsModalVisible(true);
   };
 
-  const handleDelete = (id: number) => {
-    setConfigs(prev => prev.filter(config => config.id !== id));
-    message.success('配置已删除');
+  const handleDelete = async (id: number) => {
+    try {
+      const result = await portfolioConfigAPI.delete(String(id));
+      if (result.success) {
+        message.success('配置已删除');
+        loadConfigs();
+      } else {
+        message.error(result.error || '删除配置失败');
+      }
+    } catch (error) {
+      console.error('Failed to delete config:', error);
+      message.error('删除配置失败');
+    }
   };
 
   const handleModalOk = async () => {
@@ -212,35 +222,40 @@ const PortfolioConfigPage: React.FC = () => {
         });
       }
 
-      const configData = {
-        ...values,
-        allocation,
-        etfs: values.etfs || [],
-      };
-
       if (editingConfig) {
         // 编辑模式
-        setConfigs(prev => prev.map(config =>
-          config.id === editingConfig.id
-            ? { ...config, ...configData, updated_at: new Date().toISOString().split('T')[0] }
-            : config
-        ));
-        message.success('配置已更新');
+        const result = await portfolioConfigAPI.update(String(editingConfig.id), {
+          name: values.name,
+          description: values.description,
+          allocation,
+          total_investment: values.total_investment,
+        });
+        if (result.success) {
+          message.success('配置已更新');
+          setIsModalVisible(false);
+          form.resetFields();
+          loadConfigs();
+        } else {
+          message.error(result.error || '更新配置失败');
+        }
       } else {
         // 新建模式
-        const newConfig: PortfolioConfig = {
-          id: Date.now(),
-          ...configData,
-          created_at: new Date().toISOString().split('T')[0],
-          updated_at: new Date().toISOString().split('T')[0],
-          is_default: false,
-        };
-        setConfigs(prev => [...prev, newConfig]);
-        message.success('配置已创建');
+        const result = await portfolioConfigAPI.create({
+          name: values.name,
+          description: values.description,
+          allocation,
+          total_investment: values.total_investment,
+          status: 1,
+        });
+        if (result.success) {
+          message.success('配置已创建');
+          setIsModalVisible(false);
+          form.resetFields();
+          loadConfigs();
+        } else {
+          message.error(result.error || '创建配置失败');
+        }
       }
-
-      setIsModalVisible(false);
-      form.resetFields();
     } catch (error) {
       console.error('Validation failed:', error);
     }

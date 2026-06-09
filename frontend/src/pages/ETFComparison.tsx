@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Select, App } from 'antd';
-import { BarChartOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Select, App, Row, Col, Statistic, Tag } from 'antd';
+import { BarChartOutlined, TrophyOutlined, SafetyOutlined, PercentageOutlined } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
-import { etfAPI } from '../services/api';
+import { etfAPI, universalETFAPI } from '../services/api';
 import type { ETFData } from '../types';
 
 const PageHeader = styled.div`
@@ -45,6 +45,28 @@ const StyledTable = styled(Table)`
   }
 ` as typeof Table;
 
+const ComparisonSection = styled.div`
+  margin-bottom: 20px;
+`;
+
+const HighlightRow = styled(Row)`
+  margin-bottom: 16px;
+`;
+
+const HighlightCard = styled(Card)`
+  text-align: center;
+  box-shadow: ${theme.shadows.card};
+  .ant-card-body {
+    padding: 16px;
+  }
+`;
+
+const WinnerTag = styled(Tag)`
+  font-size: 14px;
+  padding: 4px 12px;
+  margin-top: 8px;
+`;
+
 interface ETFApiItem {
   symbol: string;
   name: string;
@@ -70,7 +92,10 @@ const ETFComparison: React.FC = () => {
   const { message } = App.useApp();
   const [etfs, setEtfs] = useState<ETFData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [compareLoading, setCompareLoading] = useState(false);
   const [selectedETFs, setSelectedETFs] = useState<string[]>(['SCHD', 'SPYD', 'JEPQ']);
+  const [compared, setCompared] = useState(false);
+  const [correlations, setCorrelations] = useState<Record<string, Record<string, number>> | null>(null);
 
   useEffect(() => {
     fetchETFData();
@@ -115,15 +140,51 @@ const ETFComparison: React.FC = () => {
     }
   };
 
-  const handleCompare = () => {
+  const handleCompare = async () => {
     if (selectedETFs.length < 2) {
       message.warning('请至少选择2个ETF进行对比');
       return;
     }
-    message.success(`已选择 ${selectedETFs.length} 个ETF进行对比`);
+    setCompareLoading(true);
+    setCompared(false);
+    setCorrelations(null);
+    try {
+      // 调用对比 API 获取相关性数据
+      const response = await universalETFAPI.compare(selectedETFs);
+      if (response.success && response.data) {
+        setCorrelations(response.data.correlations || null);
+      }
+      setCompared(true);
+      message.success(`已完成 ${selectedETFs.length} 个ETF的对比分析`);
+    } catch {
+      // API 调用失败时仍使用本地数据展示对比
+      setCompared(true);
+      message.info('已使用本地数据进行对比');
+    } finally {
+      setCompareLoading(false);
+    }
   };
 
   const filteredETFs = etfs.filter(etf => selectedETFs.includes(etf.symbol));
+
+  // 计算各指标最优 ETF
+  const highlights = useMemo(() => {
+    if (!compared || filteredETFs.length < 2) return null;
+    const items = filteredETFs;
+    const maxBy = (fn: (e: ETFData) => number) =>
+      items.reduce((best, e) => (fn(e) > fn(best) ? e : best), items[0]);
+    const minBy = (fn: (e: ETFData) => number) =>
+      items.reduce((best, e) => (fn(e) < fn(best) ? e : best), items[0]);
+
+    return {
+      bestDividend: maxBy(e => e.dividend_yield ?? 0),
+      bestSharpe: maxBy(e => e.sharpe_ratio ?? 0),
+      lowestVolatility: minBy(e => e.volatility ?? Infinity),
+      lowestDrawdown: minBy(e => Math.abs(e.max_drawdown ?? 0)),
+      lowestExpense: minBy(e => e.expense_ratio ?? Infinity),
+      highestReturn: maxBy(e => e.total_return ?? 0),
+    };
+  }, [compared, filteredETFs]);
 
   const columns: import('antd').TableProps<ETFData>['columns'] = [
     {
@@ -222,10 +283,132 @@ const ETFComparison: React.FC = () => {
             value: etf.symbol,
           }))}
         />
-        <Button type="primary" icon={<BarChartOutlined />} onClick={handleCompare}>
+        <Button type="primary" icon={<BarChartOutlined />} onClick={handleCompare} loading={compareLoading}>
           开始对比
         </Button>
       </FilterSection>
+
+      {highlights && (
+        <ComparisonSection>
+          <HighlightRow gutter={16}>
+            <Col span={8}>
+              <HighlightCard>
+                <Statistic
+                  title="最高股息率"
+                  value={`${(highlights.bestDividend.dividend_yield ?? 0).toFixed(2)}%`}
+                  prefix={<PercentageOutlined />}
+                  valueStyle={{ color: theme.colors.success }}
+                />
+                <WinnerTag color="green">
+                  <TrophyOutlined /> {highlights.bestDividend.symbol}
+                </WinnerTag>
+              </HighlightCard>
+            </Col>
+            <Col span={8}>
+              <HighlightCard>
+                <Statistic
+                  title="最佳夏普比率"
+                  value={(highlights.bestSharpe.sharpe_ratio ?? 0).toFixed(2)}
+                  prefix={<BarChartOutlined />}
+                  valueStyle={{ color: theme.colors.primary }}
+                />
+                <WinnerTag color="blue">
+                  <TrophyOutlined /> {highlights.bestSharpe.symbol}
+                </WinnerTag>
+              </HighlightCard>
+            </Col>
+            <Col span={8}>
+              <HighlightCard>
+                <Statistic
+                  title="最低波动率"
+                  value={`${(highlights.lowestVolatility.volatility ?? 0).toFixed(2)}%`}
+                  prefix={<SafetyOutlined />}
+                  valueStyle={{ color: theme.colors.info }}
+                />
+                <WinnerTag color="cyan">
+                  <TrophyOutlined /> {highlights.lowestVolatility.symbol}
+                </WinnerTag>
+              </HighlightCard>
+            </Col>
+          </HighlightRow>
+          <HighlightRow gutter={16}>
+            <Col span={8}>
+              <HighlightCard>
+                <Statistic
+                  title="最小回撤"
+                  value={`${(highlights.lowestDrawdown.max_drawdown ?? 0).toFixed(2)}%`}
+                  prefix={<SafetyOutlined />}
+                  valueStyle={{ color: theme.colors.warning }}
+                />
+                <WinnerTag color="orange">
+                  <TrophyOutlined /> {highlights.lowestDrawdown.symbol}
+                </WinnerTag>
+              </HighlightCard>
+            </Col>
+            <Col span={8}>
+              <HighlightCard>
+                <Statistic
+                  title="最低费率"
+                  value={`${(highlights.lowestExpense.expense_ratio ?? 0).toFixed(2)}%`}
+                  prefix={<PercentageOutlined />}
+                  valueStyle={{ color: '#722ed1' }}
+                />
+                <WinnerTag color="purple">
+                  <TrophyOutlined /> {highlights.lowestExpense.symbol}
+                </WinnerTag>
+              </HighlightCard>
+            </Col>
+            <Col span={8}>
+              <HighlightCard>
+                <Statistic
+                  title="最高总回报"
+                  value={`${(highlights.highestReturn.total_return ?? 0).toFixed(2)}%`}
+                  prefix={<TrophyOutlined />}
+                  valueStyle={{ color: theme.colors.success }}
+                />
+                <WinnerTag color="green">
+                  <TrophyOutlined /> {highlights.highestReturn.symbol}
+                </WinnerTag>
+              </HighlightCard>
+            </Col>
+          </HighlightRow>
+
+          {correlations && Object.keys(correlations).length > 0 && (
+            <Card
+              title="相关性矩阵"
+              style={{ boxShadow: theme.shadows.card, marginTop: 16 }}
+              size="small"
+            >
+              <Table
+                dataSource={Object.entries(correlations).map(([symbol, corrs]) => ({
+                  symbol,
+                  ...corrs,
+                }))}
+                columns={[
+                  { title: '', dataIndex: 'symbol', key: 'symbol', fixed: 'left' as const, width: 80 },
+                  ...Object.keys(correlations).map(sym => ({
+                    title: sym,
+                    dataIndex: sym,
+                    key: sym,
+                    align: 'center' as const,
+                    width: 100,
+                    render: (val: number) => {
+                      if (val === undefined || val === null) return '-';
+                      const color = val >= 0.7 ? theme.colors.danger : val >= 0.4 ? theme.colors.warning : theme.colors.success;
+                      return <span style={{ color }}>{val.toFixed(2)}</span>;
+                    },
+                  })),
+                ]}
+                pagination={false}
+                bordered
+                size="small"
+                scroll={{ x: 'max-content' }}
+                rowKey="symbol"
+              />
+            </Card>
+          )}
+        </ComparisonSection>
+      )}
 
       <Card style={{ boxShadow: theme.shadows.card }}>
         <StyledTable
