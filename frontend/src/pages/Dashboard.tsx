@@ -14,27 +14,34 @@ import { etfAPI, portfolioConfigAPI, operationLogsAPI, exchangeRateAPI } from '.
 
 interface LogEntry {
   id: number;
-  operation: string;
+  log_type: string;
+  timestamp: string;
+  user: string;
+  module: string;
+  action_type: string;
   details: string;
-  created_at: string;
-  status?: string;
+  ip: string;
+  status: string;
+  status_code: number;
+  error_message: string;
+  duration_ms: number;
 }
 
 interface ETFItem {
   symbol: string;
   name?: string;
   current_price?: number;
+  close_price?: number;
   price_change_percent?: number;
+  change_percent?: number;
   market?: string;
 }
 
 interface ExchangeRateItem {
-  id: number;
   from_currency: string;
   to_currency: string;
   rate: number;
-  source?: string;
-  updated_at?: string;
+  updated_at: string;
 }
 
 const PageTitle = styled.h2`
@@ -268,19 +275,19 @@ const Dashboard: React.FC = () => {
   const logColumns = [
     {
       title: '操作',
-      dataIndex: 'operation_name',
-      key: 'operation_name',
+      dataIndex: 'log_type',
+      key: 'log_type',
       render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: number) => {
-        const statusMap: Record<number, { text: string; color: string }> = {
-          0: { text: '进行中', color: 'processing' },
-          1: { text: '成功', color: 'success' },
-          2: { text: '失败', color: 'error' },
+      render: (status: string) => {
+        const statusMap: Record<string, { text: string; color: string }> = {
+          'success': { text: '成功', color: 'success' },
+          'error': { text: '失败', color: 'error' },
+          'processing': { text: '进行中', color: 'processing' },
         };
         const { text, color } = statusMap[status] || { text: '未知', color: 'default' };
         return <Badge status={color as 'success' | 'error' | 'default' | 'processing' | 'warning'} text={text} />;
@@ -288,8 +295,8 @@ const Dashboard: React.FC = () => {
     },
     {
       title: '时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'timestamp',
+      key: 'timestamp',
       render: (text: string) => text ? new Date(text).toLocaleString('zh-CN') : '-',
     },
   ];
@@ -316,7 +323,7 @@ const Dashboard: React.FC = () => {
       dataIndex: 'current_price',
       key: 'current_price',
       render: (price: number, record: ETFItem) => {
-        const p = price || (record as Record<string, number>).close_price || 0;
+        const p = price || record.close_price || 0;
         return p > 0 ? `$${p.toFixed(2)}` : '-';
       },
     },
@@ -325,7 +332,7 @@ const Dashboard: React.FC = () => {
       dataIndex: 'change_percent',
       key: 'change_percent',
       render: (percent: number, record: ETFItem) => {
-        const p = percent || (record as Record<string, number>).change_percent || 0;
+        const p = percent || record.change_percent || 0;
         if (p === 0) return <span>-</span>;
         const isUp = p > 0;
         return (
