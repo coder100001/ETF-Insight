@@ -200,7 +200,7 @@ const PortfolioAnalysis: React.FC = () => {
         }),
       });
       if (data.success) {
-        setResult(data.data);
+        setResult(data.data ?? null);
         message.success('分析完成');
       } else {
         message.error(data.error || '分析失败');
