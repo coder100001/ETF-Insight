@@ -246,6 +246,13 @@ const PortfolioAnalysis: React.FC = () => {
     return `${value.toFixed(2)}%`;
   };
 
+  const formatMetricValue = (value: number, metricKey: string): string => {
+    if (metricKey === 'sharpe_ratio') {
+      return value.toFixed(2);
+    }
+    return formatPercent(value);
+  };
+
   const comparisonColumns = [
     {
       title: '指标',
@@ -266,24 +273,24 @@ const PortfolioAnalysis: React.FC = () => {
       title: '悲观',
       dataIndex: 'pessimistic',
       key: 'pessimistic',
-      render: (value: number | undefined) => (
-        <Text type="danger">{value !== undefined ? formatPercent(value) : '-'}</Text>
+      render: (value: number | undefined, record: Record<string, string | number | undefined>) => (
+        <Text type="danger">{value !== undefined ? formatMetricValue(value, record.metric as string) : '-'}</Text>
       ),
     },
     {
       title: '中性',
       dataIndex: 'neutral',
       key: 'neutral',
-      render: (value: number | undefined) => (
-        <Text>{value !== undefined ? formatPercent(value) : '-'}</Text>
+      render: (value: number | undefined, record: Record<string, string | number | undefined>) => (
+        <Text>{value !== undefined ? formatMetricValue(value, record.metric as string) : '-'}</Text>
       ),
     },
     {
       title: '乐观',
       dataIndex: 'optimistic',
       key: 'optimistic',
-      render: (value: number | undefined) => (
-        <Text type="success">{value !== undefined ? formatPercent(value) : '-'}</Text>
+      render: (value: number | undefined, record: Record<string, string | number | undefined>) => (
+        <Text type="success">{value !== undefined ? formatMetricValue(value, record.metric as string) : '-'}</Text>
       ),
     },
   ];
