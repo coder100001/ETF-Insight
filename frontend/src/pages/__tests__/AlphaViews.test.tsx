@@ -16,7 +16,8 @@ const mockGetActive = vi.fn().mockResolvedValue({ success: true, data: [] })
 const mockCreate = vi.fn().mockResolvedValue({ success: true, data: null })
 
 vi.mock('../../services/api', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const actual = (await importOriginal()) as any
   return {
     ...actual,
     alphaViewAPI: {
