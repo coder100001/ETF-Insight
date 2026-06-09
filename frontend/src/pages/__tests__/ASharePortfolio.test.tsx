@@ -16,7 +16,7 @@ const mockGetDefaultPortfolio = vi.fn().mockResolvedValue({ success: true, data:
 const mockGetETFPrices = vi.fn().mockResolvedValue({ success: true, data: [] })
 
 vi.mock('../../services/api', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
     aShareAPI: {

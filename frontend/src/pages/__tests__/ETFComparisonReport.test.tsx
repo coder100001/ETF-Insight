@@ -17,7 +17,7 @@ const mockGetComparison = vi.fn().mockResolvedValue({ success: true, data: null 
 const mockAnalyzeScenarios = vi.fn().mockResolvedValue({ success: true, data: null })
 
 vi.mock('../../services/api', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
     etfAPI: {
