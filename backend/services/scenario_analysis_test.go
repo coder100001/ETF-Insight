@@ -1,7 +1,9 @@
 package services
 
 import (
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -219,4 +221,59 @@ func TestCalculateComparison(t *testing.T) {
 	assert.NotEmpty(t, comparison.WorstScenario)
 	assert.Greater(t, comparison.ValueDifference, 0.0)
 	assert.NotEmpty(t, comparison.RiskAdjustedWinner)
+}
+
+func TestGenerateNormalRandom(t *testing.T) {
+	service := NewScenarioAnalysisService()
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// 生成大量随机数并检查统计特性
+	n := 10000
+	sum := 0.0
+	sumSq := 0.0
+
+	for i := 0; i < n; i++ {
+		z := service.generateNormalRandom(r)
+		sum += z
+		sumSq += z * z
+	}
+
+	mean := sum / float64(n)
+	variance := sumSq/float64(n) - mean*mean
+
+	// 均值应该接近0
+	assert.InDelta(t, 0, mean, 0.1)
+	// 方差应该接近1
+	assert.InDelta(t, 1, variance, 0.2)
+}
+
+func TestCalculateCVaRFromSimulations(t *testing.T) {
+	service := NewScenarioAnalysisService()
+
+	// 生成模拟结果
+	values := make([]float64, 1000)
+	for i := range values {
+		values[i] = float64(i) // 0, 1, 2, ..., 999
+	}
+
+	// 计算 95% CVaR
+	cvar95 := service.calculateCVaRFromSimulations(values, 0.95)
+	// 应该是最低 5% 的平均值 (0-49)
+	assert.Less(t, cvar95, 50.0)
+
+	// 计算 99% CVaR
+	cvar99 := service.calculateCVaRFromSimulations(values, 0.99)
+	// 应该是最低 1% 的平均值 (0-9)
+	assert.Less(t, cvar99, 10.0)
+
+	// 99% CVaR 应该比 95% CVaR 更小
+	assert.Less(t, cvar99, cvar95)
+}
+
+func TestCalculateCVaRFromSimulations_SingleValue(t *testing.T) {
+	service := NewScenarioAnalysisService()
+
+	values := []float64{100}
+	cvar := service.calculateCVaRFromSimulations(values, 0.95)
+	assert.Equal(t, 100.0, cvar)
 }

@@ -466,7 +466,25 @@ func (s *PortfolioAnalyticsService) calculateMaxDrawdown(prices []decimal.Decima
 }
 
 func (s *PortfolioAnalyticsService) getEstimatedDividendYield(symbol string) float64 {
-	// 基于已知ETF的股息率估计
+	// 首先尝试从数据库查询股息率
+	if s.db != nil {
+		var assetMetadata models.AssetMetadata
+		err := s.db.Where("symbol = ?", symbol).First(&assetMetadata).Error
+		if err == nil && assetMetadata.DividendYield.IsPositive() {
+			yield, _ := assetMetadata.DividendYield.Float64()
+			return yield / 100.0 // 数据库存储的是百分比，转换为小数
+		}
+
+		// 尝试从 UniversalETF 查询
+		var universalETF models.UniversalETF
+		err = s.db.Where("symbol = ?", symbol).First(&universalETF).Error
+		if err == nil && universalETF.DividendYield.IsPositive() {
+			yield, _ := universalETF.DividendYield.Float64()
+			return yield / 100.0
+		}
+	}
+
+	// 降级到硬编码默认值
 	yields := map[string]float64{
 		"SCHD": 0.035,
 		"JEPQ": 0.095,

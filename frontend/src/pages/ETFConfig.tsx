@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Space, Switch, Tag, type TableColumnsType, message } from 'antd';
-import { SettingOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Space, Switch, Tag, Modal, Form, Input, InputNumber, Select, type TableColumnsType, message } from 'antd';
+import { SettingOutlined, EditOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfConfigAPI } from '../services/api';
@@ -37,6 +37,9 @@ const StyledTable = styled(Table)`
 const ETFConfigPage: React.FC = () => {
   const [configs, setConfigs] = useState<ETFConfig[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<ETFConfig | null>(null);
+  const [form] = Form.useForm();
 
   // 加载ETF配置列表
   const loadConfigs = async () => {
@@ -65,6 +68,81 @@ const ETFConfigPage: React.FC = () => {
   useEffect(() => {
     loadConfigs();
   }, []);
+
+  const handleEdit = (record: ETFConfig) => {
+    setEditingConfig(record);
+    form.setFieldsValue({
+      symbol: record.symbol,
+      name: record.name,
+      description: record.description,
+      strategy: record.strategy,
+      focus: record.focus,
+      expense_ratio: record.expense_ratio,
+      currency: record.currency,
+      exchange: record.exchange,
+      category: record.category,
+      provider: record.provider,
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleAdd = () => {
+    setEditingConfig(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+
+      if (editingConfig) {
+        const result = await etfConfigAPI.update(String(editingConfig.id), {
+          name: values.name,
+          description: values.description,
+          strategy: values.strategy,
+          focus: values.focus,
+          expense_ratio: values.expense_ratio,
+          currency: values.currency,
+          exchange: values.exchange,
+          category: values.category,
+          provider: values.provider,
+        });
+        if (result.success) {
+          message.success('ETF配置已更新');
+          setIsModalVisible(false);
+          form.resetFields();
+          loadConfigs();
+        } else {
+          message.error(result.error || '更新ETF配置失败');
+        }
+      } else {
+        const result = await etfConfigAPI.create({
+          symbol: values.symbol,
+          name: values.name,
+          description: values.description,
+          strategy: values.strategy,
+          focus: values.focus,
+          expense_ratio: values.expense_ratio,
+          currency: values.currency || 'USD',
+          exchange: values.exchange,
+          category: values.category,
+          provider: values.provider,
+          status: 1,
+        });
+        if (result.success) {
+          message.success('ETF配置已添加');
+          setIsModalVisible(false);
+          form.resetFields();
+          loadConfigs();
+        } else {
+          message.error(result.error || '添加ETF配置失败');
+        }
+      }
+    } catch (error) {
+      console.error('Validation failed:', error);
+    }
+  };
 
   // 切换状态
   const handleToggleActive = async (id: number, checked: boolean) => {
@@ -193,10 +271,10 @@ const ETFConfigPage: React.FC = () => {
       title: '操作',
       key: 'action',
       align: 'center',
-      render: () => (
+      render: (_text: unknown, record: ETFConfig) => (
         <Space>
           <Button size="small" icon={<ReloadOutlined />}>更新</Button>
-          <Button size="small" icon={<EditOutlined />}>编辑</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
         </Space>
       ),
     },
@@ -209,7 +287,7 @@ const ETFConfigPage: React.FC = () => {
           <SettingOutlined />
           ETF配置
         </h2>
-        <Button type="primary">添加ETF</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>添加ETF</Button>
       </PageHeader>
 
       <Card style={{ boxShadow: theme.shadows.card }}>
@@ -221,6 +299,81 @@ const ETFConfigPage: React.FC = () => {
           loading={loading}
         />
       </Card>
+
+      <Modal
+        title={editingConfig ? '编辑ETF配置' : '添加ETF'}
+        open={isModalVisible}
+        onOk={handleModalOk}
+        onCancel={() => setIsModalVisible(false)}
+        width={600}
+        okText={editingConfig ? '保存' : '添加'}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="symbol"
+            label="ETF代码"
+            rules={[{ required: true, message: '请输入ETF代码' }]}
+          >
+            <Input placeholder="例如：SPY" disabled={!!editingConfig} />
+          </Form.Item>
+          <Form.Item
+            name="name"
+            label="ETF名称"
+            rules={[{ required: true, message: '请输入ETF名称' }]}
+          >
+            <Input placeholder="例如：SPDR S&P 500 ETF" />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea placeholder="ETF描述信息" rows={2} />
+          </Form.Item>
+          <Form.Item name="focus" label="投资方向">
+            <Input placeholder="例如：大盘股" />
+          </Form.Item>
+          <Form.Item name="strategy" label="投资策略">
+            <Input placeholder="例如：被动指数跟踪" />
+          </Form.Item>
+          <Form.Item name="category" label="分类">
+            <Select
+              placeholder="选择分类"
+              options={[
+                { value: 'equity', label: '股票型' },
+                { value: 'bond', label: '债券型' },
+                { value: 'commodity', label: '商品型' },
+                { value: 'reit', label: 'REITs' },
+                { value: 'sector', label: '行业型' },
+                { value: 'international', label: '国际型' },
+                { value: 'mixed', label: '混合型' },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="provider" label="基金公司">
+            <Input placeholder="例如：Vanguard" />
+          </Form.Item>
+          <Form.Item name="exchange" label="交易所">
+            <Input placeholder="例如：NYSE" />
+          </Form.Item>
+          <Form.Item name="currency" label="币种">
+            <Select
+              placeholder="选择币种"
+              options={[
+                { value: 'USD', label: 'USD' },
+                { value: 'CNY', label: 'CNY' },
+                { value: 'HKD', label: 'HKD' },
+                { value: 'EUR', label: 'EUR' },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="expense_ratio" label="费率 (%)">
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              max={5}
+              step={0.01}
+              placeholder="例如：0.03"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Layout>
   );
 };

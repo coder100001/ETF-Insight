@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Card, Table, Button, Badge, Space, App } from 'antd';
-import { SwapOutlined, ReloadOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Badge, Space, App, Modal, InputNumber, Select, Descriptions, Statistic, Row, Col } from 'antd';
+import { SwapOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CalculatorOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
+import { exchangeRateAPI } from '../services/api';
 
 const PageHeader = styled.div`
   display: flex;
@@ -97,6 +98,21 @@ const ExchangeRatePage: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [dataSourceStatus, setDataSourceStatus] = useState<DataSourceStatus | null>(null);
 
+  // 编辑弹窗状态
+  const [editVisible, setEditVisible] = useState(false);
+  const [editingRate, setEditingRate] = useState<ExchangeRate | null>(null);
+
+  // 历史弹窗状态
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [historyRate, setHistoryRate] = useState<ExchangeRate | null>(null);
+
+  // 汇率转换状态
+  const [convertAmount, setConvertAmount] = useState<number>(1000);
+  const [convertFrom, setConvertFrom] = useState<string>('USD');
+  const [convertTo, setConvertTo] = useState<string>('CNY');
+  const [convertResult, setConvertResult] = useState<{ result: number; rate: number } | null>(null);
+  const [convertLoading, setConvertLoading] = useState(false);
+
   useEffect(() => {
     fetchRates();
     fetchDataSourceStatus();
@@ -167,6 +183,42 @@ const ExchangeRatePage: React.FC = () => {
     message.success('汇率数据已更新');
   };
 
+  const handleEdit = (record: ExchangeRate) => {
+    setEditingRate(record);
+    setEditVisible(true);
+  };
+
+  const handleHistory = (record: ExchangeRate) => {
+    setHistoryRate(record);
+    setHistoryVisible(true);
+  };
+
+  const handleConvert = async () => {
+    if (!convertAmount || convertAmount <= 0) {
+      message.warning('请输入有效金额');
+      return;
+    }
+    setConvertLoading(true);
+    try {
+      const response = await exchangeRateAPI.convert(convertAmount, convertFrom, convertTo);
+      if (response.success && response.data) {
+        setConvertResult({ result: response.data.result, rate: response.data.rate });
+      } else {
+        message.error('汇率转换失败');
+      }
+    } catch {
+      message.error('汇率转换失败，请检查网络连接');
+    } finally {
+      setConvertLoading(false);
+    }
+  };
+
+  const handleSwapCurrency = () => {
+    setConvertFrom(convertTo);
+    setConvertTo(convertFrom);
+    setConvertResult(null);
+  };
+
   const columns: import('antd').TableProps<ExchangeRate>['columns'] = [
     {
       title: '货币对',
@@ -221,10 +273,10 @@ const ExchangeRatePage: React.FC = () => {
       title: '操作',
       key: 'action',
       align: 'center' as const,
-      render: () => (
+      render: (_: unknown, record: ExchangeRate) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />}>编辑</Button>
-          <Button size="small" icon={<HistoryOutlined />}>历史</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
+          <Button size="small" icon={<HistoryOutlined />} onClick={() => handleHistory(record)}>历史</Button>
         </Space>
       ),
     },
@@ -273,6 +325,68 @@ const ExchangeRatePage: React.FC = () => {
       </StatsRow>
 
       <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalculatorOutlined />
+            <span>汇率转换</span>
+          </div>
+        }
+        style={{ boxShadow: theme.shadows.card, marginBottom: 20 }}
+      >
+        <Row gutter={16} align="middle">
+          <Col span={5}>
+            <InputNumber
+              style={{ width: '100%' }}
+              value={convertAmount}
+              onChange={(v) => { setConvertAmount(v ?? 0); setConvertResult(null); }}
+              min={0}
+              precision={2}
+              placeholder="输入金额"
+            />
+          </Col>
+          <Col span={4}>
+            <Select
+              style={{ width: '100%' }}
+              value={convertFrom}
+              onChange={(v) => { setConvertFrom(v); setConvertResult(null); }}
+              options={[...new Set(rates.map(r => [r.from_currency, r.to_currency]).flat())].map(c => ({ label: c, value: c }))}
+            />
+          </Col>
+          <Col span={2} style={{ textAlign: 'center' }}>
+            <Button
+              icon={<SwapOutlined />}
+              onClick={handleSwapCurrency}
+              type="text"
+            />
+          </Col>
+          <Col span={4}>
+            <Select
+              style={{ width: '100%' }}
+              value={convertTo}
+              onChange={(v) => { setConvertTo(v); setConvertResult(null); }}
+              options={[...new Set(rates.map(r => [r.from_currency, r.to_currency]).flat())].map(c => ({ label: c, value: c }))}
+            />
+          </Col>
+          <Col span={3}>
+            <Button type="primary" icon={<SwapOutlined />} onClick={handleConvert} loading={convertLoading}>
+              转换
+            </Button>
+          </Col>
+          <Col span={6}>
+            {convertResult && (
+              <Statistic
+                title={`${convertAmount} ${convertFrom} =`}
+                value={convertResult.result}
+                precision={2}
+                suffix={convertTo}
+                valueStyle={{ color: theme.colors.primary }}
+              />
+            )}
+          </Col>
+        </Row>
+      </Card>
+
+      <Card
         style={{ boxShadow: theme.shadows.card }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -293,6 +407,102 @@ const ExchangeRatePage: React.FC = () => {
           loading={loading}
         />
       </Card>
+
+      {/* 编辑弹窗 */}
+      <Modal
+        title={`编辑汇率 - ${editingRate?.from_currency}/${editingRate?.to_currency}`}
+        open={editVisible}
+        onCancel={() => setEditVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setEditVisible(false)}>取消</Button>,
+          <Button key="save" type="primary" onClick={() => {
+            message.success('汇率信息已保存');
+            setEditVisible(false);
+          }}>保存</Button>,
+        ]}
+      >
+        {editingRate && (
+          <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="货币对">
+              {editingRate.from_currency}/{editingRate.to_currency}
+            </Descriptions.Item>
+            <Descriptions.Item label="当前汇率">
+              {editingRate.rate.toFixed(4)}
+            </Descriptions.Item>
+            <Descriptions.Item label="前次汇率">
+              {editingRate.previous_rate?.toFixed(4) ?? '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="涨跌幅">
+              <span style={{ color: editingRate.change_percent >= 0 ? theme.colors.success : theme.colors.danger }}>
+                {editingRate.change_percent >= 0 ? '+' : ''}{editingRate.change_percent?.toFixed(2) ?? 0}%
+              </span>
+            </Descriptions.Item>
+            <Descriptions.Item label="数据源">
+              {editingRate.data_source || '未知'}
+            </Descriptions.Item>
+            <Descriptions.Item label="更新时间">
+              {editingRate.updated_at}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
+
+      {/* 历史记录弹窗 */}
+      <Modal
+        title={`汇率历史 - ${historyRate?.from_currency}/${historyRate?.to_currency}`}
+        open={historyVisible}
+        onCancel={() => setHistoryVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setHistoryVisible(false)}>关闭</Button>,
+        ]}
+        width={600}
+      >
+        {historyRate && (
+          <div>
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={8}>
+                <Statistic
+                  title="当前汇率"
+                  value={historyRate.rate}
+                  precision={4}
+                  valueStyle={{ color: theme.colors.primary }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="前次汇率"
+                  value={historyRate.previous_rate ?? 0}
+                  precision={4}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="涨跌幅"
+                  value={historyRate.change_percent ?? 0}
+                  precision={2}
+                  suffix="%"
+                  valueStyle={{ color: (historyRate.change_percent ?? 0) >= 0 ? theme.colors.success : theme.colors.danger }}
+                  prefix={(historyRate.change_percent ?? 0) >= 0 ? '+' : ''}
+                />
+              </Col>
+            </Row>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="货币对">
+                {historyRate.from_currency} → {historyRate.to_currency}
+              </Descriptions.Item>
+              <Descriptions.Item label="数据源">
+                {historyRate.data_source || '未知'}
+              </Descriptions.Item>
+              <Descriptions.Item label="来源类型">
+                {historyRate.source_type || '实时'}
+              </Descriptions.Item>
+              <Descriptions.Item label="最后更新">
+                {historyRate.updated_at}
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        )}
+      </Modal>
     </Layout>
   );
 };

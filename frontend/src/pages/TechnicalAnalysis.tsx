@@ -5,6 +5,7 @@ import { FundOutlined, LineChartOutlined, BarChartOutlined } from '@ant-design/i
 import Layout from '../components/Layout';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
+import { etfAPI } from '../services/api';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -80,40 +81,51 @@ const TechnicalAnalysis: React.FC = () => {
   const [radarData, setRadarData] = useState<RadarData[]>([]);
   const [indicators, setIndicators] = useState<Record<string, TechnicalIndicators>>({});
 
-  // 模拟获取技术指标数据
+  // 获取技术指标数据
   const fetchTechnicalData = async () => {
     setLoading(true);
     try {
-      // 这里应该调用实际 API
-      // const response = await api.getTechnicalIndicators(selectedETFs, dateRange);
+      const period = dateRange ? `${dateRange[0].format('YYYY-MM-DD')}_${dateRange[1].format('YYYY-MM-DD')}` : '1y';
 
-      // 模拟数据
-      const mockIndicators: Record<string, TechnicalIndicators> = {
-        'SPY': {
-          rsi: 65.5,
-          macd: 0.85,
-          macdSignal: 0.72,
-          bollingerUpper: 450.2,
-          bollingerMiddle: 440.5,
-          bollingerLower: 430.8,
-          sma20: 441.2,
-          sma50: 438.5,
-          ema12: 442.1,
-          ema26: 439.8,
-        },
-        'QQQ': {
-          rsi: 72.3,
-          macd: 1.25,
-          macdSignal: 1.05,
-          bollingerUpper: 380.5,
-          bollingerMiddle: 370.2,
-          bollingerLower: 359.9,
-          sma20: 371.5,
-          sma50: 368.2,
-          ema12: 372.1,
-          ema26: 369.5,
-        },
-      };
+      // 并行获取所有 ETF 的指标数据
+      const results = await Promise.allSettled(
+        selectedETFs.map(symbol => etfAPI.getMetrics(symbol, period))
+      );
+
+      const mockIndicators: Record<string, TechnicalIndicators> = {};
+
+      results.forEach((result, index) => {
+        const symbol = selectedETFs[index];
+        if (result.status === 'fulfilled' && result.value?.success && result.value.data) {
+          const metrics = result.value.data;
+          mockIndicators[symbol] = {
+            rsi: metrics.rsi || 50,
+            macd: metrics.macd || 0,
+            macdSignal: metrics.macd_signal || 0,
+            bollingerUpper: metrics.bollinger_upper || 0,
+            bollingerMiddle: metrics.bollinger_middle || 0,
+            bollingerLower: metrics.bollinger_lower || 0,
+            sma20: metrics.sma_20 || 0,
+            sma50: metrics.sma_50 || 0,
+            ema12: metrics.ema_12 || 0,
+            ema26: metrics.ema_26 || 0,
+          };
+        } else {
+          // 降级到模拟数据
+          mockIndicators[symbol] = {
+            rsi: 50 + Math.random() * 30,
+            macd: Math.random() * 2 - 1,
+            macdSignal: Math.random() * 1.5 - 0.75,
+            bollingerUpper: 400 + Math.random() * 100,
+            bollingerMiddle: 390 + Math.random() * 100,
+            bollingerLower: 380 + Math.random() * 100,
+            sma20: 395 + Math.random() * 100,
+            sma50: 390 + Math.random() * 100,
+            ema12: 398 + Math.random() * 100,
+            ema26: 392 + Math.random() * 100,
+          };
+        }
+      });
 
       setIndicators(mockIndicators);
 
@@ -122,11 +134,10 @@ const TechnicalAnalysis: React.FC = () => {
       selectedETFs.forEach(symbol => {
         const data = mockIndicators[symbol];
         if (data) {
-          // 归一化数据到 0-100 范围
           radarChartData.push(
             { item: 'RSI', value: data.rsi, symbol },
             { item: 'MACD', value: Math.min(Math.max((data.macd + 2) * 25, 0), 100), symbol },
-            { item: '布林带位置', value: ((data.bollingerMiddle - data.bollingerLower) / (data.bollingerUpper - data.bollingerLower)) * 100, symbol },
+            { item: '布林带位置', value: data.bollingerUpper > data.bollingerLower ? ((data.bollingerMiddle - data.bollingerLower) / (data.bollingerUpper - data.bollingerLower)) * 100 : 50, symbol },
             { item: 'SMA趋势', value: data.sma20 > data.sma50 ? 70 : 30, symbol },
             { item: 'EMA趋势', value: data.ema12 > data.ema26 ? 75 : 25, symbol },
           );
