@@ -551,32 +551,56 @@ func (o *MPTOptimizer) projectToConstraints(
 ) []float64 {
 	n := len(weights)
 	result := make([]float64, n)
+	copy(result, weights)
 
-	// 第一步：裁剪到边界
-	for i := range n {
-		result[i] = weights[i]
-		if result[i] < minWeights[i] {
-			result[i] = minWeights[i]
+	// 迭代投影：同时满足边界约束和权重和约束
+	for iter := 0; iter < 100; iter++ {
+		// 第一步：裁剪到边界
+		for i := range n {
+			if result[i] < minWeights[i] {
+				result[i] = minWeights[i]
+			}
+			if result[i] > maxWeights[i] {
+				result[i] = maxWeights[i]
+			}
 		}
-		if result[i] > maxWeights[i] {
-			result[i] = maxWeights[i]
+
+		// 第二步：计算当前和与可调整空间
+		currentSum := 0.0
+		for _, w := range result {
+			currentSum += w
+		}
+
+		if math.Abs(currentSum-totalWeight) < 1e-10 {
+			break // 已满足
+		}
+
+		// 计算可调整的资产（未触及边界的）
+		adjustable := make([]int, 0)
+		adjustableSum := 0.0
+		for i := range n {
+			if result[i] > minWeights[i]+1e-10 && result[i] < maxWeights[i]-1e-10 {
+				adjustable = append(adjustable, i)
+				adjustableSum += result[i]
+			}
+		}
+
+		if len(adjustable) == 0 {
+			// 所有资产都在边界上，无法进一步调整
+			break
+		}
+
+		// 按比例调整可调整的资产
+		diff := totalWeight - currentSum
+		if adjustableSum > 0 {
+			scale := diff / adjustableSum
+			for _, i := range adjustable {
+				result[i] += result[i] * scale
+			}
 		}
 	}
 
-	// 第二步：归一化到总权重
-	currentSum := 0.0
-	for _, w := range result {
-		currentSum += w
-	}
-
-	if currentSum > 0 {
-		scale := totalWeight / currentSum
-		for i := range result {
-			result[i] *= scale
-		}
-	}
-
-	// 第三步：再次检查边界（可能因为归一化超出边界）
+	// 最终裁剪确保边界
 	for i := range n {
 		if result[i] < minWeights[i] {
 			result[i] = minWeights[i]

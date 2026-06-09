@@ -115,6 +115,13 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 		return
 	}
 
+	// 单独计算99% VaR，避免使用无理论依据的近似系数
+	var99Data, var99Err := riskModels.CalculateHistoricalVaR(portfolioReturns, 0.99)
+	if var99Err != nil {
+		utils.Warn("99% VaR calculation failed, falling back to 95%", var99Err)
+		var99Data = varData
+	}
+
 	// 计算综合风险指标
 	riskFreeRate := decimal.NewFromFloat(config.GetFinancialConfig().RiskFreeRate / float64(config.GetFinancialConfig().TradingDaysYear))
 	riskMetrics, err := riskModels.CalculateRiskMetrics(portfolioReturns, riskFreeRate, nil)
@@ -157,7 +164,7 @@ func (h *PortfolioHandler) AnalyzePortfolioRisk(c *gin.Context) {
 			"confidence":      confidence,
 			"risk_level":      riskLevel,
 			"var_95":          varData.VaR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
-			"var_99":          varData.VaR.Mul(decimal.NewFromFloat(1.3)).Mul(decimal.NewFromInt(100)).InexactFloat64(), // 近似99% VaR
+			"var_99":          var99Data.VaR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
 			"cvar_95":         varData.CVaR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
 			"volatility":      riskMetrics.Volatility.Mul(decimal.NewFromInt(100)).InexactFloat64(),
 			"sharpe_ratio":    riskMetrics.SharpeRatio.InexactFloat64(),

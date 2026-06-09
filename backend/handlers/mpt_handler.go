@@ -325,7 +325,11 @@ func calculateCovarianceMatrix(returns map[string][]float64) map[string]map[stri
 				cov += (data1[i] - means[s1]) * (data2[i] - means[s2])
 			}
 
-			covMatrix[s1][s2] = cov / float64(minLen)
+			if minLen > 1 {
+				covMatrix[s1][s2] = cov / float64(minLen-1)
+			} else {
+				covMatrix[s1][s2] = 0
+			}
 		}
 	}
 
