@@ -330,12 +330,14 @@ func (s *ScenarioAnalysisService) generateScenario(
 	finalValues := make([]float64, numSimulations)
 	allProjections := make([][]PortfolioProjection, numSimulations)
 
+	// 创建独立的随机源，所有模拟共享同一实例以避免并发种子碰撞
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for sim := range numSimulations {
 		projections, finalValue := s.runSingleSimulation(
 			assumptions,
 			totalInvestment,
 			timeHorizonYears,
-			sim,
+			r,
 		)
 		finalValues[sim] = finalValue
 		allProjections[sim] = projections
@@ -394,10 +396,8 @@ func (s *ScenarioAnalysisService) runSingleSimulation(
 	assumptions *ScenarioAssumptions,
 	initialValue float64,
 	timeHorizonYears int,
-	seed int,
+	r *rand.Rand,
 ) ([]PortfolioProjection, float64) {
-	// 为每次模拟设置不同的随机种子
-	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(seed)))
 
 	projections := make([]PortfolioProjection, timeHorizonYears)
 	currentValue := initialValue
@@ -470,10 +470,8 @@ func (s *ScenarioAnalysisService) runSingleSimulationMonthly(
 	assumptions *ScenarioAssumptions,
 	initialValue float64,
 	timeHorizonYears int,
-	seed int,
+	r *rand.Rand,
 ) ([]PortfolioProjection, float64) {
-	// 为每次模拟设置不同的随机种子
-	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(seed)))
 
 	projections := make([]PortfolioProjection, timeHorizonYears)
 	currentValue := initialValue

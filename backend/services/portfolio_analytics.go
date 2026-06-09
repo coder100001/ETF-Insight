@@ -113,9 +113,15 @@ func (s *PortfolioAnalyticsService) CalculateLogReturns(prices []decimal.Decimal
 
 // CalculateETFMetrics 计算ETF历史指标
 func (s *PortfolioAnalyticsService) CalculateETFMetrics(symbol string, days int) (*ETFHistoricalMetrics, error) {
+	metrics, _, err := s.CalculateETFMetricsWithData(symbol, days)
+	return metrics, err
+}
+
+// CalculateETFMetricsWithData 计算ETF历史指标并同时返回原始数据
+func (s *PortfolioAnalyticsService) CalculateETFMetricsWithData(symbol string, days int) (*ETFHistoricalMetrics, []models.ETFData, error) {
 	data, err := s.GetETFHistoricalData(symbol, days)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 提取收盘价
@@ -128,7 +134,7 @@ func (s *PortfolioAnalyticsService) CalculateETFMetrics(symbol string, days int)
 	returns := s.CalculateLogReturns(prices)
 
 	if len(returns) == 0 {
-		return nil, fmt.Errorf("无法计算收益率")
+		return nil, nil, fmt.Errorf("无法计算收益率")
 	}
 
 	// 计算年化收益率
@@ -194,7 +200,7 @@ func (s *PortfolioAnalyticsService) CalculateETFMetrics(symbol string, days int)
 		Kurtosis:       kurtosis,
 		VaR95:          var95,
 		CVaR95:         cvar95,
-	}, nil
+	}, data, nil
 }
 
 // CalculateCorrelation 计算两个ETF的相关系数
@@ -258,15 +264,12 @@ func (s *PortfolioAnalyticsService) AnalyzePortfolio(
 	etfData := make(map[string][]models.ETFData)
 
 	for symbol := range portfolio {
-		metrics, err := s.CalculateETFMetrics(symbol, days)
+		metrics, data, err := s.CalculateETFMetricsWithData(symbol, days)
 		if err != nil {
 			return nil, fmt.Errorf("计算ETF %s 指标失败: %w", symbol, err)
 		}
 		etfMetrics[symbol] = metrics
-
-		// 同时获取历史数据用于后续计算
-		data, err := s.GetETFHistoricalData(symbol, days)
-		if err == nil {
+		if data != nil {
 			etfData[symbol] = data
 		}
 	}
@@ -368,24 +371,31 @@ func (s *PortfolioAnalyticsService) calculatePortfolioReturnsFromData(
 		return []float64{}
 	}
 
+	// 预构建 date→price 映射，避免 O(n×m×k) 内层查找
+	priceMaps := make(map[string]map[string]float64)
+	firstPrices := make(map[string]float64)
+	for symbol, data := range etfData {
+		pm := make(map[string]float64, len(data))
+		for _, d := range data {
+			price, _ := d.ClosePrice.Float64()
+			pm[d.Date.Format("2006-01-02")] = price
+		}
+		priceMaps[symbol] = pm
+		if len(data) > 0 {
+			firstPrices[symbol], _ = data[0].ClosePrice.Float64()
+		}
+	}
+
 	// 计算每日组合价值
 	portfolioValues := make([]float64, len(commonDates))
 
 	for i, date := range commonDates {
 		dailyValue := 0.0
 		for symbol, weight := range portfolio {
-			for _, d := range etfData[symbol] {
-				if d.Date.Format("2006-01-02") == date {
-					price, _ := d.ClosePrice.Float64()
-					// 归一化价格
-					if len(etfData[symbol]) > 0 {
-						firstPrice, _ := etfData[symbol][0].ClosePrice.Float64()
-						if firstPrice > 0 {
-							return_rate := (price - firstPrice) / firstPrice
-							dailyValue += weight * (1 + return_rate)
-						}
-					}
-					break
+			if price, ok := priceMaps[symbol][date]; ok {
+				fp := firstPrices[symbol]
+				if fp > 0 {
+					dailyValue += weight * (1 + (price-fp)/fp)
 				}
 			}
 		}
@@ -444,9 +454,11 @@ func (s *PortfolioAnalyticsService) calculateMaxDrawdown(prices []decimal.Decima
 			peak = price
 		}
 
-		drawdown := (peak - price) / peak
-		if drawdown > maxDrawdown {
-			maxDrawdown = drawdown
+		if peak > 0 {
+			drawdown := (peak - price) / peak
+			if drawdown > maxDrawdown {
+				maxDrawdown = drawdown
+			}
 		}
 	}
 
@@ -520,17 +532,8 @@ func (s *PortfolioAnalyticsService) CalculateVaR(returns []float64, confidence f
 	mean := s.mean(returns)
 	std := math.Sqrt(s.variance(returns, mean))
 
-	// 使用标准正态分布的分位数
-	// 95% -> -1.645, 99% -> -2.326
-	var zScore float64
-	switch confidence {
-	case 0.95:
-		zScore = -1.645
-	case 0.99:
-		zScore = -2.326
-	default:
-		zScore = -1.645
-	}
+	// 使用逆正态分布近似支持任意置信度
+	zScore := -inverseNormalCDF(confidence)
 
 	// VaR = 均值 + Z * 标准差
 	return mean + zScore*std
@@ -545,22 +548,12 @@ func (s *PortfolioAnalyticsService) CalculateCVaR(returns []float64, confidence 
 	mean := s.mean(returns)
 	std := math.Sqrt(s.variance(returns, mean))
 
+	// 使用逆正态分布近似支持任意置信度
+	zScore := -inverseNormalCDF(confidence)
+
 	// CVaR = 均值 - std * φ(Z) / Φ(Z)
 	// 其中 φ 是标准正态PDF, Φ 是标准正态CDF
-	var zScore float64
-	switch confidence {
-	case 0.95:
-		zScore = -1.645
-	case 0.99:
-		zScore = -2.326
-	default:
-		zScore = -1.645
-	}
-
-	// 标准正态分布在Z处的PDF值
 	phi := (1.0 / math.Sqrt(2*math.Pi)) * math.Exp(-zScore*zScore/2)
-
-	// 标准正态分布在Z处的CDF值 (精确)
 	Phi := statistics.NormalCDF(zScore)
 	if Phi < 1e-10 {
 		Phi = 1e-10
@@ -599,6 +592,21 @@ func (s *PortfolioAnalyticsService) calculatePortfolioMaxDrawdown(
 		return weightedMDD
 	}
 
+	// 预构建 date→price 映射，避免 O(n×m×k) 内层查找
+	priceMaps := make(map[string]map[string]float64)
+	firstPrices := make(map[string]float64)
+	for symbol, data := range etfData {
+		pm := make(map[string]float64, len(data))
+		for _, d := range data {
+			price, _ := d.ClosePrice.Float64()
+			pm[d.Date.Format("2006-01-02")] = price
+		}
+		priceMaps[symbol] = pm
+		if len(data) > 0 {
+			firstPrices[symbol], _ = data[0].ClosePrice.Float64()
+		}
+	}
+
 	// 计算组合每日净值
 	portfolioValues := make([]float64, len(commonDates))
 	baseValue := 100.0 // 基准值
@@ -606,22 +614,14 @@ func (s *PortfolioAnalyticsService) calculatePortfolioMaxDrawdown(
 	for i, date := range commonDates {
 		dailyValue := 0.0
 		for symbol, weight := range portfolio {
-			// 找到该日期对应的ETF数据
-			for _, d := range etfData[symbol] {
-				if d.Date.Format("2006-01-02") == date {
-					price, _ := d.ClosePrice.Float64()
-					// 归一化价格 (以第一天为基准)
-					if i == 0 {
-						dailyValue += weight * baseValue
-					} else {
-						// 计算相对于第一天的收益率
-						firstPrice, _ := etfData[symbol][0].ClosePrice.Float64()
-						if firstPrice > 0 {
-							return_rate := (price - firstPrice) / firstPrice
-							dailyValue += weight * baseValue * (1 + return_rate)
-						}
+			if price, ok := priceMaps[symbol][date]; ok {
+				if i == 0 {
+					dailyValue += weight * baseValue
+				} else {
+					fp := firstPrices[symbol]
+					if fp > 0 {
+						dailyValue += weight * baseValue * (1 + (price-fp)/fp)
 					}
-					break
 				}
 			}
 		}
@@ -638,12 +638,13 @@ func (s *PortfolioAnalyticsService) findCommonDates(etfData map[string][]models.
 		return []string{}
 	}
 
-	// 获取第一个ETF的所有日期
-	var firstSymbol string
+	// 获取排序后的第一个symbol，保证确定性
+	symbols := make([]string, 0, len(etfData))
 	for symbol := range etfData {
-		firstSymbol = symbol
-		break
+		symbols = append(symbols, symbol)
 	}
+	sort.Strings(symbols)
+	firstSymbol := symbols[0]
 
 	dateSet := make(map[string]bool)
 	for _, d := range etfData[firstSymbol] {
@@ -860,12 +861,13 @@ func (s *PortfolioAnalyticsService) CalculateRollingWindowMetrics(
 	recentReturns := returns[len(returns)-windowDays:]
 	recentPrices := prices[len(prices)-windowDays-1:]
 
-	// 计算年化收益率
-	totalReturn := 0.0
-	for _, r := range recentReturns {
-		totalReturn += r
+	// 计算年化收益率 (使用几何平均，与 CalculateETFMetrics 保持一致)
+	startPrice, _ := recentPrices[0].Float64()
+	endPrice, _ := recentPrices[len(recentPrices)-1].Float64()
+	annualReturn := 0.0
+	if startPrice > 0 {
+		annualReturn = math.Pow(endPrice/startPrice, 252.0/float64(windowDays)) - 1
 	}
-	annualReturn := totalReturn * (252.0 / float64(windowDays))
 
 	// 计算年化波动率
 	mean := s.mean(recentReturns)
@@ -965,4 +967,33 @@ func (s *PortfolioAnalyticsService) CalculateAllRollingWindows(
 	}
 
 	return result
+}
+
+// inverseNormalCDF 标准正态分布逆CDF近似 (Beasley-Springer-Moro算法)
+// 输入 p ∈ (0,1)，返回 z 使得 Φ(z) = p
+func inverseNormalCDF(p float64) float64 {
+	if p <= 0 {
+		return math.Inf(-1)
+	}
+	if p >= 1 {
+		return math.Inf(1)
+	}
+	// 使用 rational approximation (Abramowitz & Stegun 26.2.23)
+	// 精度约 4.5×10⁻⁴
+	if p < 0.5 {
+		return -rationalApprox(math.Sqrt(-2 * math.Log(p)))
+	}
+	return rationalApprox(math.Sqrt(-2 * math.Log(1-p)))
+}
+
+func rationalApprox(t float64) float64 {
+	const (
+		c0 = 2.515517
+		c1 = 0.802853
+		c2 = 0.010328
+		d1 = 1.432788
+		d2 = 0.189269
+		d3 = 0.001308
+	)
+	return t - (c0+c1*t+c2*t*t)/(1+d1*t+d2*t*t+d3*t*t*t)
 }
