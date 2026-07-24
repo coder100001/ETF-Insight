@@ -801,7 +801,7 @@ git push origin feature/your-feature-name
   - REVIEW_SUMMARY.md, CODE_REVIEW_REPORT.md
   - SECURITY_AUDIT.md, EVOLUTION_ROADMAP_2026.md
   - PROFESSIONAL_ENHANCEMENT.md, TEST_COVERAGE_PLAN.md
-  - archive/overview.md
+  - archive/ 目录 (已删除)
 
 ### v2.4 更新内容
 

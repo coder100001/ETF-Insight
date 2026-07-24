@@ -65,3 +65,21 @@ DEPLOYMENT_GUIDE.md
 frontend/.eslintcache
 trash_rm_scripts/
 .trae/
+
+# Root-level binary (32MB)
+/etf-insight
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Go coverage
+backend/coverage.out
+
+# Orphaned frontend build
+src/frontend/
+
+# tools/doccheck binary
+tools/doccheck/doccheck
