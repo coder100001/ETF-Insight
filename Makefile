@@ -51,5 +51,4 @@ frontend-lint:
 	@cd frontend && npm run lint
 
 # 文档一致性检查（完整模式）
-docs-check:
-	@./tools/doccheck/doccheck --strict
+# docs-check: 已移除（工具已清理）
