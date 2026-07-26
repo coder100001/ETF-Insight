@@ -9,10 +9,10 @@ import (
 func main() {
 	projectRoot := flag.String("project-root", ".", "项目根目录路径")
 	output := flag.String("output", "", "报告输出文件路径")
-	strict := flag.Bool("strict", false, "严格模式")
+	_ = flag.Bool("strict", false, "严格模式")
 	quick := flag.Bool("quick", false, "快速模式")
-	changedFiles := flag.String("changed-files", "", "变更文件列表（逗号分隔）")
-	format := flag.String("format", "markdown", "报告格式")
+	_ = flag.String("changed-files", "", "变更文件列表（逗号分隔）")
+	_ = flag.String("format", "markdown", "报告格式")
 	flag.Parse()
 
 	if _, err := os.Stat(*projectRoot); os.IsNotExist(err) {
