@@ -67,12 +67,7 @@ func AutoMigrate() error {
 		&AShareETFPortfolio{},
 		&ASharePortfolioHolding{},
 		&PortfolioConfig{},
-		&UniversalETF{},
-		&ETFClassification{},
-		&ETFConstituent{},
-		&ETFHistoricalData{},
 		&ETFDividend{},
-		&ETFAssetAllocation{},
 		// 新增统一数据层模型
 		&Asset{},
 		&AssetMetadata{},
@@ -83,30 +78,7 @@ func AutoMigrate() error {
 		&Price{},
 		&Portfolio{},
 		&PortfolioPosition{},
-		// 新增因子数据层模型
-		&FactorData{},
-		&FactorTimingSignal{},
-		// 新增Alpha观点层模型
-		&AlphaView{},
-		&AlphaViewPerformance{},
-		&BlackLittermanConfig{},
-		&BLPosteriorReturn{},
-		// 新增风险预算层模型
-		&RiskBudgetConfig{},
-		&MonteCarloSimulation{},
-		&RiskContribution{},
-		&RiskBudgetExecution{},
-		// 新增插件架构层模型
-		&PluginRegistry{},
-		&PluginConfiguration{},
-		&PluginExecutionLog{},
-		&ModelBenchmarkMatrix{},
-		&StrategyExperiment{},
-		// 新增报告系统模型
-		&ReportTemplate{},
-		&ReportSection{},
-		&GeneratedReport{},
-		&ReportParameter{},
+		// 补充遗漏的模型
 		// 补充遗漏的模型
 		&AssetPrice{},
 		&AssetRelationship{},

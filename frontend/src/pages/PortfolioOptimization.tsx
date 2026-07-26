@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Button, Select, InputNumber, message, Table, Tabs, Spin, Alert, Slider, Form } from 'antd';
+import { Card, Row, Col, Button, Select, InputNumber, Table, Tabs, Spin, Alert, Slider, Form } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis } from 'recharts';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
@@ -9,8 +9,6 @@ import { useFinancialConfig } from '../hooks/useFinancialConfig';
 import type {
   OptimizationResult,
   EfficientFrontierPoint,
-  RiskParityResult,
-  BlackLittermanResult
 } from '../types';
 
 const { TabPane } = Tabs;
@@ -293,90 +291,6 @@ const EfficientFrontierDisplay: React.FC<{ frontier: EfficientFrontierPoint[] }>
   );
 };
 
-// 风险平价结果展示组件
-const RiskParityDisplay: React.FC<{ result: RiskParityResult }> = ({ result }) => (
-  <>
-    <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-      <Col span={12}>
-        <MetricCard style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-          <MetricValue>{(result.volatility * 100).toFixed(2)}%</MetricValue>
-          <MetricLabel>波动率</MetricLabel>
-        </MetricCard>
-      </Col>
-      <Col span={12}>
-        <MetricCard style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
-          <MetricValue>{result.diversification_ratio.toFixed(2)}</MetricValue>
-          <MetricLabel>分散化比率</MetricLabel>
-        </MetricCard>
-      </Col>
-    </Row>
-    <StyledCard title="风险平价权重配置">
-      <Table
-        dataSource={Object.entries(result.weights).map(([symbol, weight]) => ({
-          symbol,
-          weight,
-          riskContribution: result.risk_contributions[symbol] || 0,
-        })).sort((a, b) => b.weight - a.weight)}
-        columns={[
-          { title: 'ETF', dataIndex: 'symbol', key: 'symbol' },
-          { title: '权重', dataIndex: 'weight', key: 'weight', render: (v: number) => `${(v * 100).toFixed(2)}%` },
-          { title: '风险贡献', dataIndex: 'riskContribution', key: 'riskContribution', render: (v: number) => `${(v * 100).toFixed(2)}%` },
-        ]}
-        rowKey="symbol"
-        pagination={false}
-      />
-    </StyledCard>
-  </>
-);
-
-// Black-Litterman结果展示组件
-const BlackLittermanDisplay: React.FC<{ result: BlackLittermanResult; selectedETFs: string[] }> = ({ result, selectedETFs }) => (
-  <>
-    <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-      <Col span={8}>
-        <MetricCard>
-          <MetricValue>{(result.expected_return * 100).toFixed(2)}%</MetricValue>
-          <MetricLabel>预期收益</MetricLabel>
-        </MetricCard>
-      </Col>
-      <Col span={12}>
-        <MetricCard style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
-          <MetricValue>{result.sharpe_ratio.toFixed(2)}</MetricValue>
-          <MetricLabel>夏普比率</MetricLabel>
-        </MetricCard>
-      </Col>
-    </Row>
-    <StyledCard title="后验收益估计">
-      <Table
-        dataSource={selectedETFs.map(symbol => ({
-          symbol,
-          posterior: result.posterior_returns[symbol] || 0,
-        }))}
-        columns={[
-          { title: 'ETF', dataIndex: 'symbol', key: 'symbol' },
-          { title: '后验收益', dataIndex: 'posterior', key: 'posterior', render: (v: number) => `${(v * 100).toFixed(2)}%` },
-        ]}
-        rowKey="symbol"
-        pagination={false}
-      />
-    </StyledCard>
-    <StyledCard title="最优权重" style={{ marginTop: 16 }}>
-      <Table
-        dataSource={Object.entries(result.optimal_weights).map(([symbol, weight]) => ({
-          symbol,
-          weight,
-        })).sort((a, b) => b.weight - a.weight)}
-        columns={[
-          { title: 'ETF', dataIndex: 'symbol', key: 'symbol' },
-          { title: '权重', dataIndex: 'weight', key: 'weight', render: (v: number) => `${(v * 100).toFixed(2)}%` },
-        ]}
-        rowKey="symbol"
-        pagination={false}
-      />
-    </StyledCard>
-  </>
-);
-
 const PortfolioOptimization: React.FC = () => {
   // 使用自定义Hooks (must be before useState that references finConfig)
   const { config: finConfig } = useFinancialConfig();
@@ -389,27 +303,7 @@ const PortfolioOptimization: React.FC = () => {
   const [minWeights, setMinWeights] = useState<Record<string, number>>({});
   const [maxWeights, setMaxWeights] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState('1');
-
-  // 风险平价状态
-  const [rpMethod, setRpMethod] = useState<'parity' | 'inverse_vol' | 'budget'>('parity');
-  const [targetVol, setTargetVol] = useState<number>(0.10);
-  const [riskBudget, setRiskBudget] = useState<Record<string, number>>({});
-
-  // Black-Litterman状态
-  const [absoluteViews, setAbsoluteViews] = useState<Record<string, number>>({});
-  const [tau, setTau] = useState<number>(0.025);
-  const [riskAversion, setRiskAversion] = useState<number>(2.5);
-  const {
-    result,
-    frontier,
-    rpResult,
-    blResult,
-    loading,
-    optimize,
-    calculateFrontier,
-    calculateRiskParity,
-    calculateBlackLitterman,
-  } = useOptimization();
+  const { result, frontier, loading, optimize, calculateFrontier } = useOptimization();
 
   const handleOptimize = async () => {
     await optimize({
@@ -426,32 +320,10 @@ const PortfolioOptimization: React.FC = () => {
     setActiveTab('3');
   };
 
-  const handleRiskParityOptimize = async () => {
-    if (rpMethod === 'budget') {
-      const hasRiskBudget = selectedETFs.some(etf => riskBudget[etf] && riskBudget[etf] > 0);
-      if (!hasRiskBudget) {
-        message.warning('风险预算方法需要为至少一个ETF设置风险预算');
-        return;
-      }
-    }
-    await calculateRiskParity(selectedETFs);
-    setActiveTab('4');
-  };
-
-  const handleBlackLittermanOptimize = async () => {
-    const views = Object.entries(absoluteViews).map(([symbol, ret]) => ({
-      symbol,
-      return: ret,
-      confidence: 0.5,
-    }));
-    await calculateBlackLitterman(selectedETFs, views);
-    setActiveTab('5');
-  };
-
   return (
     <Layout>
       <Container>
-        <Title>投资组合优化 (MPT / 风险平价 / Black-Litterman)</Title>
+        <Title>投资组合优化 (MPT)</Title>
 
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
           <TabPane tab="参数配置" key="1">
@@ -536,115 +408,6 @@ const PortfolioOptimization: React.FC = () => {
 
           <TabPane tab="有效前沿" key="3">
             {frontier.length > 0 ? <EfficientFrontierDisplay frontier={frontier} /> : <Alert title="请先计算有效前沿" type="info" showIcon />}
-          </TabPane>
-
-          <TabPane tab="风险平价" key="4">
-            <Row gutter={[24, 24]}>
-              <Col span={8}>
-                <StyledCard title="风险平价配置">
-                  <Form layout="vertical">
-                    <Form.Item label="优化方法">
-                      <Select value={rpMethod} onChange={setRpMethod} style={{ width: '100%' }}>
-                        <Option value="parity">风险平价 (等风险贡献)</Option>
-                        <Option value="inverse_vol">逆波动率加权</Option>
-                        <Option value="budget">风险预算</Option>
-                      </Select>
-                    </Form.Item>
-                    {rpMethod === 'budget' && (
-                      <Form.Item label="风险预算配置" help="为每个ETF设置风险预算比例（总和应为100%）">
-                        {selectedETFs.map(symbol => (
-                          <div key={symbol} style={{ marginBottom: 8 }}>
-                            <span style={{ display: 'inline-block', width: 80 }}>{symbol}:</span>
-                            <InputNumber
-                              min={0}
-                              max={100}
-                              step={5}
-                              value={(riskBudget[symbol] || 0) * 100}
-                              onChange={(value) => setRiskBudget(prev => ({ ...prev, [symbol]: (value || 0) / 100 }))}
-                              formatter={(value) => `${value}%`}
-                              parser={(value) => parseFloat(value?.replace('%', '') || '0')}
-                              style={{ width: 100 }}
-                            />
-                          </div>
-                        ))}
-                      </Form.Item>
-                    )}
-                    <Form.Item label="目标波动率 (%)">
-                      <Slider
-                        min={5}
-                        max={30}
-                        step={1}
-                        value={targetVol * 100}
-                        onChange={(value) => setTargetVol(value / 100)}
-                        marks={{ 5: '5%', 15: '15%', 30: '30%' }}
-                      />
-                    </Form.Item>
-                    <Form.Item>
-                      <Button type="primary" onClick={handleRiskParityOptimize} loading={loading} block>
-                        执行风险平价优化
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </StyledCard>
-              </Col>
-              <Col span={16}>
-                {rpResult ? <RiskParityDisplay result={rpResult} /> : <Alert title="请先执行风险平价优化" type="info" showIcon />}
-              </Col>
-            </Row>
-          </TabPane>
-
-          <TabPane tab="Black-Litterman" key="5">
-            <Row gutter={[24, 24]}>
-              <Col span={8}>
-                <StyledCard title="Black-Litterman配置">
-                  <Form layout="vertical">
-                    <Form.Item label="Tau (缩放参数)">
-                      <InputNumber min={0.001} max={0.1} step={0.001} value={tau} onChange={(v) => setTau(v || 0.025)} style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item label="风险厌恶系数">
-                      <Slider min={1} max={5} step={0.5} value={riskAversion} onChange={setRiskAversion} />
-                    </Form.Item>
-                    <Form.Item label="绝对观点">
-                      <Select
-                        mode="multiple"
-                        placeholder="选择要设置观点的资产"
-                        style={{ width: '100%', marginBottom: 8 }}
-                        onChange={(symbols) => {
-                          const newViews: Record<string, number> = {};
-                          symbols.forEach((s: string) => { newViews[s] = absoluteViews[s] || 0.1; });
-                          setAbsoluteViews(newViews);
-                        }}
-                      >
-                        {selectedETFs.map(s => <Option key={s} value={s}>{s}</Option>)}
-                      </Select>
-                      {Object.entries(absoluteViews).map(([symbol, view]) => (
-                        <div key={symbol} style={{ marginBottom: 8 }}>
-                          <span>{symbol}: </span>
-                          <InputNumber
-                            min={-0.5}
-                            max={0.5}
-                            step={0.01}
-                            value={view}
-                            onChange={(v) => setAbsoluteViews({ ...absoluteViews, [symbol]: v || 0 })}
-                            formatter={(v) => `${((v ?? 0) * 100).toFixed(0)}%`}
-                            parser={(v) => parseFloat(v?.replace('%', '') || '0') / 100}
-                            style={{ width: 100 }}
-                          />
-                        </div>
-                      ))}
-                    </Form.Item>
-                    <Form.Item>
-                      <Button type="primary" onClick={handleBlackLittermanOptimize} loading={loading} block>
-                        执行Black-Litterman优化
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </StyledCard>
-              </Col>
-              <Col span={16}>
-                {blResult ? <BlackLittermanDisplay result={blResult} selectedETFs={selectedETFs} /> : <Alert title="请先执行Black-Litterman优化" type="info" showIcon />}
-              </Col>
-            </Row>
           </TabPane>
         </Tabs>
 

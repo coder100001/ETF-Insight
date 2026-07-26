@@ -7,17 +7,10 @@ import {
   BarChartOutlined,
   WalletOutlined,
   PieChartOutlined,
-  FileTextOutlined,
   SettingOutlined,
   SwapOutlined,
   FundOutlined,
-  LineChartOutlined,
-  ClockCircleOutlined,
-  EyeOutlined,
-  CalculatorOutlined,
-  SafetyOutlined,
-  NumberOutlined,
-  RobotOutlined,
+  DollarOutlined,
   MenuOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
@@ -217,39 +210,11 @@ const Layout = ({ children }: LayoutProps) => {
             <PieChartOutlined />
             组合优化
           </NavLink>
-          <NavLink to="/factor-analysis" data-active={isActive('/factor-analysis')} onClick={closeSidebar}>
-            <LineChartOutlined />
-            因子分析
-          </NavLink>
-          <NavLink to="/factor-timing" data-active={isActive('/factor-timing')} onClick={closeSidebar}>
-            <ClockCircleOutlined />
-            因子择时
-          </NavLink>
-          <NavLink to="/alpha-views" data-active={isActive('/alpha-views')} onClick={closeSidebar}>
-            <EyeOutlined />
-            Alpha观点
-          </NavLink>
-          <NavLink to="/black-litterman" data-active={isActive('/black-litterman')} onClick={closeSidebar}>
-            <CalculatorOutlined />
-            BL模型配置
-          </NavLink>
-          <NavLink to="/risk-budget" data-active={isActive('/risk-budget')} onClick={closeSidebar}>
-            <SafetyOutlined />
-            风险预算
-          </NavLink>
-          <NavLink to="/quantlib" data-active={isActive('/quantlib')} onClick={closeSidebar}>
-            <NumberOutlined />
-            QuantLib 分析
-          </NavLink>
-          <NavLink to="/ai-agents" data-active={isActive('/ai-agents')} onClick={closeSidebar}>
-            <RobotOutlined />
-            AI Agent
+          <NavLink to="/dca-calculator" data-active={isActive('/dca-calculator')} onClick={closeSidebar}>
+            <DollarOutlined />
+            定投计算器
           </NavLink>
           <Divider />
-          <NavLink to="/operation-logs" data-active={isActive('/operation-logs')} onClick={closeSidebar}>
-            <FileTextOutlined />
-            操作记录
-          </NavLink>
           <NavLink to="/etf-config" data-active={isActive('/etf-config')} onClick={closeSidebar}>
             <SettingOutlined />
             ETF配置

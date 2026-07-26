@@ -474,14 +474,6 @@ func (s *PortfolioAnalyticsService) getEstimatedDividendYield(symbol string) flo
 			yield, _ := assetMetadata.DividendYield.Float64()
 			return yield / 100.0 // 数据库存储的是百分比，转换为小数
 		}
-
-		// 尝试从 UniversalETF 查询
-		var universalETF models.UniversalETF
-		err = s.db.Where("symbol = ?", symbol).First(&universalETF).Error
-		if err == nil && universalETF.DividendYield.IsPositive() {
-			yield, _ := universalETF.DividendYield.Float64()
-			return yield / 100.0
-		}
 	}
 
 	// 降级到硬编码默认值

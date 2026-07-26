@@ -680,3 +680,30 @@ func (s *ETFAnalysisService) GetComparisonData(symbols []string, period string) 
 
 	return results, nil
 }
+
+// GetSimpleMetrics 获取 ETF 的简单指标（用于相似度计算等轻量场景）
+func (s *ETFAnalysisService) GetSimpleMetrics(symbol, period string) (*ETFMetrics, error) {
+	var startDate time.Time
+	switch period {
+	case "1m":
+		startDate = time.Now().AddDate(0, -1, 0)
+	case "3m":
+		startDate = time.Now().AddDate(0, -3, 0)
+	case "6m":
+		startDate = time.Now().AddDate(0, -6, 0)
+	case "1y":
+		startDate = time.Now().AddDate(-1, 0, 0)
+	case "3y":
+		startDate = time.Now().AddDate(-3, 0, 0)
+	default:
+		startDate = time.Now().AddDate(-1, 0, 0)
+	}
+
+	var prices []models.ETFData
+	if err := models.DB.Where("symbol = ? AND date >= ?", symbol, startDate).
+		Order("date ASC").Find(&prices).Error; err != nil {
+		return nil, err
+	}
+
+	return s.CalculateMetrics(symbol, prices, period)
+}
