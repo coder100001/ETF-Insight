@@ -101,7 +101,7 @@ const ETFComparison: React.FC = () => {
     try {
       const response = await etfAPI.getList();
       if (response.success && response.data) {
-        const formattedData: ETFData[] = response.data.map((item: Record<string, unknown>) => ({
+        const formattedData: ETFData[] = response.data.map((item: any) => ({
           symbol: item.symbol,
           name: item.name,
           current_price: item.current_price || 0,
