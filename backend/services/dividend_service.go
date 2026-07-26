@@ -17,7 +17,7 @@ type CachedYield struct {
 }
 
 // DividendService 股息率服务
-// 查询顺序: 内存缓存 → DB ETFDividend → DB UniversalETF → 硬编码兜底
+// 查询顺序: 内存缓存 → DB ETFDividend → 硬编码兜底
 type DividendService struct {
 	db       *gorm.DB
 	cache    map[string]*CachedYield
@@ -69,16 +69,7 @@ func (s *DividendService) GetDividendYield(symbol string) (float64, error) {
 		return yield, nil
 	}
 
-	// 3. 查询 UniversalETF 的股息率
-	var etf models.UniversalETF
-	result = s.db.Where("symbol = ?", symbol).First(&etf)
-	if result.Error == nil && etf.DividendYield.IsPositive() {
-		yield, _ := etf.DividendYield.Float64()
-		s.updateCache(symbol, yield)
-		return yield, nil
-	}
-
-	// 4. 兜底值
+	// 3. 兜底值
 	if y, ok := fallbackYields[symbol]; ok {
 		return y, nil
 	}
@@ -112,13 +103,6 @@ func (s *DividendService) GetTrailing12MonthYield(symbol string) (float64, error
 	totalDividend := 0.0
 	for _, d := range dividends {
 		totalDividend += d.DividendPerShare.InexactFloat64()
-	}
-
-	var etf models.UniversalETF
-	if err := s.db.Where("symbol = ?", symbol).First(&etf).Error; err == nil {
-		if price := etf.CurrentPrice.InexactFloat64(); price > 0 {
-			return totalDividend / price, nil
-		}
 	}
 
 	return s.GetDividendYield(symbol)

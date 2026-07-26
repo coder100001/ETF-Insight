@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"sort"
 	"strconv"
 	"time"
 
@@ -917,6 +918,201 @@ func getDefaultDividendYield(symbol string) float64 {
 		}
 	}
 	return defaultDividendYieldFallback
+}
+
+// GetSimilarETFs 获取相似 ETF 推荐
+func (h *ETFHandler) GetSimilarETFs(c *gin.Context) {
+	symbol := c.Param("symbol")
+	limitStr := c.DefaultQuery("limit", "5")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 20 {
+		limit = 5
+	}
+
+	// 获取目标 ETF 的基础信息
+	var target models.ETFConfig
+	if err := models.DB.Where("symbol = ?", symbol).First(&target).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "ETF not found: " + symbol,
+		})
+		return
+	}
+
+	// 获取所有其他 ETF 的基础信息
+	var allETFs []models.ETFConfig
+	models.DB.Where("status = ? AND symbol != ?", 1, symbol).Find(&allETFs)
+
+	// 获取目标 ETF 的历史收益率和波动率
+	targetMetrics, _ := h.analysisService.GetSimpleMetrics(symbol, "1y")
+	targetVol := 0.0
+	targetRet := 0.0
+	if targetMetrics != nil {
+		targetVol, _ = targetMetrics.Volatility.Float64()
+		targetRet, _ = targetMetrics.TotalReturn.Float64()
+	}
+
+	type similarETF struct {
+		Symbol       string  `json:"symbol"`
+		Name         string  `json:"name"`
+		Score        float64 `json:"score"`
+		Strategy     string  `json:"strategy"`
+		Focus        string  `json:"focus"`
+		Category     string  `json:"category"`
+		ExpenseRatio float64 `json:"expense_ratio"`
+		Correlation  float64 `json:"correlation"`
+	}
+
+	var results []similarETF
+
+	for _, etf := range allETFs {
+		// 计算分类相似度 (0-1)
+		strategyScore := 0.0
+		if etf.Strategy != "" && target.Strategy != "" {
+			if etf.Strategy == target.Strategy {
+				strategyScore = 0.3
+			}
+		}
+		focusScore := 0.0
+		if etf.Focus != "" && target.Focus != "" {
+			if etf.Focus == target.Focus {
+				focusScore = 0.2
+			}
+		}
+		categoryScore := 0.0
+		if etf.Category != "" && target.Category != "" {
+			if etf.Category == target.Category {
+				categoryScore = 0.2
+			}
+		}
+
+		// 获取该 ETF 的指标，计算数值相似度
+		correlation := 0.0
+		otherMetrics, _ := h.analysisService.GetSimpleMetrics(etf.Symbol, "1y")
+		if otherMetrics != nil {
+			otherVol, _ := otherMetrics.Volatility.Float64()
+			otherRet, _ := otherMetrics.TotalReturn.Float64()
+
+			// 波动率相似度 (越接近分数越高)
+			volDiff := math.Abs(targetVol - otherVol)
+			volScore := math.Max(0, 1.0-volDiff/20.0) * 0.15
+
+			// 收益率相似度
+			retDiff := math.Abs(targetRet - otherRet)
+			retScore := math.Max(0, 1.0-retDiff/30.0) * 0.15
+
+			// 计算相关性 (用简单的价格方向一致性)
+			correlation = h.calculateETFCorrelation(symbol, etf.Symbol)
+			corrScore := (correlation + 1.0) / 2.0 * 0.15 // 归一化到 0-1
+
+			totalScore := strategyScore + focusScore + categoryScore + volScore + retScore + corrScore
+
+			expenseRatio, _ := etf.ExpenseRatio.Float64()
+
+			if totalScore > 0.1 {
+				results = append(results, similarETF{
+					Symbol:       etf.Symbol,
+					Name:         etf.Name,
+					Score:        math.Round(totalScore*1000) / 10,
+					Strategy:     etf.Strategy,
+					Focus:        etf.Focus,
+					Category:     etf.Category,
+					ExpenseRatio: expenseRatio * 100, // 转换为百分比
+					Correlation:  math.Round(correlation*1000) / 10,
+				})
+			}
+		}
+	}
+
+	// 按相似度排序
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+
+	if len(results) > limit {
+		results = results[:limit]
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    results,
+	})
+}
+
+// calculateETFCorrelation 计算两只 ETF 的历史收益率相关性
+func (h *ETFHandler) calculateETFCorrelation(symbol1, symbol2 string) float64 {
+	startDate := time.Now().AddDate(-1, 0, 0)
+
+	var prices1, prices2 []models.ETFData
+	models.DB.Where("symbol = ? AND date >= ?", symbol1, startDate).
+		Order("date ASC").Find(&prices1)
+	models.DB.Where("symbol = ? AND date >= ?", symbol2, startDate).
+		Order("date ASC").Find(&prices2)
+
+	if len(prices1) < 10 || len(prices2) < 10 {
+		return 0
+	}
+
+	// 构建日期到价格的映射
+	priceMap1 := make(map[string]float64)
+	priceMap2 := make(map[string]float64)
+	for _, p := range prices1 {
+		priceMap1[p.Date.Format("2006-01-02")] = p.ClosePrice.InexactFloat64()
+	}
+	for _, p := range prices2 {
+		priceMap2[p.Date.Format("2006-01-02")] = p.ClosePrice.InexactFloat64()
+	}
+
+	// 找共同日期
+	var returns1, returns2 []float64
+	prev1 := -1.0
+	prev2 := -1.0
+
+	for _, p := range prices1 {
+		date := p.Date.Format("2006-01-02")
+		if p2, ok := priceMap2[date]; ok {
+			price1 := p.ClosePrice.InexactFloat64()
+			price2 := p2
+
+			if prev1 > 0 && prev2 > 0 && price1 > 0 && price2 > 0 {
+				r1 := (price1 - prev1) / prev1
+				r2 := (price2 - prev2) / prev2
+				returns1 = append(returns1, r1)
+				returns2 = append(returns2, r2)
+			}
+			prev1 = price1
+			prev2 = price2
+		}
+	}
+
+	if len(returns1) < 5 {
+		return 0
+	}
+
+	// 计算相关系数
+	mean1 := 0.0
+	mean2 := 0.0
+	for i := range returns1 {
+		mean1 += returns1[i]
+		mean2 += returns2[i]
+	}
+	mean1 /= float64(len(returns1))
+	mean2 /= float64(len(returns2))
+
+	var cov, var1, var2 float64
+	for i := range returns1 {
+		d1 := returns1[i] - mean1
+		d2 := returns2[i] - mean2
+		cov += d1 * d2
+		var1 += d1 * d1
+		var2 += d2 * d2
+	}
+
+	if var1 == 0 || var2 == 0 {
+		return 0
+	}
+
+	return cov / math.Sqrt(var1*var2)
 }
 
 // GetDataSourceStatus 获取数据源状态

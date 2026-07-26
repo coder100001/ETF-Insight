@@ -9,21 +9,13 @@ import PortfolioAnalysis from './pages/PortfolioAnalysis';
 import ETFComparison from './pages/ETFComparison';
 import ETFDetail from './pages/ETFDetail';
 import PortfolioConfig from './pages/PortfolioConfig';
-import OperationLogs from './pages/OperationLogs';
 import ETFConfig from './pages/ETFConfig';
 import ExchangeRate from './pages/ExchangeRate';
 import ASharePortfolio from './pages/ASharePortfolio';
 import TechnicalAnalysis from './pages/TechnicalAnalysis';
 import RiskAnalysis from './pages/RiskAnalysis';
 import PortfolioOptimization from './pages/PortfolioOptimization';
-import FactorAnalysis from './pages/FactorAnalysis';
-import FactorTiming from './pages/FactorTiming';
-import AlphaViews from './pages/AlphaViews';
-import BlackLittermanConfig from './pages/BlackLittermanConfig';
-import RiskBudget from './pages/RiskBudget';
-import QuantLibAnalysis from './pages/QuantLibAnalysis';
-import AIAgents from './pages/AIAgents';
-import ETFComparisonReport from './pages/ETFComparisonReport';
+import DCACalculator from './pages/DCACalculator';
 import InvestmentStrategy from './pages/InvestmentStrategy';
 import './App.css';
 
@@ -73,18 +65,10 @@ const App: FC = () => {
               <Route path="/technical-analysis" element={<TechnicalAnalysis />} />
               <Route path="/risk-analysis" element={<RiskAnalysis />} />
               <Route path="/portfolio-optimization" element={<PortfolioOptimization />} />
-              <Route path="/factor-analysis" element={<FactorAnalysis />} />
-              <Route path="/factor-timing" element={<FactorTiming />} />
-              <Route path="/alpha-views" element={<AlphaViews />} />
-              <Route path="/black-litterman" element={<BlackLittermanConfig />} />
-              <Route path="/risk-budget" element={<RiskBudget />} />
-              <Route path="/quantlib" element={<QuantLibAnalysis />} />
-              <Route path="/ai-agents" element={<AIAgents />} />
+              <Route path="/dca-calculator" element={<DCACalculator />} />
 
-              <Route path="/etf-comparison-report" element={<ETFComparisonReport />} />
               <Route path="/investment-strategy" element={<InvestmentStrategy />} />
 
-              <Route path="/operation-logs" element={<OperationLogs />} />
               <Route path="/exchange-rate" element={<ExchangeRate />} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
