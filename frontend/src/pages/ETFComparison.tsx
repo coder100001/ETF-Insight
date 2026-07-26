@@ -101,6 +101,7 @@ const ETFComparison: React.FC = () => {
     try {
       const response = await etfAPI.getList();
       if (response.success && response.data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formattedData: ETFData[] = response.data.map((item: any) => ({
           symbol: item.symbol,
           name: item.name,
@@ -136,9 +137,8 @@ const ETFComparison: React.FC = () => {
   useEffect(() => {
     if (selectedETFs.length > 0) {
       const primarySymbol = selectedETFs[0];
-      fetchSimilarETFs(primarySymbol);
+          fetchSimilarETFs(primarySymbol);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedETFs]);
 
   const fetchSimilarETFs = async (symbol: string) => {
