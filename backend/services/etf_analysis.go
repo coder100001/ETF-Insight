@@ -7,17 +7,19 @@ import (
 	"time"
 
 	"etf-insight/models"
+	exchangerate "etf-insight/services/exchange_rate"
+	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 )
 
 // ETFAnalysisService ETF分析服务
 type ETFAnalysisService struct {
-	exchangeRate *ExchangeRateService
+	exchangeRate *exchangerate.ExchangeRateService
 }
 
 // NewETFAnalysisService 创建新的ETF分析服务
-func NewETFAnalysisService(exchangeRate *ExchangeRateService) *ETFAnalysisService {
+func NewETFAnalysisService(exchangeRate *exchangerate.ExchangeRateService) *ETFAnalysisService {
 	return &ETFAnalysisService{
 		exchangeRate: exchangeRate,
 	}
@@ -551,7 +553,11 @@ func (s *ETFAnalysisService) convertToUSD(amount decimal.Decimal, currency strin
 		return amount
 	}
 
-	rate := s.exchangeRate.GetRate(currency, "USD")
+	rate, err := s.exchangeRate.GetRateDecimal(currency, "USD")
+	if err != nil {
+		utils.Warn("Failed to get exchange rate for currency", "currency", currency, "error", err)
+		return amount
+	}
 	return amount.Mul(rate)
 }
 

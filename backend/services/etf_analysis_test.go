@@ -6,12 +6,20 @@ import (
 	"time"
 
 	"etf-insight/models"
+	exchangerate "etf-insight/services/exchange_rate"
+	"etf-insight/services/exchange_rate/datasource"
 	"etf-insight/utils"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+// newTestExchangeRateService 创建测试用的汇率服务
+// 使用空配置（无 API Key），服务会降级到 Fallback provider，避免外部网络依赖
+func newTestExchangeRateService() *exchangerate.ExchangeRateService {
+	return exchangerate.NewExchangeRateService(&datasource.DataSourceConfig{})
+}
 
 type ETFAnalysisServiceTestSuite struct {
 	suite.Suite
@@ -25,7 +33,7 @@ func (s *ETFAnalysisServiceTestSuite) SetupTest() {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	s.service = NewETFAnalysisService(mockExchange)
 }
 
@@ -265,7 +273,7 @@ func (s *ETFAnalysisServiceTestSuite) TestGetComparisonData() {
 }
 
 func (s *ETFAnalysisServiceTestSuite) TestNewETFAnalysisService() {
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	s.NotNil(service)

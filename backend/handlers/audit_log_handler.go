@@ -50,6 +50,34 @@ var logStatusToInt = map[string]int{
 	"processing": 0,
 }
 
+// operationLogModule 从 OperationType 派生前端 module 字段
+// OperationLog 模型无 module 字段，此处做合理映射供前端展示和 Excel 导出。
+func operationLogModule(operationType string) string {
+	switch operationType {
+	case "scheduled_task":
+		return "scheduler"
+	case "SYNC", "sync":
+		return "sync"
+	case "backtest":
+		return "backtest"
+	default:
+		return operationType
+	}
+}
+
+// operationLogStatusCode 从 Status 数值派生 HTTP 风格状态码
+// 0(进行中)→0, 1(成功)→200, 2(失败)→500
+func operationLogStatusCode(status int) int {
+	switch status {
+	case 1:
+		return 200
+	case 2:
+		return 500
+	default:
+		return 0
+	}
+}
+
 // operationLogStatus OperationLog.Status 数值 → 前端状态字符串
 func operationLogStatus(status int) string {
 	switch status {
@@ -127,8 +155,10 @@ func (h *AuditLogHandler) GetOperationLogs(c *gin.Context) {
 				LogType:       "operation",
 				Timestamp:     log.StartTime,
 				User:          log.Operator,
+				Module:        operationLogModule(log.OperationType),
 				ActionType:    log.OperationName,
 				Details:       log.Details,
+				StatusCode:    operationLogStatusCode(log.Status),
 				Status:        operationLogStatus(log.Status),
 				ErrorMessage:  log.ErrorMessage,
 				DurationMs:    log.DurationMs,

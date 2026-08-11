@@ -18,7 +18,7 @@ func TestAnalyzePortfolio_BasicAllocation(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -44,7 +44,7 @@ func TestAnalyzePortfolio_ZeroWeight(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -69,7 +69,7 @@ func TestAnalyzePortfolio_SingleHolding(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -98,7 +98,7 @@ func TestAnalyzePortfolio_MultipleHoldings(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -130,7 +130,7 @@ func TestAnalyzePortfolio_WeightedDividendYield(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -155,7 +155,7 @@ func TestAnalyzePortfolio_TotalValueCalculation(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -186,7 +186,7 @@ func TestAnalyzePortfolio_DividendCalculation(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -212,7 +212,7 @@ func TestAnalyzePortfolio_TotalReturnWithDividend(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -237,7 +237,7 @@ func TestAnalyzePortfolio_InvalidTaxRate(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -260,7 +260,7 @@ func TestAnalyzePortfolio_ExchangeRatesInitialized(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -284,7 +284,7 @@ func TestAnalyzePortfolio_HoldingsContainRequiredFields(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -319,7 +319,7 @@ func TestAnalyzePortfolio_LargeInvestment(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -344,7 +344,7 @@ func TestAnalyzePortfolio_EqualWeights(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	holdings := []string{"SCHD", "VTI", "BND", "VNQ"}
@@ -370,7 +370,7 @@ func TestAnalyzePortfolio_TotalReturnPercent(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{
@@ -394,7 +394,7 @@ func TestAnalyzePortfolio_TotalReturnWithDividendPercent(t *testing.T) {
 	}
 	models.InitDefaultData()
 
-	mockExchange := NewExchangeRateService()
+	mockExchange := newTestExchangeRateService()
 	service := NewETFAnalysisService(mockExchange)
 
 	allocation := map[string]float64{

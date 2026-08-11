@@ -15,10 +15,10 @@ import (
 
 // ServiceSet 核心服务依赖集合
 var ServiceSet = wire.NewSet(
-	services.NewExchangeRateService,
 	services.NewETFAnalysisService,
 	services.NewPortfolioOptimizer,
 	ProvideExchangeRateConfig,
+	ProvideExchangeRateService,
 	ProvideDataSourceProvider,
 )
 
@@ -43,7 +43,6 @@ type Container struct {
 	Provider         datasource.DataSourceProvider
 	AnalysisService  *services.ETFAnalysisService
 	Optimizer        *services.PortfolioOptimizer
-	ExchangeService  *services.ExchangeRateService
 }
 
 // InitializeContainer 使用 Wire 自动注入所有依赖

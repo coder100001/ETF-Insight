@@ -6,13 +6,21 @@ import (
 	"etf-insight/config"
 	"etf-insight/services/datasource"
 	"etf-insight/services/datasource/unified"
+	exchangerate "etf-insight/services/exchange_rate"
 	erdatasource "etf-insight/services/exchange_rate/datasource"
+	"etf-insight/tasks"
 	"etf-insight/utils"
 )
 
 // ProvideScheduleConfig 从 Config 提取定时任务配置
 func ProvideScheduleConfig(cfg *config.Config) *config.ScheduleConfig {
 	return &cfg.Schedule
+}
+
+// ProvideExchangeRateService 复用 ExchangeRateTask 中的汇率服务实例
+// 避免重复初始化 DataSourceManager（多数据源故障转移状态必须共享）
+func ProvideExchangeRateService(task *tasks.ExchangeRateTask) *exchangerate.ExchangeRateService {
+	return task.GetService()
 }
 
 // ProvideExchangeRateConfig 从 Config 提取汇率数据源配置

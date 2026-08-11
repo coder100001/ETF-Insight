@@ -91,3 +91,4 @@ tools/doccheck/doccheck
 .codegraph/
 .trae-html-share-packages/
 etf-insight-improvement/
+.zcode/

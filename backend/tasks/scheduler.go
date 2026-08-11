@@ -17,23 +17,24 @@ import (
 
 // Scheduler 定时任务调度器
 type Scheduler struct {
-	cron        *cron.Cron
-	cfg         *config.ScheduleConfig
-	analysisSvc *services.ETFAnalysisService
-	exchangeSvc *services.ExchangeRateService
-	provider    datasource.DataSourceProvider
+	cron             *cron.Cron
+	cfg              *config.ScheduleConfig
+	analysisSvc      *services.ETFAnalysisService
+	exchangeRateTask *ExchangeRateTask
+	provider         datasource.DataSourceProvider
 }
 
 // NewScheduler 创建新的调度器
-func NewScheduler(cfg *config.ScheduleConfig, analysis *services.ETFAnalysisService, exchange *services.ExchangeRateService, provider datasource.DataSourceProvider) *Scheduler {
+// exchangeRateTask 复用 ExchangeRateTask 实例，避免重复初始化 DataSourceManager
+func NewScheduler(cfg *config.ScheduleConfig, analysis *services.ETFAnalysisService, exchangeRateTask *ExchangeRateTask, provider datasource.DataSourceProvider) *Scheduler {
 	c := cron.New(cron.WithSeconds())
 
 	return &Scheduler{
-		cron:        c,
-		cfg:         cfg,
-		analysisSvc: analysis,
-		exchangeSvc: exchange,
-		provider:    provider,
+		cron:             c,
+		cfg:              cfg,
+		analysisSvc:      analysis,
+		exchangeRateTask: exchangeRateTask,
+		provider:         provider,
 	}
 }
 
@@ -80,6 +81,7 @@ func (s *Scheduler) Stop() {
 }
 
 // updateExchangeRates 更新汇率
+// 复用 ExchangeRateTask（多数据源故障转移 + 5分钟高频同步），避免重复实现。
 func (s *Scheduler) updateExchangeRates() {
 	utils.Info("Running scheduled exchange rate update...")
 
@@ -92,8 +94,8 @@ func (s *Scheduler) updateExchangeRates() {
 	}
 	models.DB.Create(&opLog)
 
-	if s.exchangeSvc != nil {
-		if err := s.exchangeSvc.UpdateRates(); err != nil {
+	if s.exchangeRateTask != nil {
+		if err := s.exchangeRateTask.TriggerManualSync(); err != nil {
 			utils.Error("Failed to update exchange rates", err)
 			opLog.Status = 2
 			opLog.ErrorMessage = err.Error()

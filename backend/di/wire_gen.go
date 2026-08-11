@@ -20,18 +20,18 @@ import (
 // InitializeContainer 使用 Wire 自动注入所有依赖
 // cfg 由 Bootstrap 阶段加载并传入
 func InitializeContainer(cfg *config.Config) (*Container, error) {
-	exchangeRateService := services.NewExchangeRateService()
+	dataSourceConfig := ProvideExchangeRateConfig(cfg)
+	exchangeRateTask := tasks.NewExchangeRateTask(dataSourceConfig)
+	exchangeRateService := ProvideExchangeRateService(exchangeRateTask)
 	etfAnalysisService := services.NewETFAnalysisService(exchangeRateService)
 	portfolioOptimizer := services.NewPortfolioOptimizer(etfAnalysisService)
 	dataSourceProvider, err := ProvideDataSourceProvider()
 	if err != nil {
 		return nil, err
 	}
-	dataSourceConfig := ProvideExchangeRateConfig(cfg)
-	exchangeRateTask := tasks.NewExchangeRateTask(dataSourceConfig)
 	routerRouter := router.NewRouter(cfg, etfAnalysisService, portfolioOptimizer, dataSourceProvider, exchangeRateTask)
 	scheduleConfig := ProvideScheduleConfig(cfg)
-	scheduler := tasks.NewScheduler(scheduleConfig, etfAnalysisService, exchangeRateService, dataSourceProvider)
+	scheduler := tasks.NewScheduler(scheduleConfig, etfAnalysisService, exchangeRateTask, dataSourceProvider)
 	container := &Container{
 		Config:           cfg,
 		Router:           routerRouter,
@@ -40,7 +40,6 @@ func InitializeContainer(cfg *config.Config) (*Container, error) {
 		Provider:         dataSourceProvider,
 		AnalysisService:  etfAnalysisService,
 		Optimizer:        portfolioOptimizer,
-		ExchangeService:  exchangeRateService,
 	}
 	return container, nil
 }
@@ -48,7 +47,8 @@ func InitializeContainer(cfg *config.Config) (*Container, error) {
 // wire.go:
 
 // ServiceSet 核心服务依赖集合
-var ServiceSet = wire.NewSet(services.NewExchangeRateService, services.NewETFAnalysisService, services.NewPortfolioOptimizer, ProvideExchangeRateConfig,
+var ServiceSet = wire.NewSet(services.NewETFAnalysisService, services.NewPortfolioOptimizer, ProvideExchangeRateConfig,
+	ProvideExchangeRateService,
 	ProvideDataSourceProvider,
 )
 
@@ -69,5 +69,4 @@ type Container struct {
 	Provider         datasource.DataSourceProvider
 	AnalysisService  *services.ETFAnalysisService
 	Optimizer        *services.PortfolioOptimizer
-	ExchangeService  *services.ExchangeRateService
 }

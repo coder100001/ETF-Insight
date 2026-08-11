@@ -75,6 +75,9 @@ func TestGetOperationLogs(t *testing.T) {
 	// 原始字段向后兼容
 	assert.Equal(t, "sync", resp.Data[0].OperationType)
 	assert.NotNil(t, resp.Data[0].Timestamp)
+	// 派生的统一字段（module/status_code）
+	assert.Equal(t, "sync", resp.Data[0].Module)
+	assert.Equal(t, 200, resp.Data[0].StatusCode)
 	// 统计信息
 	assert.Equal(t, int64(1), resp.Meta.Summary.TotalOperation)
 	assert.Equal(t, int64(1), resp.Meta.Summary.TotalLogs)
@@ -151,6 +154,9 @@ func TestGetOperationLogs_StatusFilter(t *testing.T) {
 	assert.Equal(t, 1, resp.Count)
 	assert.Equal(t, "error", resp.Data[0].Status)
 	assert.Equal(t, "backtest", resp.Data[0].OperationType)
+	// 失败状态映射为 500
+	assert.Equal(t, 500, resp.Data[0].StatusCode)
+	assert.Equal(t, "backtest", resp.Data[0].Module)
 
 	// 分页元数据
 	assert.Equal(t, 1, resp.Meta.Pagination.Page)
