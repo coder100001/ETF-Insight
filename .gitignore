@@ -86,3 +86,8 @@ src/frontend/
 
 # tools/doccheck binary
 tools/doccheck/doccheck
+
+# Tooling / local analysis artifacts
+.codegraph/
+.trae-html-share-packages/
+etf-insight-improvement/

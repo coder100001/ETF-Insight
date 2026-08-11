@@ -226,3 +226,26 @@ vi.mock('../services/api', async (importOriginal) => {
     },
   }
 })
+
+// Global mock for echarts（页面统一通过 lib/echarts 按需入口使用）
+// jsdom 无 canvas，必须 mock；per-file 的 vi.mock 会覆盖此全局 mock
+vi.mock('../lib/echarts', () => ({
+  default: {
+    init: vi.fn(() => ({
+      setOption: vi.fn(),
+      resize: vi.fn(),
+      dispose: vi.fn(),
+      clear: vi.fn(),
+      getWidth: vi.fn(() => 0),
+      getHeight: vi.fn(() => 0),
+      on: vi.fn(),
+      off: vi.fn(),
+      showLoading: vi.fn(),
+      hideLoading: vi.fn(),
+    })),
+    dispose: vi.fn(),
+    registerTheme: vi.fn(),
+    connect: vi.fn(),
+    graphic: { LinearGradient: vi.fn() },
+  },
+}))

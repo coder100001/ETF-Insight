@@ -4,9 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider, App as AntdApp } from 'antd'
 import TechnicalAnalysis from '../TechnicalAnalysis'
 
-vi.mock('@ant-design/charts', () => ({
-  Radar: () => null,
-  Line: () => null,
+vi.mock('../../components/ReactEChart', () => ({
+  default: () => <div data-testid="mock-echart" />,
 }))
 
 beforeEach(() => {
