@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Select, InputNumber, Table, Tabs, Spin, Alert, Slider, Form } from 'antd';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ZAxis } from 'recharts';
+import ReactEChart from '../components/ReactEChart';
+import type {
+  EChartsOption,
+  DefaultLabelFormatterCallbackParams,
+  TooltipComponentFormatterCallbackParams,
+} from 'echarts';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
 import { useOptimization } from '../hooks/useOptimization';
@@ -130,6 +135,63 @@ const OptimizationResultDisplay: React.FC<{ result: OptimizationResult }> = ({ r
     }))
     .sort((a, b) => b.weight - a.weight);
 
+  // 资产配置饼图（对应原 Recharts PieChart，outerRadius=100）
+  const weightPieOption: EChartsOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const p = Array.isArray(params) ? params[0] : params;
+        return `${p.name}: ${Number(p.value).toFixed(1)}%`;
+      },
+    },
+    legend: {},
+    series: [
+      {
+        name: '资产配置',
+        type: 'pie',
+        radius: '60%',
+        center: ['50%', '50%'],
+        label: {
+          formatter: (params: DefaultLabelFormatterCallbackParams) => `${params.name}: ${Number(params.value).toFixed(1)}%`,
+        },
+        labelLine: { show: false },
+        data: weightData.map((d, idx) => ({
+          name: d.name,
+          value: d.value,
+          itemStyle: { color: COLORS[idx % COLORS.length] },
+        })),
+      },
+    ],
+  };
+
+  // 风险贡献环形图（对应原 Recharts PieChart，innerRadius=60, outerRadius=100, paddingAngle=5）
+  const riskPieOption: EChartsOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const p = Array.isArray(params) ? params[0] : params;
+        return `${p.name}: ${Number(p.value).toFixed(1)}%`;
+      },
+    },
+    series: [
+      {
+        name: '风险贡献',
+        type: 'pie',
+        radius: ['40%', '65%'],
+        center: ['50%', '50%'],
+        padAngle: 5,
+        label: {
+          formatter: (params: DefaultLabelFormatterCallbackParams) => `${params.name}: ${Number(params.value).toFixed(1)}%`,
+        },
+        data: riskContributionData.map((d, idx) => ({
+          name: d.symbol,
+          value: d.contribution,
+          itemStyle: { color: COLORS[idx % COLORS.length] },
+        })),
+      },
+    ],
+  };
+
   return (
     <>
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -162,49 +224,12 @@ const OptimizationResultDisplay: React.FC<{ result: OptimizationResult }> = ({ r
       <Row gutter={[24, 24]}>
         <Col span={12}>
           <StyledCard title="资产配置">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={weightData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {weightData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <ReactEChart option={weightPieOption} height={300} />
           </StyledCard>
         </Col>
         <Col span={12}>
           <StyledCard title="风险贡献">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={riskContributionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="contribution"
-                  label={({ name, value }) => `${name}: ${Number(value).toFixed(1)}%`}
-                >
-                  {riskContributionData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <ReactEChart option={riskPieOption} height={300} />
           </StyledCard>
         </Col>
       </Row>
@@ -248,42 +273,63 @@ const EfficientFrontierDisplay: React.FC<{ frontier: EfficientFrontierPoint[] }>
   const volMax = Math.max(...frontierData.map(d => d.volatility));
   const retMin = Math.min(...frontierData.map(d => d.return));
   const retMax = Math.max(...frontierData.map(d => d.return));
+  const sharpeMin = Math.min(...frontierData.map(d => d.sharpe));
+  const sharpeMax = Math.max(...frontierData.map(d => d.sharpe));
+
+  // 有效前沿散点图（对应原 Recharts ScatterChart，ZAxis range=[50,400] 映射为 symbolSize）
+  const frontierOption: EChartsOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const p = Array.isArray(params) ? params[0] : params;
+        const d = p.data as number[];
+        return `波动率: ${Number(d[0]).toFixed(2)}%<br/>收益率: ${Number(d[1]).toFixed(2)}%<br/>夏普比率: ${Number(d[2]).toFixed(2)}`;
+      },
+    },
+    legend: {},
+    grid: {
+      left: 70,
+      right: 30,
+      top: 40,
+      bottom: 60,
+    },
+    xAxis: {
+      type: 'value',
+      name: '年化波动率 (%)',
+      nameLocation: 'middle',
+      nameGap: 30,
+      min: Math.max(0, volMin - 0.1),
+      max: volMax + 0.1,
+      axisLabel: { formatter: (v: number) => v.toFixed(2) },
+      splitLine: { lineStyle: { type: 'dashed' } },
+    },
+    yAxis: {
+      type: 'value',
+      name: '预期年化收益率 (%)',
+      nameLocation: 'middle',
+      nameGap: 45,
+      min: Math.max(0, retMin - 1),
+      max: retMax + 1,
+      axisLabel: { formatter: (v: number) => v.toFixed(1) },
+      splitLine: { lineStyle: { type: 'dashed' } },
+    },
+    series: [
+      {
+        name: '有效前沿',
+        type: 'scatter',
+        data: frontierData.map(d => [d.volatility, d.return, d.sharpe]),
+        symbolSize: (data: number[]) => {
+          if (sharpeMax === sharpeMin) return 50;
+          return 50 + ((Number(data[2]) - sharpeMin) / (sharpeMax - sharpeMin)) * 350;
+        },
+        itemStyle: { color: '#8884d8' },
+      },
+    ],
+  };
 
   return (
     <StyledCard title="有效前沿曲线">
-      <ResponsiveContainer width="100%" height={500}>
-        <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 60 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            type="number"
-            dataKey="volatility"
-            name="波动率"
-            unit="%"
-            domain={[Math.max(0, volMin - 0.1), volMax + 0.1]}
-            tickFormatter={(v) => v.toFixed(2)}
-            label={{ value: '年化波动率 (%)', position: 'insideBottom', offset: -10 }}
-          />
-          <YAxis
-            type="number"
-            dataKey="return"
-            name="收益率"
-            unit="%"
-            domain={[Math.max(0, retMin - 1), retMax + 1]}
-            tickFormatter={(v) => v.toFixed(1)}
-            label={{ value: '预期年化收益率 (%)', angle: -90, position: 'insideLeft' }}
-          />
-          <ZAxis type="number" dataKey="sharpe" range={[50, 400]} name="夏普比率" />
-          <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value, name) => {
-            const numValue = Array.isArray(value) ? value[0] : value;
-            const nameStr = String(name);
-            if (nameStr === '波动率') return [`${Number(numValue).toFixed(2)}%`, nameStr];
-            if (nameStr === '收益率') return [`${Number(numValue).toFixed(2)}%`, nameStr];
-            return [Number(numValue).toFixed(2), nameStr];
-          }} />
-          <Legend />
-          <Scatter name="有效前沿" data={frontierData} fill="#8884d8" shape="circle" />
-        </ScatterChart>
-      </ResponsiveContainer>
+      <ReactEChart option={frontierOption} height={500} />
       <p style={{ textAlign: 'center', color: '#666', marginTop: 16 }}>
         圆点大小代表夏普比率，越大表示风险调整后收益越好
       </p>
@@ -294,7 +340,14 @@ const EfficientFrontierDisplay: React.FC<{ frontier: EfficientFrontierPoint[] }>
 const PortfolioOptimization: React.FC = () => {
   // 使用自定义Hooks (must be before useState that references finConfig)
   const { config: finConfig } = useFinancialConfig();
-  const { availableETFs, etfStatistics, statsLoading } = useETFData();
+  const { availableETFs, etfStatistics, statsLoading, refreshStatistics } = useETFData();
+
+  // 按需获取统计数据（不再由 store 自动触发）
+  useEffect(() => {
+    if (availableETFs.length > 0) {
+      refreshStatistics(availableETFs.map(e => e.symbol));
+    }
+  }, [availableETFs, refreshStatistics]);
 
   const [selectedETFs, setSelectedETFs] = useState<string[]>(['VTI', 'VOO', 'AGG']);
   const [objective, setObjective] = useState<'min_volatility' | 'max_sharpe' | 'target_return'>('max_sharpe');

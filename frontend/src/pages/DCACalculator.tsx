@@ -3,12 +3,10 @@ import {
   Card, Row, Col, InputNumber, Button, Table, Typography,
   Slider, Select, Statistic, message,
 } from 'antd';
-import {
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer, AreaChart, Area,
-} from 'recharts';
 import { DollarOutlined, RiseOutlined, CalendarOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
+import ReactEChart from '../components/ReactEChart';
+import type { EChartsOption } from 'echarts';
 import { request } from '../services/api';
 
 const { Title, Text, Paragraph } = Typography;
@@ -191,6 +189,94 @@ const DCACalculator: React.FC = () => {
     '组合价值': d.portfolioValue,
     '累计分红': result.yearlyData.slice(0, d.year).reduce((sum, yd) => sum + yd.dividendIncome, 0),
   })) : [];
+
+  // ECharts 配置：面积图 = line + areaStyle
+  const chartOption: EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      formatter(params) {
+        const arr = Array.isArray(params) ? params : [params];
+        const year = arr[0]?.name;
+        let text = `第 ${year} 年末`;
+        arr.forEach((p) => {
+          const v = Number(p.value);
+          text += `<br/>${p.marker}${p.seriesName}: $${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        });
+        return text;
+      },
+    },
+    legend: {
+      data: ['组合价值', '累计投入'],
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: chartData.map(d => d.year),
+      boundaryGap: false,
+      name: '年份',
+      nameLocation: 'middle',
+      nameGap: 30,
+      splitLine: { show: true, lineStyle: { type: 'dashed' } },
+    },
+    yAxis: {
+      type: 'value',
+      name: '价值 (USD)',
+      nameLocation: 'middle',
+      nameGap: 50,
+      nameRotate: 90,
+      axisLabel: {
+        formatter: (v: number) => `$${(v / 1000).toFixed(0)}k`,
+      },
+      splitLine: { lineStyle: { type: 'dashed' } },
+    },
+    series: [
+      {
+        name: '组合价值',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
+        data: chartData.map(d => d['组合价值']),
+        itemStyle: { color: '#52c41a' },
+        lineStyle: { color: '#52c41a', width: 2 },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(82, 196, 26, 0.3)' },
+              { offset: 1, color: 'rgba(82, 196, 26, 0)' },
+            ],
+          },
+        },
+      },
+      {
+        name: '累计投入',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
+        data: chartData.map(d => d['累计投入']),
+        itemStyle: { color: '#1890ff' },
+        lineStyle: { color: '#1890ff', width: 2, type: 'dashed' },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(24, 144, 255, 0.2)' },
+              { offset: 1, color: 'rgba(24, 144, 255, 0)' },
+            ],
+          },
+        },
+      },
+    ],
+  };
 
   const columns = [
     { title: '年份', dataIndex: 'year', key: 'year', width: 60 },
@@ -415,49 +501,7 @@ const DCACalculator: React.FC = () => {
                 </Row>
 
                 <Card title="资产增长曲线" style={{ marginBottom: 24 }}>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#52c41a" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#52c41a" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#1890ff" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#1890ff" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="year" label={{ value: '年份', position: 'insideBottom', offset: -5 }} />
-                      <YAxis
-                        tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                        label={{ value: '价值 (USD)', angle: -90, position: 'insideLeft' }}
-                      />
-                      <Tooltip
-                        formatter={(value: unknown) => {
-                          const v = Number(value);
-                          return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-                        }}
-                        labelFormatter={(label) => `第 ${label} 年末`}
-                      />
-                      <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="组合价值"
-                        stroke="#52c41a"
-                        fill="url(#colorValue)"
-                        strokeWidth={2}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="累计投入"
-                        stroke="#1890ff"
-                        fill="url(#colorInvested)"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <ReactEChart option={chartOption} height={350} />
                 </Card>
 
                 <Card title="逐年明细">

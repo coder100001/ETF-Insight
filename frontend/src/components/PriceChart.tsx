@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import echarts from "../lib/echarts";
+import type { EChartsType } from "echarts/core";
+import type { EChartsOption } from "echarts";
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 
@@ -22,7 +24,7 @@ interface PriceChartProps {
 
 const PriceChart = React.memo<PriceChartProps>(({ data, symbol }) => {
   const chartRef = useRef<HTMLDivElement>(null);
-  const chartInstance = useRef<echarts.ECharts | null>(null);
+  const chartInstance = useRef<EChartsType | null>(null);
   const hasEnoughData = data.dates && data.dates.length >= 2;
 
   useEffect(() => {
@@ -31,7 +33,7 @@ const PriceChart = React.memo<PriceChartProps>(({ data, symbol }) => {
     // 初始化图表
     chartInstance.current = echarts.init(chartRef.current);
 
-    const option: echarts.EChartsOption = {
+    const option: EChartsOption = {
       backgroundColor: 'transparent',
       title: {
         text: `${symbol} 价格走势`,

@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Card, Table, Badge, Button, App, Row, Col } from 'antd';
+import { Card, Table, Badge, Button, Row, Col } from 'antd';
 import { BarChartOutlined, WalletOutlined } from '@ant-design/icons';
 import { FaBalanceScale } from 'react-icons/fa';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
-import { etfAPI } from '../services/api';
-import type { ETFData } from '../types';
+import { useETFStore } from '../stores/etfStore';
 import HoldingPieChart from '../components/HoldingPieChart';
 import SectorBarChart from '../components/SectorBarChart';
 
@@ -136,75 +135,26 @@ const StyledTable = styled(Table)`
   }
 `;
 
-interface ETFApiItem {
-  symbol: string;
-  name: string;
-  current_price?: number;
-  previous_close?: number;
-  change?: number;
-  change_percent?: number;
-  open_price?: number;
-  high_price?: number;
-  low_price?: number;
-  volume?: number;
-  dividend_yield?: number;
-  volatility?: number;
-  total_return?: number;
-  max_drawdown?: number;
-  sharpe_ratio?: number;
-  expense_ratio?: number;
-  focus?: string;
-  strategy?: string;
-}
-
 const ETFDashboard: React.FC = () => {
-  const { message } = App.useApp();
-  const [etfs, setEtfs] = useState<ETFData[]>([]);
-  const [loading, setLoading] = useState(false);
+  // ETF 数据来自全局 etfStore（与其他页面共享同一份列表，避免重复请求）
+  const etfs = useETFStore(state => state.etfList);
+  const loading = useETFStore(state => state.loading);
+  const initialize = useETFStore(state => state.initialize);
 
   useEffect(() => {
-    fetchETFData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    initialize();
+  }, [initialize]);
 
-  const fetchETFData = async () => {
-    setLoading(true);
-    try {
-      const response = await etfAPI.getList();
-      if (response.success && response.data) {
-        // 转换后端数据为前端格式
-        const formattedData: ETFData[] = response.data.map((item: ETFApiItem) => ({
-          symbol: item.symbol,
-          name: item.name,
-          current_price: item.current_price || 0,
-          previous_close: item.previous_close || 0,
-          change: item.change || 0,
-          change_percent: item.change_percent || 0,
-          open_price: item.open_price || 0,
-          high_price: item.high_price || 0,
-          low_price: item.low_price || 0,
-          volume: item.volume || 0,
-          dividend_yield: item.dividend_yield || 0,
-          volatility: item.volatility || 0,
-          total_return: item.total_return || 0,
-          max_drawdown: item.max_drawdown || 0,
-          sharpe_ratio: item.sharpe_ratio || 0,
-          expense_ratio: item.expense_ratio || 0,
-          info: {
-            focus: item.focus || '',
-            strategy: item.strategy || '',
-          },
-        }));
-        setEtfs(formattedData);
-      } else {
-        message.error('获取ETF数据失败');
-      }
-    } catch (error) {
-      message.error('获取ETF数据失败: ' + (error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 图表数据 useMemo 稳定化：避免每次渲染生成新数组导致图表 dispose+重建
+  const pieChartData = useMemo(
+    () => etfs.map(etf => ({
+      symbol: etf.symbol,
+      name: etf.name,
+      weight: etfs.length > 0 ? 100 / etfs.length : 0, // 平均权重
+      value: etf.current_price * 100, // 示例值
+    })),
+    [etfs]
+  );
 
   const comparisonColumns = [
     { title: '指标', dataIndex: 'indicator', key: 'indicator', fixed: 'left' as const },
@@ -381,12 +331,7 @@ const ETFDashboard: React.FC = () => {
           <Row gutter={16} style={{ marginBottom: 20 }}>
             <Col xs={24} lg={12}>
               <HoldingPieChart
-                data={etfs.map(etf => ({
-                  symbol: etf.symbol,
-                  name: etf.name,
-                  weight: 100 / etfs.length, // 平均权重
-                  value: etf.current_price * 100, // 示例值
-                }))}
+                data={pieChartData}
                 title="ETF 持仓分布"
               />
             </Col>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Card, Table, Badge, Spin, Row, Col, Statistic, Tag, Button } from 'antd';
@@ -7,10 +7,12 @@ import {
   SwapOutlined, ReloadOutlined,
   ArrowUpOutlined, ArrowDownOutlined, WalletOutlined
 } from '@ant-design/icons';
-import * as echarts from 'echarts';
+import echarts from "../lib/echarts";
+import type { EChartsOption } from "echarts";
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
-import { etfAPI, portfolioConfigAPI, operationLogsAPI, exchangeRateAPI } from '../services/api';
+import { portfolioConfigAPI, operationLogsAPI } from '../services/api';
+import { useETFStore } from '../stores/etfStore';
 
 interface LogEntry {
   id: number;
@@ -152,7 +154,7 @@ interface DashboardStats {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const chartRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // 初始 false：立即渲染 store 数据，不阻塞
   const [stats, setStats] = useState<DashboardStats>({
     totalETFs: 0,
     totalPortfolios: 0,
@@ -160,30 +162,47 @@ const Dashboard: React.FC = () => {
     exchangeRates: 0,
   });
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
-  const [etfList, setEtfList] = useState<ETFItem[]>([]);
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRateItem[]>([]);
+
+  // 热门 ETF + 汇率数据来自全局 etfStore（一次获取，多页面共享，不再每次请求）
+  const storeEtfs = useETFStore(state => state.etfList);
+  const exchangeRates = useETFStore(state => state.exchangeRates);
+  const initialize = useETFStore(state => state.initialize);
+  const etfList = useMemo<ETFItem[]>(
+    () => storeEtfs.slice(0, 10).map(etf => ({
+      symbol: etf.symbol,
+      name: etf.name,
+      current_price: etf.current_price,
+      change_percent: etf.change_percent,
+    })),
+    [storeEtfs]
+  );
 
   useEffect(() => {
+    initialize();
     fetchDashboardData();
-  }, []);
+  }, [initialize]);
+
+  // 手动刷新：同时刷新 store 的 ETF 列表与汇率（force 强制重新获取）
+  const refreshAll = () => {
+    const store = useETFStore.getState();
+    store.refreshETFList(true);
+    store.fetchExchangeRates();
+    fetchDashboardData();
+  };
+
+  // ETF 总数 + 汇率数量从全局 store 同步（store 一次获取，不重复请求）
+  useEffect(() => {
+    setStats(prev => ({ ...prev, totalETFs: storeEtfs.length, exchangeRates: exchangeRates.length }));
+  }, [storeEtfs, exchangeRates]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // 并行请求多个 API
-      const [etfRes, portfolioRes, logsRes, ratesRes] = await Promise.allSettled([
-        etfAPI.getList(),
+      // ETF 列表和汇率由全局 etfStore 一次获取并缓存，此处只请求其余数据
+      const [portfolioRes, logsRes] = await Promise.allSettled([
         portfolioConfigAPI.getAll(),
         operationLogsAPI.getLogs({ page: 1, page_size: 5 }),
-        exchangeRateAPI.getAll(),
       ]);
-
-      // 处理 ETF 列表
-      if (etfRes.status === 'fulfilled' && etfRes.value?.success) {
-        const etfs = etfRes.value.data || [];
-        setEtfList(etfs.slice(0, 10));
-        setStats(prev => ({ ...prev, totalETFs: etfs.length }));
-      }
 
       // 处理组合配置
       if (portfolioRes.status === 'fulfilled' && portfolioRes.value?.success) {
@@ -191,18 +210,28 @@ const Dashboard: React.FC = () => {
         setStats(prev => ({ ...prev, totalPortfolios: portfolios.length }));
       }
 
-      // 处理操作日志
+      // 处理操作日志（后端 OperationLog 字段映射为前端展示格式）
       if (logsRes.status === 'fulfilled' && logsRes.value?.success) {
         const logs = logsRes.value.data?.data || logsRes.value.data || [];
-        setRecentLogs(Array.isArray(logs) ? logs.slice(0, 5) : []);
-        setStats(prev => ({ ...prev, recentLogs: Array.isArray(logs) ? logs.length : 0 }));
-      }
-
-      // 处理汇率
-      if (ratesRes.status === 'fulfilled' && ratesRes.value?.success) {
-        const rates = ratesRes.value.data || [];
-        setExchangeRates(Array.isArray(rates) ? rates.slice(0, 5) : []);
-        setStats(prev => ({ ...prev, exchangeRates: Array.isArray(rates) ? rates.length : 0 }));
+        const mapped = Array.isArray(logs)
+          ? logs.slice(0, 5).map((log: Record<string, unknown>) => ({
+              id: log.id as number,
+              // 后端字段：operation_type / start_time / status(0:进行中,1:成功,2:失败)
+              log_type: String(log.operation_type || log.log_type || '未知'),
+              timestamp: String(log.start_time || log.timestamp || ''),
+              status: log.status === 1 ? 'success' : log.status === 2 ? 'error' : log.status === 0 ? 'processing' : String(log.status || 'unknown'),
+              action_type: String(log.operation_name || log.action_type || ''),
+              user: String(log.operator || ''),
+              module: '',
+              details: String(log.details || ''),
+              ip: '',
+              status_code: 0,
+              error_message: String(log.error_message || ''),
+              duration_ms: log.duration_ms as number || 0,
+            }))
+          : [];
+        setRecentLogs(mapped);
+        setStats(prev => ({ ...prev, recentLogs: mapped.length }));
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -217,7 +246,7 @@ const Dashboard: React.FC = () => {
       const chart = echarts.init(chartRef.current, undefined, { renderer: 'canvas' });
 
       // 使用真实 ETF 数据生成图表
-      const option: echarts.EChartsOption = {
+      const option: EChartsOption = {
         tooltip: {
           trigger: 'axis',
           formatter: '{b}: {c}',
@@ -351,7 +380,7 @@ const Dashboard: React.FC = () => {
         <PageTitle>仪表板</PageTitle>
         <Button
           icon={<ReloadOutlined />}
-          onClick={fetchDashboardData}
+          onClick={refreshAll}
           loading={loading}
         >
           刷新数据

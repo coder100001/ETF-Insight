@@ -16,18 +16,6 @@ import {
   Spin,
 } from 'antd';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from 'recharts';
-import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   DashboardOutlined,
@@ -35,19 +23,14 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import Layout from '../components/Layout';
+import ReactEChart from '../components/ReactEChart';
+import type { EChartsOption } from 'echarts';
 import { request } from '../services/api';
+import { useETFStore } from '../stores/etfStore';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 const { Option } = Select;
-
-interface ETFInfo {
-  symbol: string;
-  name: string;
-  current_price: number;
-  dividend_yield: number;
-  category: string;
-}
 
 interface PortfolioItem {
   symbol: string;
@@ -112,9 +95,8 @@ interface ScenarioAnalysisResult {
 
 const PortfolioAnalysis: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [etfLoading, setEtfLoading] = useState(true);
   const [result, setResult] = useState<ScenarioAnalysisResult | null>(null);
-  const [availableETFs, setAvailableETFs] = useState<ETFInfo[]>([]);
+  const { etfList: availableETFs, loading: etfLoading, hasInitialized, initialize } = useETFStore();
   const [totalInvestment, setTotalInvestment] = useState(100000);
   const [timeHorizon, setTimeHorizon] = useState(10);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([
@@ -122,22 +104,10 @@ const PortfolioAnalysis: React.FC = () => {
     { symbol: 'JEPQ', weight: 30 },
   ]);
 
-  // 获取可用 ETF 列表
+  // 初始化 ETF 数据（由 Zustand store 管理，去重）
   useEffect(() => {
-    const fetchETFs = async () => {
-      try {
-        const data = await request<{ success: boolean; data?: ETFInfo[] }>('/etf/list?pageSize=100');
-        if (data.success && data.data) {
-          setAvailableETFs(data.data);
-        }
-      } catch {
-        message.error('获取 ETF 列表失败');
-      } finally {
-        setEtfLoading(false);
-      }
-    };
-    fetchETFs();
-  }, []);
+    initialize();
+  }, [initialize]);
 
   const getTotalWeight = () => {
     return portfolio.reduce((sum, item) => sum + item.weight, 0);
@@ -402,10 +372,101 @@ const PortfolioAnalysis: React.FC = () => {
     });
   };
 
+  // 两个图表共用同一份数据，提取为变量避免重复调用
+  const chartData = generateProjectionChartData();
+  const years = chartData.map((d) => Number(d.year));
+  const optimisticData = chartData.map((d) => Number(d.optimistic));
+  const neutralData = chartData.map((d) => Number(d.neutral));
+  const pessimisticData = chartData.map((d) => Number(d.pessimistic));
+
+  const tooltipFormatter = (params: unknown) => {
+    const arr = params as Array<{
+      axisValue: string;
+      marker: string;
+      seriesName: string;
+      value: unknown;
+    }>;
+    let s = `第 ${arr[0].axisValue} 年<br>`;
+    arr.forEach((p) => {
+      s += `${p.marker} ${p.seriesName}: ${formatCurrency(Number(p.value))}<br>`;
+    });
+    return s;
+  };
+
+  const lineChartOption: EChartsOption = {
+    tooltip: { trigger: 'axis', formatter: tooltipFormatter },
+    legend: { data: ['乐观', '中性', '悲观'] },
+    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+    xAxis: { type: 'category', data: years, name: '年份' },
+    yAxis: {
+      type: 'value',
+      name: '价值 (USD)',
+      axisLabel: { formatter: (v: number) => `$${(v / 1000).toFixed(0)}k` },
+    },
+    series: [
+      {
+        name: '乐观',
+        type: 'line',
+        smooth: true,
+        data: optimisticData,
+        lineStyle: { color: '#52c41a', width: 2 },
+        itemStyle: { color: '#52c41a' },
+      },
+      {
+        name: '中性',
+        type: 'line',
+        smooth: true,
+        data: neutralData,
+        lineStyle: { color: '#1890ff', width: 2 },
+        itemStyle: { color: '#1890ff' },
+      },
+      {
+        name: '悲观',
+        type: 'line',
+        smooth: true,
+        data: pessimisticData,
+        lineStyle: { color: '#ff4d4f', width: 2 },
+        itemStyle: { color: '#ff4d4f' },
+      },
+    ],
+  };
+
+  const barChartOption: EChartsOption = {
+    tooltip: { trigger: 'axis', formatter: tooltipFormatter },
+    legend: { data: ['乐观', '中性', '悲观'] },
+    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+    xAxis: { type: 'category', data: years, name: '年份' },
+    yAxis: {
+      type: 'value',
+      name: '价值 (USD)',
+      axisLabel: { formatter: (v: number) => `$${(v / 1000).toFixed(0)}k` },
+    },
+    series: [
+      {
+        name: '乐观',
+        type: 'bar',
+        data: optimisticData,
+        itemStyle: { color: '#52c41a' },
+      },
+      {
+        name: '中性',
+        type: 'bar',
+        data: neutralData,
+        itemStyle: { color: '#1890ff' },
+      },
+      {
+        name: '悲观',
+        type: 'bar',
+        data: pessimisticData,
+        itemStyle: { color: '#ff4d4f' },
+      },
+    ],
+  };
+
   const totalWeight = getTotalWeight();
   const weightStatus = Math.abs(totalWeight - 100) < 0.01 ? 'success' : 'error';
 
-  if (etfLoading) {
+  if (!hasInitialized || etfLoading) {
     return (
       <Layout>
         <div style={{ padding: '24px', textAlign: 'center' }}>
@@ -581,63 +642,11 @@ const PortfolioAnalysis: React.FC = () => {
             </Card>
 
             <Card title="价值增长趋势" style={{ marginBottom: 24 }}>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={generateProjectionChartData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" label={{ value: '年份', position: 'insideBottom', offset: -5 }} />
-                  <YAxis
-                    label={{ value: '价值 (USD)', angle: -90, position: 'insideLeft' }}
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    formatter={(value: unknown) => formatCurrency(Number(value))}
-                    labelFormatter={(label) => `第 ${label} 年`}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="optimistic"
-                    stroke="#52c41a"
-                    name="乐观"
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="neutral"
-                    stroke="#1890ff"
-                    name="中性"
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="pessimistic"
-                    stroke="#ff4d4f"
-                    name="悲观"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <ReactEChart option={lineChartOption} height={400} />
             </Card>
 
             <Card title="年度收益分布" style={{ marginBottom: 24 }}>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={generateProjectionChartData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" label={{ value: '年份', position: 'insideBottom', offset: -5 }} />
-                  <YAxis
-                    label={{ value: '价值 (USD)', angle: -90, position: 'insideLeft' }}
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    formatter={(value: unknown) => formatCurrency(Number(value))}
-                    labelFormatter={(label) => `第 ${label} 年`}
-                  />
-                  <Legend />
-                  <Bar dataKey="optimistic" fill="#52c41a" name="乐观" />
-                  <Bar dataKey="neutral" fill="#1890ff" name="中性" />
-                  <Bar dataKey="pessimistic" fill="#ff4d4f" name="悲观" />
-                </BarChart>
-              </ResponsiveContainer>
+              <ReactEChart option={barChartOption} height={400} />
             </Card>
 
             <Collapse style={{ marginBottom: 24 }}>

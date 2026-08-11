@@ -9,10 +9,11 @@ import {
   PercentageOutlined, MoneyCollectOutlined, CalendarOutlined,
   InfoCircleOutlined, EditOutlined, ReloadOutlined
 } from '@ant-design/icons';
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer
-} from 'recharts';
+import ReactEChart from '../components/ReactEChart';
+import type {
+  EChartsOption,
+  TooltipComponentFormatterCallbackParams,
+} from 'echarts';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { aShareAPI } from '../services/api';
@@ -475,6 +476,87 @@ export default function ASharePortfolioPage() {
     }));
   }, [portfolioData]);
 
+  // 环形图配置
+  const pieOption: EChartsOption = useMemo(() => ({
+    color: COLORS,
+    tooltip: {
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const p = Array.isArray(params) ? params[0] : params;
+        return `${p.name}: ${formatMoney(Number(p.value))}`;
+      },
+    },
+    legend: {
+      orient: 'vertical',
+      right: 0,
+      top: 'middle',
+      textStyle: { fontSize: 12 },
+    },
+    series: [
+      {
+        name: '投资占比',
+        type: 'pie',
+        radius: [40, 80],
+        center: ['40%', '50%'],
+        padAngle: 2,
+        avoidLabelOverlap: false,
+        label: {
+          formatter: '{d}%',
+        },
+        labelLine: {
+          show: false,
+        },
+        data: pieData.map(d => ({ name: d.name, value: d.value })),
+      },
+    ],
+  }), [pieData]);
+
+  // 柱状图配置
+  const barOption: EChartsOption = useMemo(() => ({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const arr = Array.isArray(params) ? params : [params];
+        let result = arr[0].name;
+        arr.forEach((p) => {
+          const pAny = p as { seriesName?: string; value: number; marker: string };
+          const value = pAny.seriesName === '投资金额' ? pAny.value * 10 : pAny.value;
+          result += `<br/>${pAny.marker}${pAny.seriesName}: ${formatMoney(Number(value))}`;
+        });
+        return result;
+      },
+    },
+    legend: {},
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: barData.map(d => d.name),
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { type: 'dashed' } },
+    },
+    series: [
+      {
+        name: '预期分红',
+        type: 'bar',
+        data: barData.map(d => d.预期分红),
+        itemStyle: { color: '#52c41a' },
+      },
+      {
+        name: '投资金额',
+        type: 'bar',
+        data: barData.map(d => d.投资金额),
+        itemStyle: { color: '#1890ff' },
+      },
+    ],
+  }), [barData]);
+
   if (!portfolioData) {
     return (
       <Layout>
@@ -572,35 +654,7 @@ export default function ASharePortfolioPage() {
               </Space>
             }
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="40%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  innerRadius={40}
-                  fill="#8884d8"
-                  dataKey="value"
-                  paddingAngle={2}
-                >
-                  {pieData.map((_entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip
-                  formatter={(value, name) => [`${formatMoney(Number(value))}`, name]}
-                />
-                <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
-                  wrapperStyle={{ fontSize: '12px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <ReactEChart option={pieOption} height={300} />
           </ChartCard>
         </Col>
 
@@ -613,24 +667,7 @@ export default function ASharePortfolioPage() {
               </Space>
             }
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip
-                  formatter={(value, name) => {
-                    if (name === '投资金额') {
-                      return [formatMoney(Number(value) * 10), name as string];
-                    }
-                    return [formatMoney(Number(value)), name as string];
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="预期分红" fill="#52c41a" />
-                <Bar dataKey="投资金额" fill="#1890ff" />
-              </BarChart>
-            </ResponsiveContainer>
+            <ReactEChart option={barOption} height={300} />
           </ChartCard>
         </Col>
       </Row>
