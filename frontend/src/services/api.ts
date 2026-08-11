@@ -350,50 +350,6 @@ export const optimizationAPI = {
       body: JSON.stringify({ symbols }),
     });
   },
-
-  etfStatistics: (symbols: string[]) => {
-    return request<ApiResponse<Record<string, {
-      mean_return: number;
-      volatility: number;
-      sharpe_ratio: number;
-      max_drawdown: number;
-    }>>>(`/optimization/etf-statistics`, {
-      method: 'POST',
-      body: JSON.stringify({ symbols }),
-    });
-  },
-
-  riskParity: (symbols: string[]) => {
-    return request<ApiResponse<{
-      weights: Record<string, number>;
-      risk_contributions: Record<string, number>;
-      volatility?: number;
-      diversification_ratio?: number;
-    }>>(`/optimization/risk-parity`, {
-      method: 'POST',
-      body: JSON.stringify({ symbols }),
-    });
-  },
-
-  blackLitterman: (symbols: string[], views: Array<{ symbol: string; return: number; confidence: number }>) => {
-    return request<ApiResponse<{
-      posterior_returns: Record<string, number>;
-      optimal_weights: Record<string, number>;
-      expected_return?: number;
-      expected_risk?: number;
-      sharpe_ratio?: number;
-    }>>(`/optimization/black-litterman`, {
-      method: 'POST',
-      body: JSON.stringify({ symbols, views }),
-    });
-  },
-
-  marketImpliedReturns: (symbols: string[], marketPortfolio?: Record<string, number>) => {
-    return request<ApiResponse<Record<string, number>>>(`/optimization/market-implied-returns`, {
-      method: 'POST',
-      body: JSON.stringify({ symbols, market_portfolio: marketPortfolio }),
-    });
-  },
 };
 
 // 因子分析API
@@ -808,30 +764,6 @@ export const operationLogsAPI = {
         };
       };
     }>>(`/logs${query}`);
-  },
-
-  getLogTypes: () => {
-    return request<ApiResponse<string[]>>(`/logs/types`);
-  },
-
-  getActionTypes: () => {
-    return request<ApiResponse<string[]>>(`/logs/action-types`);
-  },
-
-  getUsers: () => {
-    return request<ApiResponse<string[]>>(`/logs/users`);
-  },
-
-  exportLogs: (params?: {
-    format?: 'csv' | 'json';
-    start_date?: string;
-    end_date?: string;
-    log_type?: string;
-  }) => {
-    return request<ApiResponse<{ download_url: string; filename: string }>>(`/logs/export`, {
-      method: 'POST',
-      body: JSON.stringify(params || {}),
-    });
   },
 };
 
