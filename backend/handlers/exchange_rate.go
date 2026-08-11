@@ -7,7 +7,6 @@ import (
 
 	"etf-insight/models"
 	exchangerate "etf-insight/services/exchange_rate"
-	"etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
 
 	"github.com/gin-gonic/gin"
@@ -18,9 +17,11 @@ type ExchangeRateHandler struct {
 	syncTask    *tasks.ExchangeRateTask
 }
 
-func NewExchangeRateHandler(config *datasource.DataSourceConfig, syncTask *tasks.ExchangeRateTask) *ExchangeRateHandler {
+// NewExchangeRateHandler 创建汇率处理器
+// 注意：直接复用 ExchangeRateTask 中已有的 ExchangeRateService 实例，避免重复初始化 DataSourceManager
+func NewExchangeRateHandler(syncTask *tasks.ExchangeRateTask) *ExchangeRateHandler {
 	return &ExchangeRateHandler{
-		exchangeSvc: exchangerate.NewExchangeRateService(config),
+		exchangeSvc: syncTask.GetService(),
 		syncTask:    syncTask,
 	}
 }

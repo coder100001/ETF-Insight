@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"etf-insight/models"
+	exchangerate "etf-insight/services/exchange_rate"
 	"etf-insight/services/exchange_rate/datasource"
+	"etf-insight/tasks"
 	"etf-insight/utils"
 
 	"github.com/gin-gonic/gin"
@@ -17,10 +19,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// newTestExchangeRateHandler 创建测试用的汇率处理器
+// 使用空配置创建 ExchangeRateService（会降级到 Fallback provider），避免依赖外部 API
+func newTestExchangeRateHandler() *ExchangeRateHandler {
+	svc := exchangerate.NewExchangeRateService(&datasource.DataSourceConfig{})
+	return &ExchangeRateHandler{
+		exchangeSvc: svc,
+		syncTask:    nil,
+	}
+}
+
 func TestNewExchangeRateHandler(t *testing.T) {
 	utils.InitLogger("warn")
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	task := tasks.NewExchangeRateTask(&datasource.DataSourceConfig{})
+	handler := NewExchangeRateHandler(task)
 
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.exchangeSvc)
@@ -47,8 +59,7 @@ func TestGetExchangeRates(t *testing.T) {
 	models.DB.Create(&rate)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates", handler.GetExchangeRates)
 
 	req := httptest.NewRequest("GET", "/api/exchange-rates", nil)
@@ -87,8 +98,7 @@ func TestGetExchangeRates_WithFilters(t *testing.T) {
 	models.DB.Create(&rate2)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates", handler.GetExchangeRates)
 
 	// 测试 from 过滤器
@@ -120,8 +130,7 @@ func TestGetExchangeRate(t *testing.T) {
 	models.DB.Create(&rate)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates/:from/:to", handler.GetExchangeRate)
 
 	req := httptest.NewRequest("GET", "/api/exchange-rates/USD/CNY", nil)
@@ -142,8 +151,7 @@ func TestGetExchangeRate_NotFound(t *testing.T) {
 	setupTestDB(t)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates/:from/:to", handler.GetExchangeRate)
 
 	req := httptest.NewRequest("GET", "/api/exchange-rates/XXX/YYY", nil)
@@ -169,8 +177,7 @@ func TestConvertCurrency(t *testing.T) {
 	models.DB.Create(&rate)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.POST("/api/exchange-rates/convert", handler.ConvertCurrency)
 
 	body := `{"from_currency": "USD", "to_currency": "CNY", "amount": 100}`
@@ -193,8 +200,7 @@ func TestConvertCurrency_InvalidBody(t *testing.T) {
 	setupTestDB(t)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.POST("/api/exchange-rates/convert", handler.ConvertCurrency)
 
 	req := httptest.NewRequest("POST", "/api/exchange-rates/convert", strings.NewReader("invalid json"))
@@ -229,8 +235,7 @@ func TestGetSupportedCurrencies(t *testing.T) {
 	models.DB.Create(&rate2)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates/currencies", handler.GetSupportedCurrencies)
 
 	req := httptest.NewRequest("GET", "/api/exchange-rates/currencies", nil)
@@ -261,8 +266,7 @@ func TestGetExchangeRatesSummary(t *testing.T) {
 	models.DB.Create(&rate)
 
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates/summary", handler.GetExchangeRatesSummary)
 
 	req := httptest.NewRequest("GET", "/api/exchange-rates/summary", nil)
@@ -284,8 +288,7 @@ func TestGetCurrencyPairs(t *testing.T) {
 
 	// 注意：currency_pairs 表可能不存在，此测试主要验证handler不panic
 	router := gin.New()
-	config := &datasource.DataSourceConfig{}
-	handler := NewExchangeRateHandler(config, nil)
+	handler := newTestExchangeRateHandler()
 	router.GET("/api/exchange-rates/pairs", handler.GetCurrencyPairs)
 
 	req := httptest.NewRequest("GET", "/api/exchange-rates/pairs", nil)

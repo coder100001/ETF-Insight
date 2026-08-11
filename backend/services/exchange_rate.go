@@ -45,7 +45,7 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) decimal.D
 	result := models.DB.Where(
 		"from_currency = ? AND to_currency = ?",
 		fromCurrency, toCurrency,
-	).Order("rate_date DESC").First(&rate)
+	).Order("updated_at DESC").First(&rate)
 
 	if result.Error == nil {
 		return rate.Rate
@@ -85,7 +85,8 @@ func (s *ExchangeRateService) UpdateRates() error {
 				DataSource:   "api",
 			}
 			models.DB.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "from_currency"}, {Name: "to_currency"}, {Name: "rate_date"}},
+				// ExchangeRate 唯一键是 (from_currency, to_currency)
+				Columns:   []clause.Column{{Name: "from_currency"}, {Name: "to_currency"}},
 				DoUpdates: clause.AssignmentColumns([]string{"rate"}),
 			}).Create(&exchangeRate)
 

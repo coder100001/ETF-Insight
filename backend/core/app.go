@@ -13,15 +13,13 @@ import (
 	"etf-insight/config"
 	"etf-insight/models"
 	"etf-insight/router"
-	"etf-insight/services"
 	"etf-insight/services/datasource"
-	"etf-insight/services/datasource/unified"
 	"etf-insight/services/event"
-	erdatasource "etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
 	"etf-insight/utils"
 )
 
+// App 应用结构体，持有所有运行时依赖
 type App struct {
 	config           *config.Config
 	router           *router.Router
@@ -31,7 +29,10 @@ type App struct {
 	provider         datasource.DataSourceProvider
 }
 
-func New(configPath string) (*App, error) {
+// Bootstrap 执行应用启动前的所有初始化工作（副作用操作）：
+// 加载配置、初始化日志、数据库连接、默认数据、事件总线、汇率表等。
+// 返回加载后的配置对象，用于后续依赖注入。
+func Bootstrap(configPath string) (*config.Config, error) {
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
@@ -63,49 +64,18 @@ func New(configPath string) (*App, error) {
 	}
 	utils.Info("Default currency pairs initialized")
 
-	exchangeService := services.NewExchangeRateService()
-	analysisService := services.NewETFAnalysisService(exchangeService)
-	optimizer := services.NewPortfolioOptimizer(analysisService)
+	return cfg, nil
+}
 
-	finageProvider := datasource.NewFinageProvider()
-	utils.Info("Finage provider initialized",
-		"available", finageProvider.IsAvailable(context.Background()))
-
-	providerFactory := datasource.NewProviderFactory()
-	providerFactory.Register("finage", finageProvider)
-	providerFactory.Register("fallback", datasource.NewMockDataProvider())
-
-	ctx := context.Background()
-	defaultProvider, err := providerFactory.GetDefault(ctx)
-	if err != nil {
-		utils.Warn("No data source available, using mock provider", "error", err)
-		defaultProvider = datasource.NewMockDataProvider()
-	} else {
-		utils.Info("Using data source", "provider", defaultProvider.GetName())
-	}
-
-	// 初始化统一数据源注册表
-	initUnifiedRegistry(defaultProvider)
-
-	scheduler := tasks.NewScheduler(&cfg.Schedule, analysisService, exchangeService, defaultProvider)
-
-	exchangeRateConfig := &erdatasource.DataSourceConfig{
-		OpenExchangeAPIKey: cfg.ExchangeRate.OpenExchangeAPIKey,
-		CurrencyAPIKey:     cfg.ExchangeRate.CurrencyAPIKey,
-	}
-	exchangeRateTask := tasks.NewExchangeRateTask(exchangeRateConfig)
-
-	r := router.NewRouter(
-		cfg,
-		analysisService,
-		optimizer,
-		exchangeService,
-		defaultProvider,
-		exchangeRateConfig,
-		exchangeRateTask,
-	)
-	r.RegisterRoutes()
-
+// NewApp 使用已构造好的依赖组装 App，创建 HTTP Server。
+// 所有服务/任务/路由的构造由 wire 依赖注入容器完成，此函数仅负责组装和创建 Server。
+func NewApp(
+	cfg *config.Config,
+	r *router.Router,
+	scheduler *tasks.Scheduler,
+	exchangeRateTask *tasks.ExchangeRateTask,
+	provider datasource.DataSourceProvider,
+) *App {
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	server := &http.Server{
 		Addr:    addr,
@@ -131,8 +101,8 @@ func New(configPath string) (*App, error) {
 		scheduler:        scheduler,
 		exchangeRateTask: exchangeRateTask,
 		server:           server,
-		provider:         defaultProvider,
-	}, nil
+		provider:         provider,
+	}
 }
 
 func (a *App) RunOnce() {
@@ -236,33 +206,4 @@ func (a *App) Shutdown() error {
 
 	utils.Info("Server stopped")
 	return nil
-}
-
-// initUnifiedRegistry 初始化统一数据源注册表
-// 将现有的 ETF 和汇率数据源注册到统一注册表中
-func initUnifiedRegistry(etfProvider datasource.DataSourceProvider) {
-	registry := unified.GetUnifiedRegistry()
-	ctx := context.Background()
-
-	// 注册 ETF 数据源
-	if etfProvider != nil {
-		adapter := unified.NewETFAdapter(etfProvider)
-		registry.Register(etfProvider.GetName(), adapter)
-		utils.Info("ETF data source registered to unified registry",
-			"name", etfProvider.GetName(),
-			"available", etfProvider.IsAvailable(ctx))
-	}
-
-	// 注册汇率数据源（使用 Fallback Provider，无需 API Key）
-	fxProvider := erdatasource.NewFallbackProvider()
-	if fxProvider != nil {
-		adapter := unified.NewFXAdapter(fxProvider)
-		registry.Register(fxProvider.GetName(), adapter)
-		utils.Info("FX data source registered to unified registry",
-			"name", fxProvider.GetName(),
-			"available", fxProvider.IsAvailable(ctx))
-	}
-
-	utils.Info("Unified data source registry initialized",
-		"total_providers", registry.Count())
 }
