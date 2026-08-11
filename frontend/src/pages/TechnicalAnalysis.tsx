@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Row, Col, Select, DatePicker, Button, Spin, Alert, Statistic } from 'antd';
-import { Radar, Line } from '@ant-design/charts';
+import ReactEChart from '../components/ReactEChart';
+import type { EChartsOption } from 'echarts';
 import { FundOutlined, LineChartOutlined, BarChartOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
@@ -156,53 +157,49 @@ const TechnicalAnalysis: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedETFs, dateRange]);
 
-  // 雷达图配置
-  const radarConfig = {
-    data: radarData,
-    xField: 'item',
-    yField: 'value',
-    seriesField: 'symbol',
-    meta: {
-      value: {
-        min: 0,
-        max: 100,
+  // 雷达图配置（ECharts）
+  // 将 @ant-design/charts 的扁平数据 [{ item, value, symbol }] 转换为 ECharts radar 所需的
+  // indicator + 按 symbol 分组的 series 数据
+  const radarOption: EChartsOption = useMemo(() => {
+    const items = Array.from(new Set(radarData.map(d => d.item)));
+    const symbols = Array.from(new Set(radarData.map(d => d.symbol)));
+
+    // 每个维度固定 0-100（对应原 meta.value.min/max）
+    const indicator = items.map(item => ({ name: item, min: 0, max: 100 }));
+
+    const seriesData = symbols.map(symbol => ({
+      name: symbol,
+      // 按 indicator 顺序提取对应数值，缺失时补 0
+      value: items.map(item => {
+        const point = radarData.find(r => r.item === item && r.symbol === symbol);
+        return point ? point.value : 0;
+      }),
+    }));
+
+    return {
+      tooltip: {},
+      legend: {
+        data: symbols,
+        bottom: 0,
       },
-    },
-    xAxis: {
-      line: null,
-      tickLine: null,
-      grid: {
-        line: {
-          style: {
-            lineDash: null,
-          },
+      radar: {
+        indicator,
+        // 对应原 xAxis/yAxis 的 line/tickLine 关闭 + 实线网格
+        axisLine: { lineStyle: { color: 'rgba(0, 0, 0, 0.2)' } },
+        splitLine: { lineStyle: { color: 'rgba(0, 0, 0, 0.2)' } },
+        splitArea: { show: false },
+      },
+      series: [
+        {
+          type: 'radar',
+          data: seriesData,
+          // 对应原 area.style.fillOpacity 与 point.size
+          areaStyle: { opacity: 0.2 },
+          symbolSize: 4,
         },
-      },
-    },
-    yAxis: {
-      line: null,
-      tickLine: null,
-      grid: {
-        line: {
-          type: 'line',
-          style: {
-            lineDash: null,
-          },
-        },
-      },
-    },
-    area: {
-      style: {
-        fillOpacity: 0.2,
-      },
-    },
-    point: {
-      size: 4,
-    },
-    legend: {
-      position: 'bottom',
-    },
-  };
+      ],
+    };
+  }, [radarData]);
 
   // 生成 MACD 图表数据
   const generateMACDData = () => {
@@ -233,27 +230,44 @@ const TechnicalAnalysis: React.FC = () => {
     return data;
   };
 
-  const macdConfig = {
-    data: generateMACDData(),
-    xField: 'date',
-    yField: 'value',
-    seriesField: 'type',
-    yAxis: {
-      label: {
-        formatter: (v: string) => `${v}`,
+  // MACD 图表配置（ECharts）
+  // 将 @ant-design/charts 的扁平数据 [{ date, value, type }] 转换为 ECharts line 所需的
+  // xAxis 类目 + 按 type 分组的 series
+  const macdOption: EChartsOption = useMemo(() => {
+    const macdData = generateMACDData();
+    const dates = Array.from(new Set(macdData.map(d => d.date)));
+    const types = Array.from(new Set(macdData.map(d => d.type)));
+
+    const series = types.map(type => ({
+      name: type,
+      type: 'line' as const,
+      smooth: true,
+      // 按 xAxis 顺序提取数值，缺失时补 null
+      data: dates.map(date => {
+        const point = macdData.find(d => d.date === date && d.type === type);
+        return point ? point.value : null;
+      }),
+    }));
+
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: {
+        data: types,
+        top: 0,
       },
-    },
-    legend: {
-      position: 'top',
-    },
-    smooth: true,
-    animation: {
-      appear: {
-        animation: 'path-in',
-        duration: 1000,
+      xAxis: {
+        type: 'category',
+        data: dates,
+        boundaryGap: false,
       },
-    },
-  };
+      yAxis: {
+        type: 'value',
+      },
+      series,
+    };
+    // generateMACDData 内部依赖 indicators 与 selectedETFs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicators, selectedETFs]);
 
   return (
     <Layout>
@@ -368,7 +382,7 @@ const TechnicalAnalysis: React.FC = () => {
                 }
               >
                 {radarData.length > 0 ? (
-                  <Radar {...radarConfig} />
+                  <ReactEChart option={radarOption} height={300} />
                 ) : (
                   <Alert title="请选择ETF以查看雷达图" type="info" />
                 )}
@@ -383,7 +397,7 @@ const TechnicalAnalysis: React.FC = () => {
                   </span>
                 }
               >
-                <Line {...macdConfig} />
+                <ReactEChart option={macdOption} height={300} />
               </ChartCard>
             </Col>
           </Row>

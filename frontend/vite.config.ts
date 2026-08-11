@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // 开发模式预热：服务端启动时预编译所有 src 模块到内存，
+    // 后续浏览器请求直接返回已编译结果，消除首次访问的 transform 延迟
+    warmup: {
+      clientFiles: ['./src/**/*.{ts,tsx}', './index.html'],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8080',
@@ -16,11 +21,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // 确保生成静态资源到正确位置
     assetsDir: 'assets',
-    // 浏览器兼容性目标
-    target: ['es2015', 'chrome58', 'firefox57', 'safari11', 'edge16'],
-    cssTarget: ['chrome58', 'firefox57', 'safari11', 'edge16'],
+    // 现代目标（es2020）：减少语法降级，产物更小、解析更快
+    target: ['es2020', 'chrome87', 'safari14', 'edge88'],
+    cssTarget: ['chrome87', 'safari14', 'edge88'],
     rollupOptions: {
       output: {
         manualChunks: (id: string) => {
@@ -28,9 +32,7 @@ export default defineConfig({
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
               return 'react-vendor'
             }
-            if (id.includes('antd') || id.includes('@ant-design')) {
-              return 'ant-design'
-            }
+            // antd 不强制合并：让 rolldown 按依赖自然分包，配合路由懒加载减少首屏加载
             if (id.includes('echarts')) {
               return 'echarts'
             }

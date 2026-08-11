@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import echarts from "../lib/echarts";
+import type { EChartsType } from "echarts/core";
+import type { EChartsOption, TooltipComponentFormatterCallbackParams } from "echarts";
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 
@@ -25,7 +27,7 @@ interface HoldingPieChartProps {
 
 const HoldingPieChart: React.FC<HoldingPieChartProps> = ({ data, title = '持仓分布' }) => {
   const chartRef = useRef<HTMLDivElement>(null);
-  const chartInstance = useRef<echarts.ECharts | null>(null);
+  const chartInstance = useRef<EChartsType | null>(null);
 
   useEffect(() => {
     if (!chartRef.current || data.length === 0) return;
@@ -43,7 +45,7 @@ const HoldingPieChart: React.FC<HoldingPieChartProps> = ({ data, title = '持仓
       '#00BCD4',
     ];
 
-    const option: echarts.EChartsOption = {
+    const option: EChartsOption = {
       backgroundColor: 'transparent',
       title: {
         text: title,
@@ -61,7 +63,7 @@ const HoldingPieChart: React.FC<HoldingPieChartProps> = ({ data, title = '持仓
         textStyle: {
           color: theme.colors.textPrimary,
         },
-        formatter: (params: echarts.TooltipComponentFormatterCallbackParams) => {
+        formatter: (params: TooltipComponentFormatterCallbackParams) => {
           const dataIndex = Array.isArray(params) ? params[0].dataIndex : params.dataIndex;
           const item = data[dataIndex as number];
           if (!item) return '';

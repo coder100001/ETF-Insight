@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import echarts from "../lib/echarts";
+import type { EChartsType } from "echarts/core";
+import type { EChartsOption, TooltipComponentFormatterCallbackParams } from "echarts";
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
 
@@ -24,7 +26,7 @@ interface SectorBarChartProps {
 
 const SectorBarChart: React.FC<SectorBarChartProps> = ({ data, title = '行业分布' }) => {
   const chartRef = useRef<HTMLDivElement>(null);
-  const chartInstance = useRef<echarts.ECharts | null>(null);
+  const chartInstance = useRef<EChartsType | null>(null);
 
   useEffect(() => {
     if (!chartRef.current || data.length === 0) return;
@@ -34,7 +36,7 @@ const SectorBarChart: React.FC<SectorBarChartProps> = ({ data, title = '行业�
     // 按权重排序
     const sortedData = [...data].sort((a, b) => b.weight - a.weight);
 
-    const option: echarts.EChartsOption = {
+    const option: EChartsOption = {
       backgroundColor: 'transparent',
       title: {
         text: title,
@@ -55,7 +57,7 @@ const SectorBarChart: React.FC<SectorBarChartProps> = ({ data, title = '行业�
         textStyle: {
           color: theme.colors.textPrimary,
         },
-        formatter: (params: echarts.TooltipComponentFormatterCallbackParams) => {
+        formatter: (params: TooltipComponentFormatterCallbackParams) => {
           const dataIndex = Array.isArray(params) ? params[0].dataIndex : params.dataIndex;
           const item = sortedData[dataIndex as number];
           if (!item) return '';

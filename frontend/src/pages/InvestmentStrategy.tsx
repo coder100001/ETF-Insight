@@ -10,9 +10,9 @@ import {
   PieChartOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import {
-  Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area, ReferenceLine
-} from 'recharts';
+import ReactEChart from '../components/ReactEChart';
+import type { EChartsOption } from 'echarts';
+import echarts from "../lib/echarts";
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI } from '../services/api';
@@ -391,7 +391,87 @@ const InvestmentStrategy: React.FC = () => {
       monthlyIncome: monthlyDividend.toFixed(2),
       volatility: (stdDev * Math.sqrt(12) * 100).toFixed(2),
     };
-  }, [backtestData, investmentAmount, currentStrategy, etfData]);
+  }, [backtestData, investmentAmount, currentStrategy, etfData, finConfig]);
+
+  // ECharts 图表配置：组合净值（面积渐变）+ 基准（虚线）+ y=100 基准线
+  const chartOption = useMemo<EChartsOption>(() => {
+    const xAxisData = backtestData.map(d => d.date);
+    const portfolioData = backtestData.map(d => d.portfolio);
+    const benchmarkData = backtestData.map(d => d.benchmark);
+
+    return {
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#fff',
+        borderColor: '#eee',
+        borderWidth: 1,
+        borderRadius: 8,
+        valueFormatter: (value) => `$${Number(value).toFixed(2)}`,
+      },
+      legend: {
+        data: ['组合净值', '基准'],
+        top: 0,
+      },
+      grid: {
+        top: 30,
+        right: 30,
+        bottom: 0,
+        left: 0,
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        data: xAxisData,
+        boundaryGap: false,
+        axisLabel: {
+          fontSize: 11,
+          interval: Math.ceil(backtestData.length / 12),
+        },
+        axisLine: { lineStyle: { color: '#eee' } },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          fontSize: 11,
+          formatter: '${value}',
+        },
+        splitLine: { lineStyle: { color: '#eee', type: 'dashed' } },
+      },
+      series: [
+        {
+          name: '组合净值',
+          type: 'line',
+          data: portfolioData,
+          smooth: true,
+          showSymbol: false,
+          lineStyle: { color: '#667eea', width: 2 },
+          itemStyle: { color: '#667eea' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
+              { offset: 1, color: 'rgba(102, 126, 234, 0)' },
+            ]),
+          },
+          markLine: {
+            silent: true,
+            symbol: ['none', 'none'],
+            label: { formatter: '基准', position: 'insideEndTop' },
+            lineStyle: { color: '#999', type: 'dashed' },
+            data: [{ yAxis: 100 }],
+          },
+        },
+        {
+          name: '基准',
+          type: 'line',
+          data: benchmarkData,
+          smooth: true,
+          showSymbol: false,
+          lineStyle: { color: '#999', type: 'dashed' },
+          itemStyle: { color: '#999' },
+        },
+      ],
+    };
+  }, [backtestData]);
 
   const handleAllocationChange = useCallback((symbol: string, value: number | null) => {
     if (value === null) return;
@@ -583,24 +663,7 @@ const InvestmentStrategy: React.FC = () => {
               </Space>
             </div>
 
-            <ResponsiveContainer width="100%" height={350}>
-              <AreaChart data={backtestData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#667eea" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#667eea" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={Math.ceil(backtestData.length / 12)} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `$${v}`} />
-                <RechartsTooltip contentStyle={{ borderRadius: 8 }} formatter={(v: unknown) => [`$${Number(v).toFixed(2)}`, '']} />
-                <Legend />
-                <ReferenceLine y={100} stroke="#999" strokeDasharray="3 3" label="基准" />
-                <Area type="monotone" dataKey="portfolio" name="组合净值" stroke="#667eea" fill="url(#colorPortfolio)" strokeWidth={2} />
-                <Line type="monotone" dataKey="benchmark" name="基准" stroke="#999" strokeDasharray="5 5" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
+            <ReactEChart option={chartOption} height={350} />
 
             <div className="stats-row">
               <div className="stat-card positive">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Select, Button, Spin, Alert, Statistic, Table, Tag, message } from 'antd';
 import { WarningOutlined, SafetyOutlined, BarChartOutlined, RadarChartOutlined } from '@ant-design/icons';
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import ReactEChart from '../components/ReactEChart';
+import type { EChartsOption } from 'echarts';
 import Layout from '../components/Layout';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
@@ -183,6 +184,55 @@ const RiskAnalysis: React.FC = () => {
       },
     },
   ];
+
+  // 风险雷达图配置
+  const radarData = riskData ? [
+    { subject: 'VaR', value: Math.min(Math.abs(riskData.var_95) * 10, 100) },
+    { subject: 'CVaR', value: Math.min(Math.abs(riskData.cvar_95) * 10, 100) },
+    { subject: '波动率', value: Math.min(riskData.volatility * 5, 100) },
+    { subject: 'Beta', value: Math.min(Math.abs(riskData.beta) * 50, 100) },
+    { subject: 'Alpha', value: Math.min(Math.max(riskData.alpha * 5 + 50, 0), 100) },
+    { subject: '夏普', value: Math.min(Math.max(riskData.sharpe_ratio * 30, 0), 100) },
+  ] : null;
+
+  const radarOption: EChartsOption | null = radarData ? {
+    tooltip: {},
+    radar: {
+      indicator: radarData.map(d => ({ name: d.subject, max: 100 })),
+      radius: '65%',
+    },
+    series: [{
+      type: 'radar',
+      data: [{ value: radarData.map(d => d.value), name: '风险指标' }],
+      areaStyle: { opacity: 0.6 },
+      lineStyle: { color: '#1890ff' },
+      itemStyle: { color: '#1890ff' },
+    }],
+  } : null;
+
+  // 风险指标对比柱状图配置
+  const barData = riskData ? [
+    { name: 'VaR(95%)', value: Math.abs(riskData.var_95), fill: '#ff4d4f' },
+    { name: 'VaR(99%)', value: Math.abs(riskData.var_99), fill: '#cf1322' },
+    { name: 'CVaR(95%)', value: Math.abs(riskData.cvar_95), fill: '#a8071a' },
+    { name: '波动率', value: riskData.volatility, fill: '#fa8c16' },
+    { name: '最大回撤', value: Math.abs(riskData.max_drawdown), fill: '#722ed1' },
+  ] : null;
+
+  const barOption: EChartsOption | null = barData ? {
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (value: unknown) => `${Number(value).toFixed(2)}%`,
+    },
+    legend: {},
+    xAxis: { type: 'category', data: barData.map(d => d.name) },
+    yAxis: { type: 'value' },
+    series: [{
+      type: 'bar',
+      data: barData.map(d => ({ value: d.value, itemStyle: { color: d.fill } })),
+      name: '百分比',
+    }],
+  } : null;
 
   return (
     <Layout>
@@ -442,22 +492,7 @@ const RiskAnalysis: React.FC = () => {
                   </span>
                 }
               >
-                <ResponsiveContainer width="100%" height={300}>
-                  <RadarChart data={[
-                    { subject: 'VaR', value: Math.min(Math.abs(riskData.var_95) * 10, 100) },
-                    { subject: 'CVaR', value: Math.min(Math.abs(riskData.cvar_95) * 10, 100) },
-                    { subject: '波动率', value: Math.min(riskData.volatility * 5, 100) },
-                    { subject: 'Beta', value: Math.min(Math.abs(riskData.beta) * 50, 100) },
-                    { subject: 'Alpha', value: Math.min(Math.max(riskData.alpha * 5 + 50, 0), 100) },
-                    { subject: '夏普', value: Math.min(Math.max(riskData.sharpe_ratio * 30, 0), 100) },
-                  ]}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="subject" />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                    <Radar name="风险指标" stroke="#1890ff" fill="#1890ff" fillOpacity={0.6} />
-                    <Tooltip />
-                  </RadarChart>
-                </ResponsiveContainer>
+                {radarOption && <ReactEChart option={radarOption} height={300} />}
                 <div style={{ textAlign: 'center', fontSize: 12, color: theme.colors.textSecondary }}>
                   各指标已归一化到 0-100 范围，便于对比
                 </div>
@@ -472,22 +507,7 @@ const RiskAnalysis: React.FC = () => {
                   </span>
                 }
               >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={[
-                    { name: 'VaR(95%)', value: Math.abs(riskData.var_95), fill: '#ff4d4f' },
-                    { name: 'VaR(99%)', value: Math.abs(riskData.var_99), fill: '#cf1322' },
-                    { name: 'CVaR(95%)', value: Math.abs(riskData.cvar_95), fill: '#a8071a' },
-                    { name: '波动率', value: riskData.volatility, fill: '#fa8c16' },
-                    { name: '最大回撤', value: Math.abs(riskData.max_drawdown), fill: '#722ed1' },
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`${Number(value).toFixed(2)}%`, '']} />
-                    <Legend />
-                    <Bar dataKey="value" name="百分比" fill="#1890ff" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {barOption && <ReactEChart option={barOption} height={300} />}
               </Card>
             </Col>
           </Row>

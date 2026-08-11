@@ -2,11 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { Card, Table, Button, Select, App, Row, Col, Tag, Typography } from 'antd';
 import { BarChartOutlined } from '@ant-design/icons';
-import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell,
-} from 'recharts';
 import { FaBalanceScale, FaChartLine } from 'react-icons/fa';
+import ReactEChart from '../components/ReactEChart';
+import type { EChartsOption } from 'echarts';
 import Layout from '../components/Layout';
 import { theme } from '../styles/theme';
 import { etfAPI, request } from '../services/api';
@@ -339,48 +337,69 @@ const ETFComparison: React.FC = () => {
               {/* 雷达图 */}
               <Col xs={24} lg={12}>
                 <Card title="多维度表现对比 (分数越高越好)" style={{ marginBottom: 24 }}>
-                  <ResponsiveContainer width="100%" height={320}>
-                    <RadarChart data={radarData}>
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="label" fontSize={12} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
-                      {filteredETFs.map((etf, idx) => (
-                        <Radar
-                          key={etf.symbol}
-                          name={etf.symbol}
-                          dataKey={etf.symbol}
-                          stroke={COLORS[idx % COLORS.length]}
-                          fill={COLORS[idx % COLORS.length]}
-                          fillOpacity={0.15}
-                        />
-                      ))}
-                      <Legend />
-                    </RadarChart>
-                  </ResponsiveContainer>
+                  <ReactEChart
+                    height={320}
+                    option={{
+                      tooltip: {},
+                      legend: { data: filteredETFs.map(e => e.symbol) },
+                      radar: {
+                        indicator: radarData.map(d => ({ name: d.label as string, max: 100 })),
+                      },
+                      series: [{
+                        type: 'radar',
+                        data: filteredETFs.map((etf, idx) => ({
+                          value: radarData.map(d => d[etf.symbol] as number),
+                          name: etf.symbol,
+                          lineStyle: { color: COLORS[idx % COLORS.length] },
+                          areaStyle: { color: COLORS[idx % COLORS.length], opacity: 0.15 },
+                          itemStyle: { color: COLORS[idx % COLORS.length] },
+                        })),
+                      }],
+                    }}
+                  />
                 </Card>
               </Col>
 
               {/* 收益/股息 / 波动率柱状图 */}
               <Col xs={24} lg={12}>
                 <Card title="关键指标对比" style={{ marginBottom: 24 }}>
-                  {barChartData.slice(0, 2).map(item => (
-                    <div key={item.metric} style={{ marginBottom: 16 }}>
-                      <Text strong style={{ display: 'block', marginBottom: 8 }}>{item.label}</Text>
-                      <ResponsiveContainer width="100%" height={100}>
-                        <BarChart data={item.data.map(d => ({ name: d.symbol, value: d.value }))} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                          <XAxis type="number" tick={{ fontSize: 11 }} />
-                          <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={50} />
-                          <Tooltip formatter={(v: unknown) => Number(v ?? 0).toFixed(2)} />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                            {item.data.map((_, idx) => (
-                              <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ))}
+                  {barChartData.slice(0, 2).map(item => {
+                    const option: EChartsOption = {
+                      tooltip: {
+                        formatter: (params) => {
+                          const p = Array.isArray(params) ? params[0] : params;
+                          return `${p.name}: ${Number(p.value ?? 0).toFixed(2)}`;
+                        },
+                      },
+                      grid: { containLabel: true, left: '3%', right: '4%', top: '10%', bottom: '10%' },
+                      xAxis: {
+                        type: 'value',
+                        axisLabel: { fontSize: 11 },
+                        splitLine: { lineStyle: { type: 'dashed' } },
+                      },
+                      yAxis: {
+                        type: 'category',
+                        data: item.data.map(d => d.symbol),
+                        axisLabel: { fontSize: 11 },
+                        splitLine: { show: false },
+                      },
+                      series: [{
+                        type: 'bar',
+                        data: item.data.map((d, idx) => ({
+                          value: d.value,
+                          itemStyle: { color: COLORS[idx % COLORS.length] },
+                        })),
+                        barMaxWidth: 20,
+                        itemStyle: { borderRadius: [0, 4, 4, 0] },
+                      }],
+                    };
+                    return (
+                      <div key={item.metric} style={{ marginBottom: 16 }}>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>{item.label}</Text>
+                        <ReactEChart option={option} height={100} />
+                      </div>
+                    );
+                  })}
                 </Card>
               </Col>
             </Row>
