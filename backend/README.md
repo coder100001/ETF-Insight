@@ -275,10 +275,6 @@ AI Agent 服务: http://localhost:8091 (Python FastAPI)
 - `POST /api/optimization/mpt` - MPT均值-方差优化
 - `POST /api/optimization/efficient-frontier` - 有效前沿计算
 - `POST /api/optimization/covariance` - 协方差矩阵计算
-- `POST /api/optimization/etf-statistics` - ETF统计信息
-- `POST /api/optimization/risk-parity` - 风险平价优化
-- `POST /api/optimization/black-litterman` - Black-Litterman优化
-- `POST /api/optimization/market-implied-returns` - 市场隐含收益
 
 ### 因子分析接口
 - `POST /api/factor/analyze` - 因子暴露度分析
