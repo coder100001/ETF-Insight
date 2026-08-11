@@ -133,6 +133,9 @@ for stage in "${STAGE_LIST[@]}"; do
       if [[ "$HAS_BACKEND" == "true" ]]; then
         export GOPROXY="https://goproxy.cn,direct"
         run_command "go-vet" "cd $PROJECT_ROOT/backend && go vet ./..." false "Go vet found issues" || STAGE_FAILED=1
+        # Wire DI 生成代码一致性检查（wire_gen.go 必须与 wire.go/providers.go 同步）
+        # 使用 @v0.7.0 固定版本，避免依赖项目 go.sum（wire 为 build-tag 工具依赖，tidy 不为其写入 go.sum）
+        run_command "wire-regen" "cd $PROJECT_ROOT/backend && go run github.com/google/wire/cmd/wire@v0.7.0 ./di/ && git diff --exit-code -- di/" false "Wire DI regeneration mismatch: cd backend && go run github.com/google/wire/cmd/wire@v0.7.0 ./di/" || STAGE_FAILED=1
       else
         echo -e "  ${YELLOW}[SKIP] go-vet - no backend changes${NC}"
       fi
@@ -140,6 +143,9 @@ for stage in "${STAGE_LIST[@]}"; do
       if [[ "$HAS_FRONTEND" == "true" ]]; then
         run_command "tsc" "cd $PROJECT_ROOT/frontend && npx tsc --noEmit" false "TypeScript check failed" || STAGE_FAILED=1
         run_command "eslint" "cd $PROJECT_ROOT/frontend && npx eslint --cache --quiet src/" false "ESLint check failed" || STAGE_FAILED=1
+        # 图表库单一性检查（recharts / @ant-design/charts 必须已移除）
+        # 匹配 import 语句（含 from 前缀），避免误伤注释中的库名
+        run_command "chart-lib-consistency" "cd $PROJECT_ROOT/frontend && test -z \"\$(grep -rn -e \"from 'recharts'\" -e \"from '@ant-design/charts'\" src/)\"" false "Chart library inconsistency: recharts/@ant-design/charts must be removed" || STAGE_FAILED=1
       else
         echo -e "  ${YELLOW}[SKIP] tsc/eslint - no frontend changes${NC}"
       fi
