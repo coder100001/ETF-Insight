@@ -52,6 +52,10 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	if s.manager == nil {
+		return s.getDefaultRate(fromCurrency, toCurrency)
+	}
+
 	rate, err := s.manager.GetRate(ctx, fromCurrency, toCurrency)
 	if err != nil {
 		utils.Warn("获取汇率失败，使用默认值",
@@ -70,6 +74,10 @@ func (s *ExchangeRateService) GetRate(fromCurrency, toCurrency string) float64 {
 func (s *ExchangeRateService) GetRateDecimal(fromCurrency, toCurrency string) (decimal.Decimal, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+
+	if s.manager == nil {
+		return decimal.Zero, fmt.Errorf("exchange rate manager is nil")
+	}
 
 	return s.manager.GetRate(ctx, fromCurrency, toCurrency)
 }
@@ -143,13 +151,15 @@ func (s *ExchangeRateService) ConsistencyCheck() (*syncpkg.ConsistencyReport, er
 func (s *ExchangeRateService) GetHistory(fromCurrency, toCurrency string, days int) ([]map[string]any, error) {
 	// 从数据库获取历史汇率数据
 	var rates []models.ExchangeRate
-	result := models.DB.Where(
-		"from_currency = ? AND to_currency = ?",
-		fromCurrency, toCurrency,
-	).Order("updated_at DESC").Limit(days).Find(&rates)
+	if models.DB != nil {
+		result := models.DB.Where(
+			"from_currency = ? AND to_currency = ?",
+			fromCurrency, toCurrency,
+		).Order("updated_at DESC").Limit(days).Find(&rates)
 
-	if result.Error != nil {
-		return nil, result.Error
+		if result.Error != nil {
+			return nil, result.Error
+		}
 	}
 
 	history := make([]map[string]any, 0, len(rates))
@@ -207,15 +217,17 @@ func (s *ExchangeRateService) ValidateAllProviders() map[string]bool {
 
 // getDefaultRate 获取默认汇率（所有数据源都不可用时的后备值）
 func (s *ExchangeRateService) getDefaultRate(fromCurrency, toCurrency string) float64 {
-	// 先尝试从数据库获取
-	var rate models.ExchangeRate
-	result := models.DB.Where(
-		"from_currency = ? AND to_currency = ?",
-		fromCurrency, toCurrency,
-	).Order("updated_at DESC").First(&rate)
+	// 先尝试从数据库获取（DB 未初始化时跳过，避免 nil panic）
+	if models.DB != nil {
+		var rate models.ExchangeRate
+		result := models.DB.Where(
+			"from_currency = ? AND to_currency = ?",
+			fromCurrency, toCurrency,
+		).Order("updated_at DESC").First(&rate)
 
-	if result.Error == nil {
-		return rate.Rate.InexactFloat64()
+		if result.Error == nil {
+			return rate.Rate.InexactFloat64()
+		}
 	}
 
 	// 硬编码默认汇率
