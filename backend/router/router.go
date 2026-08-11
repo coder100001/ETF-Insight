@@ -8,7 +8,6 @@ import (
 	"etf-insight/models"
 	"etf-insight/services"
 	"etf-insight/services/datasource"
-	erdatasource "etf-insight/services/exchange_rate/datasource"
 	"etf-insight/tasks"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +25,7 @@ type Handlers struct {
 	AShareData      *handlers.AShareDataHandler
 	ExchangeRate    *handlers.ExchangeRateHandler
 	Export          *handlers.ExportHandler
+	AuditLog        *handlers.AuditLogHandler
 }
 
 type Router struct {
@@ -38,9 +38,7 @@ func NewRouter(
 	cfg *config.Config,
 	analysisService *services.ETFAnalysisService,
 	optimizer *services.PortfolioOptimizer,
-	exchangeService *services.ExchangeRateService,
 	provider datasource.DataSourceProvider,
-	exchangeRateConfig *erdatasource.DataSourceConfig,
 	exchangeRateTask *tasks.ExchangeRateTask,
 ) *Router {
 	gin.SetMode(gin.ReleaseMode)
@@ -62,8 +60,9 @@ func NewRouter(
 		ETFConfig:       handlers.NewETFConfigHandler(),
 		ASharePortfolio: handlers.NewASharePortfolioHandler(),
 		AShareData:      handlers.NewAShareDataHandler(),
-		ExchangeRate:    handlers.NewExchangeRateHandler(exchangeRateConfig, exchangeRateTask),
+		ExchangeRate:    handlers.NewExchangeRateHandler(exchangeRateTask),
 		Export:          handlers.NewExportHandler(),
+		AuditLog:        handlers.NewAuditLogHandler(),
 	}
 
 	return &Router{engine: engine, handlers: h, config: cfg}
@@ -83,6 +82,7 @@ func (r *Router) RegisterRoutes() {
 	r.registerAShareRoutes()
 	r.registerExchangeRateRoutes()
 	r.registerExportRoutes()
+	r.registerAuditLogRoutes()
 	r.registerFinancialConfigRoutes()
 	r.registerStaticRoutes()
 	docs.RegisterSwaggerRoutes(r.engine)
@@ -221,6 +221,10 @@ func (r *Router) registerExportRoutes() {
 		export.GET("/formats", r.handlers.Export.GetSupportedFormats)
 		export.GET("/types", r.handlers.Export.GetSupportedTypes)
 	}
+}
+
+func (r *Router) registerAuditLogRoutes() {
+	r.engine.GET("/api/logs", r.handlers.AuditLog.GetOperationLogs)
 }
 
 func (r *Router) registerFinancialConfigRoutes() {

@@ -41,16 +41,10 @@ func NewScheduler(cfg *config.ScheduleConfig, analysis *services.ETFAnalysisServ
 func (s *Scheduler) Start() {
 	utils.Info("Starting scheduler...")
 
-	// 添加汇率更新任务 (每天 10:30)
-	_, err := s.cron.AddFunc("0 30 10 * * *", s.updateExchangeRates)
-	if err != nil {
-		utils.Error("Failed to add exchange rate update job", err)
-	} else {
-		utils.Info("Exchange rate update job scheduled at 10:30 daily")
-	}
+	// 注意：汇率更新已由 ExchangeRateTask 独立管理（5分钟高频同步 + 每日全量），此处不再重复调度
 
 	// 添加ETF盘前更新任务 (每天 9:30)
-	_, err = s.cron.AddFunc("0 30 9 * * *", s.updateETFData)
+	_, err := s.cron.AddFunc("0 30 9 * * *", s.updateETFData)
 	if err != nil {
 		utils.Error("Failed to add ETF pre-market update job", err)
 	} else {
